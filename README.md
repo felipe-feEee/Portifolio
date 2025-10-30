@@ -28,7 +28,9 @@ A responsive web interface using HTML/CSS
 PowerShell scripts for administrative automation
 
 🚀 How to View: 
-You can clone this repository and open the HTML files directly in your browser: git clone https://github.com/felipe-feEee/Portifolio.git
+You can clone this repository and open the HTML files directly in your browser: 
+
+git clone https://github.com/felipe-feEee/Portifolio.git
 
 Or browse the projects directly here on GitHub.
 
@@ -70,7 +72,9 @@ Interface web responsiva com HTML/CSS
 Scripts PowerShell para automação de tarefas administrativas
 
 🚀 Como visualizar: 
-Você pode clonar este repositório e abrir os arquivos HTML diretamente no navegador: git clone https://github.com/felipe-feEee/Portifolio.git
+Você pode clonar este repositório e abrir os arquivos HTML diretamente no navegador: 
+
+git clone https://github.com/felipe-feEee/Portifolio.git
 
 Ou navegar pelos projetos diretamente aqui no GitHub.
 
