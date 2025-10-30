@@ -1,0 +1,58 @@
+{
+  "NFe": {
+    "titulo1": {
+      "titulo": "EN: Como emitir uma NFe",
+      "conteudo": "EN: Para emitir uma NFe, você deve acessar o sistema autorizado e preencher os dados fiscais corretamente."
+    },
+    "titulo2": {
+      "titulo": "EN: Erros comuns na NFe",
+      "conteudo": "EN: Erros comuns incluem CFOP incorreto, dados do destinatário inválidos e problemas com o certificado digital."
+    },
+    "titulo3": {
+      "titulo": "EN: Cancelamento de NFe",
+      "conteudo": "EN: O cancelamento deve ser feito em até 24 horas após a emissão, salvo exceções previstas na legislação."
+    }
+  },
+  "CTe": {
+    "titulo1": {
+      "titulo": "EN: Introdução ao CTe",
+      "conteudo": "EN: O Conhecimento de Transporte Eletrônico é um documento fiscal digital que substitui o modelo em papel."
+    },
+    "titulo2": {
+      "titulo": "EN: CTe OS vs CTe Normal",
+      "conteudo": "EN: O CTe OS é usado para serviços de transporte de pessoas, enquanto o CTe normal é para cargas."
+    },
+    "titulo3": {
+      "titulo": "EN: Manifesto do CTe",
+      "conteudo": "EN: O manifesto consolida os CTes emitidos para uma mesma operação de transporte."
+    }
+  },
+  "MDFe": {
+    "titulo1": {
+      "titulo": "EN: O que é o MDFe?",
+      "conteudo": "EN: O Manifesto Eletrônico de Documentos Fiscais é obrigatório para transporte interestadual de cargas."
+    },
+    "titulo2": {
+      "titulo": "EN: Quando emitir MDFe",
+      "conteudo": "EN: Deve ser emitido antes do início da operação de transporte com mais de um documento fiscal."
+    },
+    "titulo3": {
+      "titulo": "EN: Encerramento do MDFe",
+      "conteudo": "EN: O encerramento deve ser feito ao final do percurso para evitar penalidades."
+    }
+  },
+  "NFSe": {
+    "titulo1": {
+      "titulo": "EN: Como funciona a NFSe",
+      "conteudo": "EN: A Nota Fiscal de Serviço Eletrônica é emitida por prestadores de serviço e registrada na prefeitura."
+    },
+    "titulo2": {
+      "titulo": "EN: Prestador vs Tomador",
+      "conteudo": "EN: O prestador é quem emite a nota, o tomador é quem recebe o serviço."
+    },
+    "titulo3": {
+      "titulo": "EN: Cancelamento de NFSe",
+      "conteudo": "EN: O cancelamento depende das regras da prefeitura e pode exigir justificativa."
+    }
+  }
+}
