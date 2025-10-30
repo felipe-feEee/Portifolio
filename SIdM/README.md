@@ -33,7 +33,7 @@ JSON: Used as the primary data storage format for local persistence.
 Since this is a client-side application, it is incredibly easy to set up:
 
 1. Clone the repository: git clone https://github.com/felipe-feEee/Portifolio.git
-cd Portifolio/[NOME_DA_PASTA_CRUD]
+cd Portifolio/SIdM
 
 2. Open the Application:
 Simply open the main HTML file (e.g., index.html) in your browser.
