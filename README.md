@@ -2,6 +2,7 @@
 Development portfolio using Javascript, HTML, CSS, and Powershell.
 
 EN ===================================================
+
 🧑‍💻 Felipe Costa — Junior Developer Portfolio
 Welcome to my portfolio! I'm a junior developer passionate about technology and creative problem-solving. This repository showcases projects I've built using JavaScript, HTML, CSS, and PowerShell, with a focus on practical applications, automation, and clean web interfaces.
 
@@ -43,6 +44,7 @@ GitHub: github.com/felipe-feEee
 
 
 PT-BR ================================================
+
 🧑‍💻 Felipe Costa — Portfólio de Desenvolvedor Júnior
 Bem-vindo ao meu portfólio! Sou um desenvolvedor júnior apaixonado por tecnologia e soluções criativas. Este repositório reúne projetos que desenvolvi utilizando JavaScript, HTML, CSS e PowerShell, com foco em aplicações práticas, automações e interfaces web.
 
