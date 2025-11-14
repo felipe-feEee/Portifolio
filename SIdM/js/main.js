@@ -1114,9 +1114,14 @@ function renderMenu(openCategories = []) {
       const artigo = contentData[categoria][id];
       const liTitulo = document.createElement('li');
       const link = document.createElement('a');
-      link.href = '#';
-      link.textContent = artigo.titulo;
-      link.onclick = (e) => { e.preventDefault(); loadArticle(categoria, id); };
+		link.href = '#';
+		link.textContent = artigo.titulo;
+		link.setAttribute('data-categoria', categoria); // 👈 Adiciona categoria
+		link.setAttribute('data-id', id);               // 👈 Adiciona id
+		link.onclick = (e) => {
+		  e.preventDefault();
+		  loadArticle(categoria, id);
+		};
       liTitulo.appendChild(link);
       ulTitulos.appendChild(liTitulo);
     }
@@ -1185,6 +1190,16 @@ function loadArticle(categoria, id) {
     // ✅ Agora sim: ativar splash após renderização e vinculação
     console.log('🖼️ Ativando splash screen para imagens...');
     enableImageSplash(container);
+	
+	// 🔴 Destaca o link ativo no menu
+	const menuLinks = document.querySelectorAll('#menu a');
+	menuLinks.forEach(link => link.classList.remove('active'));
+
+	const activeLink = document.querySelector(`#menu a[data-categoria="${categoria}"][data-id="${id}"]`);
+	if (activeLink) {
+	  activeLink.classList.add('active');
+	}
+
 
   }, 400);
 }
