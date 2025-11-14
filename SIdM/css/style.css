@@ -111,6 +111,15 @@ body {
   transition: background-color 0.3s, border-color 0.3s;
 }
 
+/* Link ativo do submenu */
+.sidebar li ul li a.active {
+  background-color: #1f2f3f; /* fundo mais escuro */
+  color: #fff; /* texto branco */
+  border-left-color: #ff0000; /* borda vermelha mais intensa */
+  font-weight: bold;
+}
+
+
 /* Hover do submenu com fundo vermelho claro */
 .sidebar li ul li a:hover {
   background-color: #14273d;
