@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Sistema Integrado de Manuais</title>
+  <link rel="stylesheet" href="css/style.css">
+  <script src="js/lib/jszip.min.js"></script>
+  <script src="js/lib/FileSaver.min.js"></script>
+  <script src="js/data_pt.js"></script>
+</head>
+<body>
+  <div class="container">
+    <aside class="sidebar">
+	  <button id="add-content-btn" onclick="toggleNewContentPanel()">+ Adicionar Conteúdo</button>
+	  <button id="export-json-btn" style="display: none" onclick="exportContentDataSimple()">Exportar Dados</button>
+      <nav id="menu"></nav>
+
+    </aside>
+	<main class="content">
+	  <div class="search-bar-container">
+		<input type="text" id="search-input" class="search-bar" placeholder="Buscar conteúdo...">
+		<ul id="search-suggestions" class="search-suggestions" style="display: none;"></ul>
+	  </div>
+
+	  <article id="article-content">
+		<h1>Bem-vindo</h1>
+		<a id="edit-article-link" href="#" onclick="startEditing('${categoria}', '${id}')" style="display: none;">Editar</a>
+		<p>Selecione um item no menu para ver o conteúdo.</p>
+	  </article>
+
+	  <!-- Overlay deve vir antes do painel -->
+	  <div id="overlay"></div>
+
+	  <section id="new-content-panel" style="display: none;">
+		<div id="local-image-fix-panel"></div>
+		<button id="close-panel-btn" onclick="toggleNewContentPanel()" title="Fechar">×</button>
+		<h2>Adicionar Conteúdo</h2>
+
+		<label for="category-select">Categoria existente:</label>
+		<select id="category-select" onchange="handleCategoryChange()">
+		  <option value="">-- Nova Categoria --</option>
+		</select>
+
+		<div id="new-category-wrapper">
+		  <label for="new-category">Ou nova categoria:</label>
+		  <input type="text" id="new-category" placeholder="Nova categoria" />
+		</div>
+
+		<label for="content-title">Título:</label>
+		<input type="text" id="content-title" placeholder="Título do conteúdo" />
+
+
+		<label for="content-body">Conteúdo:</label>
+		<div id="content-body" contenteditable="true" data-placeholder="Digite ou cole o conteúdo aqui"></div>
+		<div class="editor-toolbar-fixed">
+		  <button onclick="execCmd('bold')" title="Negrito"><b>B</b></button>
+		  <button onclick="execCmd('italic')" title="Itálico"><i>I</i></button>
+		  <button onclick="execCmd('underline')" title="Sublinhado"><u>U</u></button>
+		  <button onclick="execCmd('strikeThrough')" title="Tachado"><s>S</s></button>
+		  <span class="sep"></span>
+		  <button onclick="execCmd('justifyLeft')" title="Esquerda">⯇</button>
+		  <button onclick="execCmd('justifyCenter')" title="Centro">≡</button>
+		  <button onclick="execCmd('justifyRight')" title="Direita">⯈</button>
+		  <span class="sep"></span>
+		  <button onclick="execCmd('insertOrderedList')" title="Lista numerada">1.</button>
+		  <button onclick="execCmd('insertUnorderedList')" title="Lista">•</button>
+		  <button onclick="execCmd('formatBlock','h2')" title="Título H2">H2</button>
+		  <button onclick="execCmd('removeFormat')" title="Limpar">⨉</button>
+		  <span class="sep"></span>
+		  <button onclick="execCmd('createLink')" title="Link">🔗</button>
+		  <button onclick="execCmd('insertImage')" title="Imagem">🖼️</button>
+		  <span class="sep"></span>
+		  <button onclick="openDebugPopup()" title="HTML">{"</>"}</button>
+		  <button class="save-button" onclick="addNewContent()">Salvar</button>
+		</div>
+	  </section>
+	</main>
+  </div>
+  <div id="image-splash" onclick="closeSplash()" style="display:none;">
+    <img id="splash-img" src="" alt="Imagem ampliada">
+  </div>
+  <div id="debug-popup" class="debug-popup" style="display:none;">
+	  <div class="debug-popup-content">
+		<button class="close-debug-btn" onclick="closeDebugPopup()">×</button>
+		<div class="debug-columns">
+		  <div class="debug-editor">
+			<h3>HTML</h3>
+			<textarea id="debug-code"></textarea>
+		  </div>
+		  <div class="debug-preview">
+			<h3>Visualização</h3>
+			<iframe id="debug-preview-frame"></iframe>
+		  </div>
+		</div>
+		<button onclick="applyDebugChanges()">Aplicar</button>
+	  </div>
+	</div>
+
+  <script src="js/main.js"></script>
+</body>
+</html>
