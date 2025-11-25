@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+<meta charset="UTF-8">
+<title>Pesquisa de Notas Fiscais XML</title>
+<link rel='stylesheet' href='style.css'>
+<link rel="icon" href="./favicon.ico" type="image/x-icon">
+</head>
+
+<body>
+<header class="topbar">
+  <div class="path-info">
+    <h1 id="folderHeader">Arquivos XML na pasta ...</h1>
+  </div>
+
+  <div class="controls">
+    <input id="searchBox" type="text" placeholder="Digite o número da nota ou chave de acesso..." />
+    <div class="control-row">
+      <div id="fileCounter"></div>
+      <button id="toggleSort">Mais novos</button>
+    </div>
+  </div>
+</header>
+
+  <div class="list-container">
+    <ul id="fileList"></ul>
+  </div>
+<div id="last-update">Última atualização: ...</div>
+
+<script src='script/file_data.json'></script>
+<script src='script/base_app.js'></script>
+</body>
+
+</html>
