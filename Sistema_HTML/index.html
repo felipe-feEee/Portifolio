@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Pesquisa de Notas Fiscais XML</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="icon" href="./favicon.ico" type="image/x-icon">
+</head>
+<body>
+  <header class="topbar">
+    <div class="path-info">
+      <h1 id="folderHeader">Arquivos XML na pasta ...</h1>
+    </div>
+
+    <div class="controls">
+      <!-- Campo principal de chave de acesso -->
+      <input id="accessKey" type="text" placeholder="Digite a chave de acesso (44 dígitos)" maxlength="44" />
+
+      <div class="control-row">
+        <div id="fileCounter"></div>
+        <button id="toggleSort"><span id="sortIcon">⬇️</span> Mais novos</button>
+        <button id="exportCsv">Exportar CSV</button>
+        <button id="btnFilters">Filtros</button>
+      </div>
+    </div>
+  </header>
+
+  <div class="list-container">
+    <ul id="fileList"></ul>
+  </div>
+
+  <div id="last-update">Última atualização: ...</div>
+
+  <!-- Overlay + painel lateral -->
+  <div id="overlay" class="overlay hidden"></div>
+  <div id="filterPanel" class="filter-panel hidden">
+    <h2>Filtros avançados</h2>
+    <form id="filterForm"></form>
+  </div>
+
+  <script src="script/file_data.json"></script>
+  <script src="script/base_app.js"></script>
+</body>
+</html>
