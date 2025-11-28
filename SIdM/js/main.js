@@ -8,7 +8,7 @@ window.supabase = createClient(supabaseUrl, supabaseKey)
 
 
 // ------------------------ Estado global ------------------------
-let contentData = (typeof dataPT !== 'undefined') ? JSON.parse(JSON.stringify(dataPT)) : {};
+let contentData = {};
 let editingCategoria = null;
 let editingId = null;
 let isEditingMode = false;
@@ -16,7 +16,7 @@ let sessionHasSaved = false;
 window._imagesForExport = window._imagesForExport || {};
 if (typeof window.__objectUrlMap === 'undefined') window.__objectUrlMap = {};
 // main.js
-//let contentData = (typeof dataPT !== 'undefined') ? JSON.parse(JSON.stringify(dataPT)) : {}
+//let contentData = (typeof dataPT !== 'undefined') ? JSON.parse(JSON.stringify(dataPT)) : {};
 
 document.addEventListener('DOMContentLoaded', async () => {
   // Opcional: estado de carregamento
@@ -1125,18 +1125,6 @@ function renderWelcome() {
 function getImageCountForArticle(categoria, id) {
   const imgs = (window._imagesForExport && window._imagesForExport[`${categoria}|${id}`]) || [];
   return imgs.filter(i => i && i.name && !/^pasted[-_\s]?image/i.test(i.name)).length;
-}
-
-function execCmd(command, value = null) {
-  if (command === 'insertImage') {
-    const url = prompt('URL da imagem:');
-    if (url) document.execCommand(command, false, url);
-  } else if (command === 'createLink') {
-    const url = prompt('URL do link:');
-    if (url) document.execCommand(command, false, url);
-  } else {
-    document.execCommand(command, false, value);
-  }
 }
 
 async function carregarPostsDoBanco() {
