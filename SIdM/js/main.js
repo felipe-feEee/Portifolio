@@ -1072,9 +1072,18 @@ window.replaceLocalFileSrcsWithDataUrls = async function(processedHtml, categori
 
 // ------------------------ Save flow (integrado) ------------------------
 async function addNewContent() {
-  const title = document.getElementById('newTitle').value.trim()
-  const content = document.getElementById('newContent').innerHTML.trim()
-  const categoriaFinal = document.getElementById('newCategory').value.trim() || 'geral'
+  const titleEl = document.getElementById('newTitle')
+  const contentEl = document.getElementById('newContent')
+  const categoryEl = document.getElementById('newCategory')
+
+  if (!titleEl || !contentEl || !categoryEl) {
+    console.error('Campos do formulário não encontrados')
+    return
+  }
+
+  const title = titleEl.value.trim()
+  const content = contentEl.innerHTML.trim()
+  const categoriaFinal = categoryEl.value.trim() || 'geral'
 
   if (!title || !content) {
     alert('Título e conteúdo são obrigatórios!')
@@ -1086,7 +1095,7 @@ async function addNewContent() {
 
   // Upload de imagens coladas (se houver)
   let imageUrl = null
-  if (tempImages && tempImages.length > 0) {
+  if (typeof tempImages !== 'undefined' && tempImages.length > 0) {
     const img = tempImages[0] // pega a primeira como principal
     const fileName = `${Date.now()}-${sanitizeFilename(img.name)}`
     const { error: uploadError } = await window.supabase.storage
@@ -1123,11 +1132,16 @@ async function addNewContent() {
   await carregarPostsDoBanco()
 
   // Limpa formulário
-  document.getElementById('newTitle').value = ''
-  document.getElementById('newContent').innerHTML = ''
-  document.getElementById('newCategory').value = ''
-  tempImages = []
+  titleEl.value = ''
+  contentEl.innerHTML = ''
+  categoryEl.value = ''
+  if (typeof tempImages !== 'undefined') tempImages = []
+
+  alert('Conteúdo salvo com sucesso!')
 }
+
+// expõe a função para o onclick do HTML
+window.addNewContent = addNewContent
 
 // ------------------------ cleanup ------------------------
 function cleanupPastedImageDuplicates() {
