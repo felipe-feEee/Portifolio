@@ -1140,8 +1140,14 @@ async function addNewContent() {
   alert('Conteúdo salvo com sucesso!')
 }
 
-// expõe a função para o onclick do HTML
-window.addNewContent = addNewContent
+//onclick do HTML
+document.addEventListener('DOMContentLoaded', () => {
+  const saveBtn = document.querySelector('#new-content-panel .save-button')
+  if (saveBtn) {
+    saveBtn.addEventListener('click', addNewContent)
+  }
+})
+
 
 // ------------------------ cleanup ------------------------
 function cleanupPastedImageDuplicates() {
