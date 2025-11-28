@@ -9,6 +9,25 @@ let isEditingMode = false;
 let sessionHasSaved = false;
 window._imagesForExport = window._imagesForExport || {};
 if (typeof window.__objectUrlMap === 'undefined') window.__objectUrlMap = {};
+// main.js
+let contentData = (typeof dataPT !== 'undefined') ? JSON.parse(JSON.stringify(dataPT)) : {}
+
+document.addEventListener('DOMContentLoaded', async () => {
+  // Opcional: estado de carregamento
+  showLoading('Carregando conteúdo...')
+
+  try {
+    await carregarPostsDoBanco() // isso vai sobrescrever contentData e chamar renderMenu/renderWelcome
+  } catch (e) {
+    console.error(e)
+    // fallback para JSON local se der erro
+    renderMenu()
+    renderWelcome()
+    showError('Não foi possível carregar do Supabase. Exibindo conteúdo local.')
+  } finally {
+    hideLoading()
+  }
+})
 
 // ------------------------ Utilitários ------------------------
 function sanitizeFilename(name) {
@@ -174,6 +193,24 @@ function dedupeImages(images) {
     }
   }
   return out;
+}
+
+async function uploadImagemParaSupabase(imagem) {
+  const fileName = sanitizeFilename(imagem.name)
+  const { data, error } = await window.supabase.storage
+    .from('images')
+    .upload(fileName, imagem.blob)
+
+  if (error) {
+    console.error('Erro ao subir imagem:', error)
+    return null
+  }
+
+  const { data: urlData } = window.supabase.storage
+    .from('images')
+    .getPublicUrl(fileName)
+
+  return urlData?.publicUrl || null
 }
 
 function storeImagesForExport(categoria, id, images) {
@@ -1049,7 +1086,20 @@ async function addNewContent() {
   }
 
   if (!contentData[categoriaFinal]) contentData[categoriaFinal] = {};
-  contentData[categoriaFinal][id] = { titulo: title, conteudo: processedHtml };
+  const { data, error } = await window.supabase
+  .from('posts')
+  .insert({
+    title: title,
+    content: processedHtml,
+    categoria: categoriaFinal
+  })
+
+if (error) {
+  console.error('Erro ao salvar no Supabase:', error)
+  alert('Erro ao salvar conteúdo.')
+  return
+}
+
 
   renderMenu();
   
@@ -1115,6 +1165,34 @@ function execCmd(command, value = null) {
   } else {
     document.execCommand(command, false, value);
   }
+}
+
+async function carregarPostsDoBanco() {
+  const { data, error } = await window.supabase
+    .from('posts')
+    .select('*')
+    .order('created_at', { ascending: false })
+
+  if (error) {
+    console.error('Erro ao carregar posts:', error)
+    return
+  }
+
+  // Reorganiza em formato antigo: contentData[categoria][id]
+  contentData = {}
+  data.forEach(post => {
+    const categoria = post.categoria || 'geral'
+    const id = `post${post.id}`
+    if (!contentData[categoria]) contentData[categoria] = {}
+    contentData[categoria][id] = {
+      titulo: post.title,
+      conteudo: post.content,
+      imagem: post.image_url || null
+    }
+  })
+
+  renderMenu()
+  renderWelcome()
 }
 
 function renderMenu(openCategories = []) {
@@ -1682,8 +1760,7 @@ window.addEventListener('DOMContentLoaded', () => {
   if (typeof window.dataPT !== 'undefined') {
     try { contentData = JSON.parse(JSON.stringify(window.dataPT)); } catch (e) { contentData = window.dataPT || {}; }
   }
-  renderMenu();
-  renderWelcome();
+  carregarPostsDoBanco()
 
   const addBtn = document.getElementById('add-content-btn');
   if (addBtn && !addBtn.getAttribute('onclick')) { addBtn.addEventListener('click', () => openNewContentPanel({ forEdit: false })); }
