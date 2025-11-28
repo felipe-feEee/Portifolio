@@ -35,6 +35,48 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 })
 
+function showLoading(msg) {
+  let el = document.getElementById('loading')
+  if (!el) {
+    el = document.createElement('div')
+    el.id = 'loading'
+    el.style.position = 'fixed'
+    el.style.top = '10px'
+    el.style.right = '10px'
+    el.style.background = '#333'
+    el.style.color = '#fff'
+    el.style.padding = '5px 10px'
+    el.style.borderRadius = '4px'
+    document.body.appendChild(el)
+  }
+  el.textContent = msg
+  el.style.display = 'block'
+}
+
+function hideLoading() {
+  const el = document.getElementById('loading')
+  if (el) el.style.display = 'none'
+}
+
+function showError(msg) {
+  let el = document.getElementById('error')
+  if (!el) {
+    el = document.createElement('div')
+    el.id = 'error'
+    el.style.position = 'fixed'
+    el.style.bottom = '10px'
+    el.style.right = '10px'
+    el.style.background = '#c00'
+    el.style.color = '#fff'
+    el.style.padding = '5px 10px'
+    el.style.borderRadius = '4px'
+    document.body.appendChild(el)
+  }
+  el.textContent = msg
+  el.style.display = 'block'
+}
+
+
 // ------------------------ Utilitários ------------------------
 function sanitizeFilename(name) {
   if (!name) name = `file-${Date.now()}`;
