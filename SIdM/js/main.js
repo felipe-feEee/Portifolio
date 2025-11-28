@@ -16,7 +16,7 @@ let sessionHasSaved = false;
 window._imagesForExport = window._imagesForExport || {};
 if (typeof window.__objectUrlMap === 'undefined') window.__objectUrlMap = {};
 // main.js
-let contentData = (typeof dataPT !== 'undefined') ? JSON.parse(JSON.stringify(dataPT)) : {}
+//let contentData = (typeof dataPT !== 'undefined') ? JSON.parse(JSON.stringify(dataPT)) : {}
 
 document.addEventListener('DOMContentLoaded', async () => {
   // Opcional: estado de carregamento
