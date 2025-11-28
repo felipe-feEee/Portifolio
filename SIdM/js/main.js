@@ -1,5 +1,10 @@
 // main.js — versão mesclada e final (sem suporte a idiomas)
 // Integra: processamento de imagens, UI, busca, painel, export
+import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm'
+
+const supabaseUrl = 'https://pwshckrmqaqymngbosgo.supabase.co'
+const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB3c2hja3JtcWFxeW1uZ2Jvc2dvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQzNjAwOTEsImV4cCI6MjA3OTkzNjA5MX0.f8iX0RoqrdxJmq-EgSyn_YWPgCHMoARQTT4ygtbcoLg'
+window.supabase = createClient(supabaseUrl, supabaseKey)
 
 // ------------------------ Estado global ------------------------
 let contentData = (typeof dataPT !== 'undefined') ? JSON.parse(JSON.stringify(dataPT)) : {};
