@@ -195,22 +195,22 @@ function dedupeImages(images) {
   return out;
 }
 
-async function uploadImagemParaSupabase(imagem) {
-  const fileName = sanitizeFilename(imagem.name)
-  const { data, error } = await window.supabase.storage
+async function uploadImagemParaSupabase(img) {
+  const fileName = `${Date.now()}-${sanitizeFilename(img.name)}`
+  const { error } = await window.supabase.storage
     .from('images')
-    .upload(fileName, imagem.blob)
+    .upload(fileName, img.blob)
 
   if (error) {
     console.error('Erro ao subir imagem:', error)
     return null
   }
 
-  const { data: urlData } = window.supabase.storage
+  const { data: pub } = window.supabase.storage
     .from('images')
     .getPublicUrl(fileName)
 
-  return urlData?.publicUrl || null
+  return pub.publicUrl
 }
 
 function storeImagesForExport(categoria, id, images) {
@@ -1024,95 +1024,61 @@ window.replaceLocalFileSrcsWithDataUrls = async function(processedHtml, categori
 
 // ------------------------ Save flow (integrado) ------------------------
 async function addNewContent() {
-  const selectEl = document.getElementById('category-select');
-  const selectedCategory = selectEl ? normalizeStr(selectEl.value || '') : '';
-  const newCategoryRaw = normalizeStr(document.getElementById('new-category').value || '');
-  const title = (document.getElementById('content-title').value || '').trim();
-  const contentBodyEl = document.getElementById('content-body');
-  let rawHtml = '';
-	if (contentBodyEl) {
-	  const isDebug = contentBodyEl.getAttribute('data-debug-mode') === '1';
-	  rawHtml = isDebug
-		? contentBodyEl.getAttribute('data-html-original') || ''
-		: contentBodyEl.innerHTML;
-	}
+  const title = document.getElementById('newTitle').value.trim()
+  const content = document.getElementById('newContent').innerHTML.trim()
+  const categoriaFinal = document.getElementById('newCategory').value.trim() || 'geral'
 
-  
-
-  const categoriaFinal = newCategoryRaw || selectedCategory || (isEditingMode ? editingCategoria : '');
-  if (!categoriaFinal) return alert('Escolha ou digite uma categoria.');
-  if (!title || (!rawHtml.trim() && !rawHtml.includes('<img'))) return alert('Título e conteúdo são obrigatórios.');
-
-  const id = isEditingMode ? editingId : `titulo${(Object.keys(contentData[categoriaFinal] || {}).length + 1)}`;
-  let processedHtml = rawHtml;
-  let tempImages = [];
-
-  try {
-    const missing = findLocalImageSrcs(processedHtml);
-    if (missing.length) {
-      console.log('⚙️ Chamando promptUploadForLocalImages...');
-      processedHtml = await promptUploadForLocalImages(processedHtml, categoriaFinal, id);
-    }
-
-    processedHtml = await replaceLocalImageSrcsWithClipboardBlobs(processedHtml, categoriaFinal, id);
-
-    const res = await processContentForImages(processedHtml);
-    processedHtml = res?.html || processedHtml;
-    tempImages = Array.isArray(res?.images) ? res.images.slice() : [];
-
-    if (!tempImages.length) {
-      const extracted = extractDataUrlsFromHtml(processedHtml);
-      const exImgs = extracted.map((d, idx) => {
-        const blob = dataURLToBlob(d.dataurl);
-        const ext = extFromBlobOrDataUrl(blob, d.dataurl, 'png');
-        const name = sanitizeFilename(`${categoriaFinal}_${id}_img_${Date.now()}_${idx}.${ext}`);
-        return { name, blob, dataurl: d.dataurl, originalSrc: null };
-      });
-      tempImages.push(...exImgs);
-    }
-
-    tempImages.forEach(im => {
-      if (!im.blob && im.dataurl) im.blob = dataURLToBlob(im.dataurl);
-    });
-
-    const detachRes = detachDataUrlsFromHtml(processedHtml, categoriaFinal, id);
-    if (detachRes?.html) processedHtml = detachRes.html;
-
-    storeImagesForExport(categoriaFinal, id, tempImages);
-    cleanupPastedImageDuplicates();
-    fixMissingImageRefs(categoriaFinal, id);
-  } catch (e) {
-    console.warn('Erro ao processar conteúdo:', e);
+  if (!title || !content) {
+    alert('Título e conteúdo são obrigatórios!')
+    return
   }
 
-  if (!contentData[categoriaFinal]) contentData[categoriaFinal] = {};
-  const { data, error } = await window.supabase
-  .from('posts')
-  .insert({
-    title: title,
-    content: processedHtml,
-    categoria: categoriaFinal
-  })
+  // Processa HTML (mantém imagens coladas etc.)
+  const processedHtml = content
 
-if (error) {
-  console.error('Erro ao salvar no Supabase:', error)
-  alert('Erro ao salvar conteúdo.')
-  return
-}
+  // Upload de imagens coladas (se houver)
+  let imageUrl = null
+  if (tempImages && tempImages.length > 0) {
+    const img = tempImages[0] // pega a primeira como principal
+    const fileName = `${Date.now()}-${sanitizeFilename(img.name)}`
+    const { error: uploadError } = await window.supabase.storage
+      .from('images')
+      .upload(fileName, img.blob)
 
+    if (uploadError) {
+      console.error('Erro ao subir imagem:', uploadError)
+    } else {
+      const { data: pub } = window.supabase.storage
+        .from('images')
+        .getPublicUrl(fileName)
+      imageUrl = pub.publicUrl
+    }
+  }
 
-  renderMenu();
-  
-  console.log(`Export Button TRUE`);
-  setExportButtonVisible(true); // mostra botão de exportação
+  // Insere no banco
+  const { error } = await window.supabase
+    .from('posts')
+    .insert({
+      title,
+      content: processedHtml,
+      categoria: categoriaFinal,
+      image_url: imageUrl
+    })
 
-	if (window.__debugMode) {
-	  toggleDebugMode(false); // garante que HTML não fique visível após salvar
-	  contentBodyEl.removeAttribute('data-html-original');
-	}
-	sessionHasSaved = true;
-	loadArticle(categoriaFinal, id);
-  closeNewContentPanel();
+  if (error) {
+    console.error('Erro ao salvar no Supabase:', error)
+    alert('Erro ao salvar conteúdo.')
+    return
+  }
+
+  // Atualiza lista
+  await carregarPostsDoBanco()
+
+  // Limpa formulário
+  document.getElementById('newTitle').value = ''
+  document.getElementById('newContent').innerHTML = ''
+  document.getElementById('newCategory').value = ''
+  tempImages = []
 }
 
 // ------------------------ cleanup ------------------------
@@ -1754,25 +1720,44 @@ function toggleDebugMode(force) {
 
 
 // ------------------------ Init ------------------------
-window.addEventListener('DOMContentLoaded', () => {
+window.addEventListener('DOMContentLoaded', async () => {
   setExportButtonVisible(false);
   sessionHasSaved = false;
-  if (typeof window.dataPT !== 'undefined') {
-    try { contentData = JSON.parse(JSON.stringify(window.dataPT)); } catch (e) { contentData = window.dataPT || {}; }
+
+  // tenta carregar do Supabase
+  try {
+    await carregarPostsDoBanco();
+  } catch (e) {
+    console.error('Erro ao carregar do Supabase, usando fallback local:', e);
+    if (typeof window.dataPT !== 'undefined') {
+      try {
+        contentData = JSON.parse(JSON.stringify(window.dataPT));
+      } catch (err) {
+        contentData = window.dataPT || {};
+      }
+    }
+    renderMenu();
+    renderWelcome();
   }
-  carregarPostsDoBanco()
 
+  // botão de adicionar conteúdo
   const addBtn = document.getElementById('add-content-btn');
-  if (addBtn && !addBtn.getAttribute('onclick')) { addBtn.addEventListener('click', () => openNewContentPanel({ forEdit: false })); }
+  if (addBtn && !addBtn.getAttribute('onclick')) {
+    addBtn.addEventListener('click', () => openNewContentPanel({ forEdit: false }));
+  }
 
+  // botão de salvar conteúdo
   const saveBtn = document.querySelector('#new-content-panel .save-button');
-  if (saveBtn && !saveBtn.getAttribute('onclick')) { saveBtn.addEventListener('click', addNewContent); }
+  if (saveBtn && !saveBtn.getAttribute('onclick')) {
+    saveBtn.addEventListener('click', addNewContent);
+  }
 
+  // handler de colar imagens
   if (typeof registerPasteToDataUrlHandler === 'function') {
     try { registerPasteToDataUrlHandler(); } catch (e) {}
   }
 
-  // ensure close-panel button works even if HTML used inline onclick
+  // botão de fechar painel
   const closeBtn = document.getElementById('close-panel-btn');
   if (closeBtn) {
     closeBtn.removeAttribute('onclick');
@@ -1780,5 +1765,4 @@ window.addEventListener('DOMContentLoaded', () => {
     closeBtn.parentNode.replaceChild(newBtn, closeBtn);
     newBtn.addEventListener('click', () => closeNewContentPanel());
   }
-  
 });
