@@ -1227,8 +1227,8 @@ document.addEventListener('DOMContentLoaded', () => {
   if (applyDebugBtn) applyDebugBtn.addEventListener('click', applyDebugChanges)
 
   // Select de categoria
-  const categorySelect = document.getElementById('category-select')
-  if (categorySelect) categorySelect.addEventListener('change', handleCategoryChange)
+  //const categorySelect = document.getElementById('category-select')
+  //if (categorySelect) categorySelect.addEventListener('change', handleCategoryChange)
 })
 
 // ------------------------ cleanup ------------------------
@@ -1516,7 +1516,7 @@ function editCurrentArticle() {
 
   document.getElementById('new-content-panel').style.display = 'block';
   document.getElementById('overlay').style.display = 'block';
-  handleCategoryChange();
+  //handleCategoryChange();
 }
 
 // ------------------------ Download / Export helpers ------------------------
