@@ -1499,7 +1499,7 @@ function closeNewContentPanel() {
   editingCategoria = null;
   editingId = null;
 
-  setExportButtonVisible(sessionHasSaved);
+  setExportButtonVisible(false);
 }
 
 // compatibility: toggle used in some HTML
@@ -1744,28 +1744,40 @@ window.__debugModeStore = window.__debugModeStore || new Map();
 
 // Execução de comandos Rich Text focando no #content-body
 function execCmd(command, value = null) {
-  const body = document.getElementById('content-body');
-  if (!body) return;
+  const body = document.getElementById('content-body')
+  if (!body) return
 
-  // Garante que comandos atuem no editor
-  body.focus();
+  // Garante que os comandos atuem no editor
+  body.focus()
 
-  if (command === 'insertImage') {
-    const url = prompt('URL da imagem:');
-    if (url) document.execCommand(command, false, url);
-    return;
-  }
-  if (command === 'createLink') {
-    const url = prompt('URL do link:');
-    if (url) document.execCommand(command, false, url);
-    return;
-  }
-
-  // Alguns browsers exigem passarmos value quando formatBlock
-  if (command === 'formatBlock' && value) {
-    document.execCommand(command, false, value);
-  } else {
-    document.execCommand(command, false, value);
+  switch (command) {
+    case 'insertImage': {
+      const url = prompt('URL da imagem:')
+      if (url) document.execCommand('insertImage', false, url)
+      break
+    }
+    case 'createLink': {
+      const url = prompt('URL do link:')
+      if (url) document.execCommand('createLink', false, url)
+      break
+    }
+    case 'formatBlock': {
+      // Alguns browsers exigem passar value explicitamente
+      if (value) {
+        document.execCommand('formatBlock', false, value)
+      }
+      break
+    }
+    case 'openDebug': {
+      // Comando especial para o botão {"</>"}
+      openDebugPopup()
+      break
+    }
+    default: {
+      // Comandos padrão (bold, italic, underline, etc.)
+      document.execCommand(command, false, value)
+      break
+    }
   }
 }
 
