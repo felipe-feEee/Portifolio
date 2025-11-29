@@ -1085,14 +1085,11 @@ async function addNewContent() {
   const title = titleEl.value.trim()
   const content = contentEl.innerHTML.trim()
 
-  // Se o select estiver no primeiro item (valor vazio) usa o campo de nova categoria
   const selectedValue = (selectEl.value || '').trim()
   const newCategoryValue = (newCatEl.value || '').trim()
-  const isNewCategory = selectedValue === '' // seu primeiro option tem value=""
+  const isNewCategory = selectedValue === '' // primeiro option é "-- Nova Categoria --" com value=""
 
-  const categoriaFinal = isNewCategory
-    ? (newCategoryValue || 'geral')
-    : selectedValue
+  const categoriaFinal = isNewCategory ? (newCategoryValue || 'geral') : selectedValue
 
   if (!title || !content) {
     alert('Título e conteúdo são obrigatórios!')
@@ -1103,13 +1100,13 @@ async function addNewContent() {
     return
   }
 
-  // HTML processado (se precisar transformar algo, faça aqui)
+  // HTML processado (ajuste aqui se precisar)
   const processedHtml = content
 
   // Upload de imagens coladas (se houver)
   let imageUrl = null
   if (typeof tempImages !== 'undefined' && Array.isArray(tempImages) && tempImages.length > 0) {
-    const img = tempImages[0] // primeira imagem como principal
+    const img = tempImages[0]
     const fileName = `${Date.now()}-${sanitizeFilename(img.name || 'image')}`
     const { error: uploadError } = await window.supabase.storage
       .from('images')
@@ -1125,15 +1122,34 @@ async function addNewContent() {
     }
   }
 
-  // Insere no banco
-  const { error } = await window.supabase
-    .from('posts')
-    .insert({
-      title,
-      content: processedHtml,
-      categoria: categoriaFinal,
-      image_url: imageUrl
-    })
+  // Monta payload sem sobrescrever image_url quando não há nova imagem
+  const payload = {
+    title,
+    content: processedHtml,
+    categoria: categoriaFinal
+  }
+  if (imageUrl) {
+    payload.image_url = imageUrl
+  }
+
+  // Decide entre inserir ou atualizar
+  const isEditing = !!window.editingPostId
+  let error
+
+  if (isEditing) {
+    // Atualiza o registro existente
+    const resp = await window.supabase
+      .from('posts')
+      .update(payload)
+      .eq('id', window.editingPostId)
+    error = resp.error
+  } else {
+    // Cria um novo registro
+    const resp = await window.supabase
+      .from('posts')
+      .insert(payload)
+    error = resp.error
+  }
 
   if (error) {
     console.error('Erro ao salvar no Supabase:', error)
@@ -1144,14 +1160,16 @@ async function addNewContent() {
   // Atualiza lista
   await carregarPostsDoBanco()
 
-  // Limpa formulário
+  // Limpa formulário e estado de edição
   titleEl.value = ''
   contentEl.innerHTML = ''
   selectEl.value = ''          // volta para "-- Nova Categoria --"
   newCatEl.value = ''
   if (typeof tempImages !== 'undefined') tempImages = []
+  window.editingPostId = null  // sai do modo edição
 
-  alert('Conteúdo salvo com sucesso!')
+  alert(isEditing ? 'Conteúdo atualizado com sucesso!' : 'Conteúdo salvo com sucesso!')
+  closeNewContentPanel()
 }
 
 //onclick do HTML
