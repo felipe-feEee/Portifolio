@@ -1168,6 +1168,41 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 })
 
+document.addEventListener('DOMContentLoaded', () => {
+  // Botões de comandos Rich Text
+  document.querySelectorAll('.cmd-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const cmd = btn.dataset.cmd
+      const val = btn.dataset.value || null
+      execCmd(cmd, val)
+    })
+  })
+
+  // Botões de painel
+  const closePanelBtn = document.getElementById('close-panel-btn')
+  if (closePanelBtn) closePanelBtn.addEventListener('click', toggleNewContentPanel)
+
+  const addContentBtn = document.getElementById('add-content-btn')
+  if (addContentBtn) addContentBtn.addEventListener('click', toggleNewContentPanel)
+
+  const exportBtn = document.getElementById('export-json-btn')
+  if (exportBtn) exportBtn.addEventListener('click', exportContentDataSimple)
+
+  // Splash de imagem
+  const splash = document.getElementById('image-splash')
+  if (splash) splash.addEventListener('click', closeSplash)
+
+  // Debug popup
+  const closeDebugBtn = document.querySelector('.close-debug-btn')
+  if (closeDebugBtn) closeDebugBtn.addEventListener('click', closeDebugPopup)
+
+  const applyDebugBtn = document.getElementById('apply-debug-btn')
+  if (applyDebugBtn) applyDebugBtn.addEventListener('click', applyDebugChanges)
+
+  // Select de categoria
+  const categorySelect = document.getElementById('category-select')
+  if (categorySelect) categorySelect.addEventListener('change', handleCategoryChange)
+})
 
 // ------------------------ cleanup ------------------------
 function cleanupPastedImageDuplicates() {
