@@ -1355,7 +1355,7 @@ function loadArticle(categoria, id) {
 
     container.innerHTML = `
 		<div class="control-bar">
-		  <a id="edit-article-link" href="#">Editar</a>
+		  <a id="edit-article-link" href="#" style="display:none;" data-categoria="" data-id="">Editar</a>
 		  <button id="download-images-btn" ${btnDisabledAttr}>
 			<span>${btnText}</span>
 		  </button>
