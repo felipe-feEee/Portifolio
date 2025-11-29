@@ -1087,7 +1087,7 @@ async function addNewContent() {
 
   const selectedValue = (selectEl.value || '').trim()
   const newCategoryValue = (newCatEl.value || '').trim()
-  const isNewCategory = selectedValue === '' // primeiro option é "-- Nova Categoria --" com value=""
+  const isNewCategory = selectedValue === '' // "-- Nova Categoria --" com value=""
 
   const categoriaFinal = isNewCategory ? (newCategoryValue || 'geral') : selectedValue
 
@@ -1100,7 +1100,6 @@ async function addNewContent() {
     return
   }
 
-  // HTML processado (ajuste aqui se precisar)
   const processedHtml = content
 
   // Upload de imagens coladas (se houver)
@@ -1122,29 +1121,24 @@ async function addNewContent() {
     }
   }
 
-  // Monta payload sem sobrescrever image_url quando não há nova imagem
+  // Monta payload (não sobrescreve image_url quando não há nova imagem)
   const payload = {
     title,
     content: processedHtml,
     categoria: categoriaFinal
   }
-  if (imageUrl) {
-    payload.image_url = imageUrl
-  }
+  if (imageUrl) payload.image_url = imageUrl
 
-  // Decide entre inserir ou atualizar
   const isEditing = !!window.editingPostId
   let error
 
   if (isEditing) {
-    // Atualiza o registro existente
     const resp = await window.supabase
       .from('posts')
       .update(payload)
       .eq('id', window.editingPostId)
     error = resp.error
   } else {
-    // Cria um novo registro
     const resp = await window.supabase
       .from('posts')
       .insert(payload)
@@ -1157,7 +1151,6 @@ async function addNewContent() {
     return
   }
 
-  // Atualiza lista
   await carregarPostsDoBanco()
 
   // Limpa formulário e estado de edição
@@ -1166,9 +1159,12 @@ async function addNewContent() {
   selectEl.value = ''          // volta para "-- Nova Categoria --"
   newCatEl.value = ''
   if (typeof tempImages !== 'undefined') tempImages = []
+  const wasEditing = isEditing
   window.editingPostId = null  // sai do modo edição
 
-  alert(isEditing ? 'Conteúdo atualizado com sucesso!' : 'Conteúdo salvo com sucesso!')
+  alert(wasEditing ? 'Conteúdo atualizado com sucesso!' : 'Conteúdo salvo com sucesso!')
+
+  // Fecha o painel após salvar
   closeNewContentPanel()
 }
 
@@ -1184,14 +1180,16 @@ document.addEventListener('DOMContentLoaded', () => {
   const editLink = document.getElementById('edit-article-link')
   if (editLink) {
     editLink.addEventListener('click', e => {
-      e.preventDefault() // evita navegação
+      e.preventDefault()
       const categoria = editLink.dataset.categoria
       const id = editLink.dataset.id
-      if (categoria && id) {
-        startEditing(categoria, id)
-      } else {
+      const postId = editLink.dataset.postId // id supabase
+
+      if (!categoria || !id) {
         console.error('Categoria ou ID não definidos no link de edição')
+        return
       }
+      startEditing(categoria, id, postId)
     })
   }
 })
@@ -1371,17 +1369,20 @@ function loadArticle(categoria, id) {
     const btnText = imgCount > 0 ? `Baixar imagens (${imgCount})` : 'Nenhuma imagem';
     const btnDisabledAttr = imgCount > 0 ? '' : 'disabled';
 
-    container.innerHTML = `
-      <div class="control-bar">
-        <a id="edit-article-link" href="#" 
-           data-categoria="${categoria}" data-id="${id}">Editar</a>
-        <button id="download-images-btn" ${btnDisabledAttr}>
-          <span>${btnText}</span>
-        </button>
-      </div>
-      <h1>${artigo.titulo}</h1>
-      <div class="article-body">${artigo.conteudo}</div>
-    `;
+container.innerHTML = `
+  <div class="control-bar">
+    <a id="edit-article-link" href="#"
+       data-categoria="${categoria}"
+       data-id="${id}"
+       data-post-id="${artigo.postId}">Editar</a>
+    <button id="download-images-btn" ${btnDisabledAttr}>
+      <span>${btnText}</span>
+    </button>
+  </div>
+  <h1>${artigo.titulo}</h1>
+  <div class="article-body">${artigo.conteudo}</div>
+`;
+
 
     container.style.animation = 'slideInFromLeft 0.6s ease forwards';
 
@@ -1420,26 +1421,69 @@ function loadArticle(categoria, id) {
     if (activeLink) activeLink.classList.add('active');
 
     // ✅ Reata listener do link Editar
-    const editLink = document.getElementById('edit-article-link');
-    if (editLink) {
-      editLink.addEventListener('click', e => {
-        e.preventDefault();
-        const cat = editLink.dataset.categoria;
-        const postId = editLink.dataset.id;
-        if (cat && postId) {
-          startEditing(cat, postId);
-        } else {
-          console.error('Categoria ou ID não definidos no link de edição');
-        }
-      });
-    }
+const editLink = document.getElementById('edit-article-link')
+  if (editLink) {
+    editLink.addEventListener('click', e => {
+      e.preventDefault()
+      const categoria = editLink.dataset.categoria
+      const id = editLink.dataset.id
+      const postId = editLink.dataset.postId // id supabase
+
+      if (!categoria || !id) {
+        console.error('Categoria ou ID não definidos no link de edição')
+        return
+      }
+      startEditing(categoria, id, postId)
+    })
+  }
   }, 400);
 }
 
-function startEditing(categoria, id) {
-  if (!categoria || !id) return;
-	  openNewContentPanel({ forEdit: true, categoria: categoria, id: id });
-	}
+function startEditing(categoria, id, postId) {
+  if (!categoria || !id) return
+
+  // Carrega dados atuais do artigo (do seu cache/estado)
+  const artigo = contentData?.[categoria]?.[id]
+  if (!artigo) {
+    console.error('Artigo não encontrado para edição')
+    return
+  }
+
+  // Guarda o id do Supabase para atualização
+  window.editingPostId = postId || artigo.postId || null
+  if (!window.editingPostId) {
+    console.warn('editingPostId ausente. Sem ele, a edição fará insert. Garanta data-post-id no link.')
+  }
+
+  // Preenche o formulário
+  const titleEl = document.getElementById('content-title')
+  const contentEl = document.getElementById('content-body')
+  const selectEl = document.getElementById('category-select')
+  const newCatEl = document.getElementById('new-category')
+
+  if (!titleEl || !contentEl || !selectEl || !newCatEl) {
+    console.error('Campos do formulário não encontrados para edição')
+    return
+  }
+
+  titleEl.value = artigo.titulo || ''
+  contentEl.innerHTML = artigo.conteudo || ''
+
+  // Categoria atual do artigo
+  const catAtual = categoria || 'geral'
+  // Se a categoria atual existe no select, seleciona; senão, marca como nova
+  const option = Array.from(selectEl.options).find(opt => (opt.value || '').trim() === catAtual)
+  if (option) {
+    selectEl.value = catAtual
+    newCatEl.value = '' // não é nova
+  } else {
+    selectEl.value = ''       // "-- Nova Categoria --"
+    newCatEl.value = catAtual // preenche como nova
+  }
+
+  // Abre painel em modo edição
+  openNewContentPanel({ forEdit: true, categoria, id })
+}
 
 function openNewContentPanel({ forEdit = false, categoria = null, id = null } = {}) {
   const panel = document.getElementById('new-content-panel');
