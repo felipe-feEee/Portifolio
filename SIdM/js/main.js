@@ -609,7 +609,7 @@ async function promptUploadForLocalImages(html, categoria, id) {
         <div style="font-size:12px;color:#666">Caminho completo:</div>
         <div style="font-size:12px;color:#444;margin-bottom:4px">
           <code>${fullPath}</code>
-          <button style="margin-left:8px;font-size:11px" onclick="navigator.clipboard.writeText('${fullPath}')">Copiar caminho</button>
+          <button class="copy-path-btn" style="margin-left:8px;font-size:11px" data-path="${fullPath}">Copiar caminho</button>
         </div>
         <div style="font-size:12px;color:#666">Arraste ou clique para escolher imagem</div>
         <div style="margin-top:6px">
@@ -1154,18 +1154,45 @@ async function addNewContent() {
   alert('Conteúdo salvo com sucesso!')
 }
 
-// Se você removeu o onclick do HTML, registre o listener:
-document.addEventListener('DOMContentLoaded', () => {
-  const saveBtn = document.querySelector('#new-content-panel .save-button')
-  if (saveBtn) saveBtn.addEventListener('click', addNewContent)
-})
-
 //onclick do HTML
 document.addEventListener('DOMContentLoaded', () => {
   const saveBtn = document.querySelector('#new-content-panel .save-button')
   if (saveBtn) {
     saveBtn.addEventListener('click', addNewContent)
   }
+})
+
+document.addEventListener('DOMContentLoaded', () => {
+  const editLink = document.getElementById('edit-article-link')
+  if (editLink) {
+    editLink.addEventListener('click', e => {
+      e.preventDefault() // evita navegação
+      const categoria = editLink.dataset.categoria
+      const id = editLink.dataset.id
+      if (categoria && id) {
+        startEditing(categoria, id)
+      } else {
+        console.error('Categoria ou ID não definidos no link de edição')
+      }
+    })
+  }
+})
+
+document.addEventListener('DOMContentLoaded', () => {
+  document.querySelectorAll('.copy-path-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const path = btn.dataset.path
+      if (path) {
+        try {
+          await navigator.clipboard.writeText(path)
+          alert('Caminho copiado para a área de transferência!')
+        } catch (err) {
+          console.error('Erro ao copiar caminho:', err)
+          alert('Não foi possível copiar o caminho.')
+        }
+      }
+    })
+  })
 })
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -1328,7 +1355,7 @@ function loadArticle(categoria, id) {
 
     container.innerHTML = `
 		<div class="control-bar">
-		  <a id="edit-article-link" href="#" onclick="startEditing('${categoria}', '${id}')">Editar</a>
+		  <a id="edit-article-link" href="#">Editar</a>
 		  <button id="download-images-btn" ${btnDisabledAttr}>
 			<span>${btnText}</span>
 		  </button>
