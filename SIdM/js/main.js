@@ -1216,8 +1216,8 @@ document.addEventListener('DOMContentLoaded', () => {
   if (exportBtn) exportBtn.addEventListener('click', exportContentDataSimple)
 
   // Splash de imagem
-  const splash = document.getElementById('image-splash')
-  if (splash) splash.addEventListener('click', closeSplash)
+  //const splash = document.getElementById('image-splash')
+  //if (splash) splash.addEventListener('click', closeSplash)
 
   // Debug popup
   const closeDebugBtn = document.querySelector('.close-debug-btn')
