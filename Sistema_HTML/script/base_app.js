@@ -433,6 +433,20 @@ function searchFiles() {
     sortMode = 'date';
   }
 
+  // Arquivos antigos (modificados há mais de 21 dias)
+  else if (/^antigo$/i.test(rawQuery)) {
+    const agora = new Date()
+    base = fileData.filter(f => {
+      const fileDate = parseJsonDate(mapFile(f).modified_date)
+      if (!fileDate) return false
+      const diffDays = Math.floor((agora - fileDate) / (1000 * 60 * 60 * 24))
+      return diffDays > 21
+    })
+    query = "ANTIGO"
+    searchBox.value = query
+    sortMode = 'date'
+  }
+
   // Query vazia → reset
   else if (query === "") {
     isSearching = false;
@@ -830,4 +844,5 @@ window.onload = () => {
 
     displayFiles(sorted.slice(0, itemsPerPage));
   });
+
 };
