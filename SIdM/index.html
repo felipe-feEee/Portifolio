@@ -55,24 +55,24 @@
 		<label for="content-body">Conteúdo:</label>
 		<div id="content-body" contenteditable="true" data-placeholder="Digite ou cole o conteúdo aqui"></div>
 		<div class="editor-toolbar-fixed">
-		  <button title="Negrito"><b>B</b></button>
-		  <button title="Itálico"><i>I</i></button>
-		  <button title="Sublinhado"><u>U</u></button>
-		  <button title="Tachado"><s>S</s></button>
+		  	<button class="cmd-btn" data-cmd="bold" title="Negrito"><b>B</b></button>
+			<button class="cmd-btn" data-cmd="italic" title="Itálico"><i>I</i></button>
+			<button class="cmd-btn" data-cmd="underline" title="Sublinhado"><u>U</u></button>
+			<button class="cmd-btn" data-cmd="strikeThrough" title="Tachado"><s>S</s></button>
 		  <span class="sep"></span>
-		  <button title="Esquerda">⯇</button>
-		  <button title="Centro">≡</button>
-		  <button title="Direita">⯈</button>
+		  	<button class="cmd-btn" data-cmd="justifyLeft" title="Esquerda">⯇</button>
+			<button class="cmd-btn" data-cmd="justifyCenter" title="Centro">≡</button>
+			<button class="cmd-btn" data-cmd="justifyRight" title="Direita">⯈</button>
 		  <span class="sep"></span>
-		  <button title="Lista numerada">1.</button>
-		  <button title="Lista">•</button>
-		  <button title="Título H2">H2</button>
-		  <button title="Limpar">⨉</button>
+		  	<button class="cmd-btn" data-cmd="insertOrderedList" title="Lista numerada">1.</button>
+			<button class="cmd-btn" data-cmd="insertUnorderedList" title="Lista">•</button>
+			<button class="cmd-btn" data-cmd="formatBlock" data-value="h2" title="Título H2">H2</button>
+			<button class="cmd-btn" data-cmd="removeFormat" title="Limpar">⨉</button>
 		  <span class="sep"></span>
-		  <button title="Link">🔗</button>
-		  <button title="Imagem">🖼️</button>
+			<button class="cmd-btn" data-cmd="createLink" title="Link">🔗</button>
+			<button class="cmd-btn" data-cmd="insertImage" title="Imagem">🖼️</button>
 		  <span class="sep"></span>
-		  <button title="HTML">{"</>"}</button>
+		  <button class="cmd-btn" data-cmd="openDebug" title="HTML">{"</>"}</button>
 		  <button class="save-button">Salvar</button>
 		</div>
 	  </section>
