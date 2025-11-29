@@ -48,7 +48,12 @@ function Get-MetaFast {
         if ($m.Groups['serie'].Success) { $serie = $m.Groups['serie'].Value }
         if ($m.Groups['nNF'].Success)   { $nNF   = $m.Groups['nNF'].Value }
 
-        if ($m.Groups['infNFeId'].Success) { $infNFeId = $m.Groups['infNFeId'].Value; continue }
+        if ($m.Groups['infNFeId'].Success) {
+            $infNFeId = $m.Groups['infNFeId'].Value
+            # Remover prefixo "NFe" se presente
+            $infNFeId = $infNFeId -replace '^NFe', ''
+            continue
+        }
         if ($m.Groups['chNFe'].Success)    { $infNFeId = $m.Groups['chNFe'].Value; continue }
 
         # Eventos
@@ -194,3 +199,4 @@ $writer.Dispose()
 
 Write-Host ("Concluido. Registros incrementados: {0}" -f $processed)
 Write-Host ("Base atualizada em {0}" -f $updateTime)
+
