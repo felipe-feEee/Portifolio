@@ -1313,6 +1313,7 @@ async function carregarPostsDoBanco() {
 
   renderMenu()
   renderWelcome()
+  window.contentData = contentData
 }
 
 function renderMenu(openCategories = []) {
