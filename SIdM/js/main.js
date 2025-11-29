@@ -1351,20 +1351,23 @@ function loadArticle(categoria, id) {
 
     const imgCount = getImageCountForArticle(categoria, id);
     const btnText = imgCount > 0 ? `Baixar imagens (${imgCount})` : 'Nenhuma imagem';
-    const btnDisabledAttr = imgCount > 0 ? 'disabled' : 'disabled';
+    const btnDisabledAttr = imgCount > 0 ? '' : 'disabled';
 
     container.innerHTML = `
-		<div class="control-bar">
-		  <a id="edit-article-link" href="#" data-categoria="${categoria}" data-id="${id}">Editar</a>
-		  <button id="download-images-btn" ${btnDisabledAttr}>
-			<span>${btnText}</span>
-		  </button>
-		</div>
-		<h1>${artigo.titulo}</h1>
-		<div class="article-body">${artigo.conteudo}</div>
+      <div class="control-bar">
+        <a id="edit-article-link" href="#" 
+           data-categoria="${categoria}" data-id="${id}">Editar</a>
+        <button id="download-images-btn" ${btnDisabledAttr}>
+          <span>${btnText}</span>
+        </button>
+      </div>
+      <h1>${artigo.titulo}</h1>
+      <div class="article-body">${artigo.conteudo}</div>
     `;
 
     container.style.animation = 'slideInFromLeft 0.6s ease forwards';
+
+    // Links externos abrem em nova aba
     const links = container.querySelectorAll('a:not(#edit-article-link)');
     links.forEach(link => link.setAttribute('target', '_blank'));
 
@@ -1373,36 +1376,45 @@ function loadArticle(categoria, id) {
 
     linkArticleImagesToObjectUrls(container);
 
+    // Botão de download de imagens
     const dlBtn = document.getElementById('download-images-btn');
-    if (dlBtn) {
-      dlBtn.replaceWith(dlBtn.cloneNode(true));
-      const newBtn = document.getElementById('download-images-btn');
-      if (imgCount > 0) {
-        newBtn.addEventListener('click', () => {
-          newBtn.disabled = true;
-          newBtn.style.cursor = 'progress';
-          downloadAllImagesForArticle(categoria, id).finally(() => {
-            newBtn.disabled = false;
-            newBtn.style.cursor = 'pointer';
-          });
+    if (dlBtn && imgCount > 0) {
+      dlBtn.addEventListener('click', () => {
+        dlBtn.disabled = true;
+        dlBtn.style.cursor = 'progress';
+        downloadAllImagesForArticle(categoria, id).finally(() => {
+          dlBtn.disabled = false;
+          dlBtn.style.cursor = 'pointer';
         });
-      }
+      });
     }
 
-    // ✅ Agora sim: ativar splash após renderização e vinculação
+    // Splash de imagens
     console.log('🖼️ Ativando splash screen para imagens...');
     enableImageSplash(container);
-	
-	// 🔴 Destaca o link ativo no menu
-	const menuLinks = document.querySelectorAll('#menu a');
-	menuLinks.forEach(link => link.classList.remove('active'));
 
-	const activeLink = document.querySelector(`#menu a[data-categoria="${categoria}"][data-id="${id}"]`);
-	if (activeLink) {
-	  activeLink.classList.add('active');
-	}
+    // Destaca link ativo no menu
+    const menuLinks = document.querySelectorAll('#menu a');
+    menuLinks.forEach(link => link.classList.remove('active'));
+    const activeLink = document.querySelector(
+      `#menu a[data-categoria="${categoria}"][data-id="${id}"]`
+    );
+    if (activeLink) activeLink.classList.add('active');
 
-
+    // ✅ Reata listener do link Editar
+    const editLink = document.getElementById('edit-article-link');
+    if (editLink) {
+      editLink.addEventListener('click', e => {
+        e.preventDefault();
+        const cat = editLink.dataset.categoria;
+        const postId = editLink.dataset.id;
+        if (cat && postId) {
+          startEditing(cat, postId);
+        } else {
+          console.error('Categoria ou ID não definidos no link de edição');
+        }
+      });
+    }
   }, 400);
 }
 
