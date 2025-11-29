@@ -1305,6 +1305,7 @@ async function carregarPostsDoBanco() {
     const id = `post${post.id}`
     if (!contentData[categoria]) contentData[categoria] = {}
     contentData[categoria][id] = {
+	  postId: post.id,
       titulo: post.title,
       conteudo: post.content,
       imagem: post.image_url || null
