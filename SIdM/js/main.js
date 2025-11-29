@@ -1072,32 +1072,45 @@ window.replaceLocalFileSrcsWithDataUrls = async function(processedHtml, categori
 
 // ------------------------ Save flow (integrado) ------------------------
 async function addNewContent() {
-  const titleEl = document.getElementById('newTitle')
-  const contentEl = document.getElementById('newContent')
-  const categoryEl = document.getElementById('newCategory')
+  const titleEl = document.getElementById('content-title')
+  const contentEl = document.getElementById('content-body')
+  const selectEl = document.getElementById('category-select')
+  const newCatEl = document.getElementById('new-category')
 
-  if (!titleEl || !contentEl || !categoryEl) {
+  if (!titleEl || !contentEl || !selectEl || !newCatEl) {
     console.error('Campos do formulário não encontrados')
     return
   }
 
   const title = titleEl.value.trim()
   const content = contentEl.innerHTML.trim()
-  const categoriaFinal = categoryEl.value.trim() || 'geral'
+
+  // Se o select estiver no primeiro item (valor vazio) usa o campo de nova categoria
+  const selectedValue = (selectEl.value || '').trim()
+  const newCategoryValue = (newCatEl.value || '').trim()
+  const isNewCategory = selectedValue === '' // seu primeiro option tem value=""
+
+  const categoriaFinal = isNewCategory
+    ? (newCategoryValue || 'geral')
+    : selectedValue
 
   if (!title || !content) {
     alert('Título e conteúdo são obrigatórios!')
     return
   }
+  if (isNewCategory && !newCategoryValue) {
+    alert('Informe o nome da nova categoria ou escolha uma existente.')
+    return
+  }
 
-  // Processa HTML (mantém imagens coladas etc.)
+  // HTML processado (se precisar transformar algo, faça aqui)
   const processedHtml = content
 
   // Upload de imagens coladas (se houver)
   let imageUrl = null
-  if (typeof tempImages !== 'undefined' && tempImages.length > 0) {
-    const img = tempImages[0] // pega a primeira como principal
-    const fileName = `${Date.now()}-${sanitizeFilename(img.name)}`
+  if (typeof tempImages !== 'undefined' && Array.isArray(tempImages) && tempImages.length > 0) {
+    const img = tempImages[0] // primeira imagem como principal
+    const fileName = `${Date.now()}-${sanitizeFilename(img.name || 'image')}`
     const { error: uploadError } = await window.supabase.storage
       .from('images')
       .upload(fileName, img.blob)
@@ -1108,7 +1121,7 @@ async function addNewContent() {
       const { data: pub } = window.supabase.storage
         .from('images')
         .getPublicUrl(fileName)
-      imageUrl = pub.publicUrl
+      imageUrl = pub?.publicUrl || null
     }
   }
 
@@ -1134,11 +1147,18 @@ async function addNewContent() {
   // Limpa formulário
   titleEl.value = ''
   contentEl.innerHTML = ''
-  categoryEl.value = ''
+  selectEl.value = ''          // volta para "-- Nova Categoria --"
+  newCatEl.value = ''
   if (typeof tempImages !== 'undefined') tempImages = []
 
   alert('Conteúdo salvo com sucesso!')
 }
+
+// Se você removeu o onclick do HTML, registre o listener:
+document.addEventListener('DOMContentLoaded', () => {
+  const saveBtn = document.querySelector('#new-content-panel .save-button')
+  if (saveBtn) saveBtn.addEventListener('click', addNewContent)
+})
 
 //onclick do HTML
 document.addEventListener('DOMContentLoaded', () => {
