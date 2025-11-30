@@ -6,6 +6,171 @@ const supabaseUrl = 'https://pwshckrmqaqymngbosgo.supabase.co'
 const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB3c2hja3JtcWFxeW1uZ2Jvc2dvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQzNjAwOTEsImV4cCI6MjA3OTkzNjA5MX0.f8iX0RoqrdxJmq-EgSyn_YWPgCHMoARQTT4ygtbcoLg'
 window.supabase = createClient(supabaseUrl, supabaseKey)
 
+// Função auxiliar para upload no Supabase
+async function uploadToSupabase(file) {
+  const fileName = `paste-${Date.now()}-${file.name}`
+  const { data, error } = await supabase.storage
+    .from('images')
+    .upload(fileName, file)
+
+  if (error) {
+    console.error("Erro ao enviar para Supabase:", error)
+    return ""
+  }
+
+  return supabase.storage.from('images').getPublicUrl(fileName).data.publicUrl
+}
+
+// Função principal para tratar colar conteúdo/imagens
+// Converte dataURL para File
+function dataURLtoFile(dataurl, filename) {
+  const arr = dataurl.split(',')
+  const mime = arr[0].match(/:(.*?);/)[1]
+  const bstr = atob(arr[1])
+  let n = bstr.length
+  const u8arr = new Uint8Array(n)
+  while (n--) u8arr[n] = bstr.charCodeAt(n)
+  return new File([u8arr], filename, { type: mime })
+}
+
+// Insere HTML ou elemento no cursor do editor (simples append se não houver seleção)
+function insertNodeAtCursor(node) {
+  const editor = document.getElementById('content-body')
+  const sel = window.getSelection()
+  if (!sel || sel.rangeCount === 0) {
+    editor.appendChild(node)
+    return
+  }
+  const range = sel.getRangeAt(0)
+  range.deleteContents()
+  range.insertNode(node)
+  // move cursor após o nó inserido
+  range.setStartAfter(node)
+  range.collapse(true)
+  sel.removeAllRanges()
+  sel.addRange(range)
+}
+
+// Handler principal de paste
+async function handlePaste(e) {
+  try {
+    // evita comportamento padrão (colagem direta)
+    e.preventDefault()
+
+    const editor = document.getElementById('content-body')
+    if (!editor) return console.warn('Editor não encontrado: #content-body')
+
+    const items = Array.from(e.clipboardData?.items || [])
+    const types = Array.from(e.clipboardData?.types || [])
+
+    // 1) Se houver arquivos de imagem diretos no clipboard (printscreen, arquivo)
+    const imageItems = items.filter(i => i.type && i.type.startsWith('image/'))
+    if (imageItems.length > 0) {
+      for (const it of imageItems) {
+        const file = it.getAsFile()
+        if (!file) continue
+        console.log('📦 Blobs capturados do clipboard:', file)
+        const publicUrl = await uploadToSupabase(file)
+        if (publicUrl) {
+          const img = document.createElement('img')
+          img.src = publicUrl
+          img.alt = file.name || 'pasted-image'
+          img.style.maxWidth = '100%'
+          insertNodeAtCursor(img)
+        }
+      }
+      return
+    }
+
+    // 2) Se houver HTML (ex.: copiar do Word)
+    if (types.includes('text/html')) {
+      const html = e.clipboardData.getData('text/html')
+      const temp = document.createElement('div')
+      temp.innerHTML = html
+
+      // coleta imagens <img> no HTML
+      const imgs = Array.from(temp.querySelectorAll('img'))
+
+      // se não houver <img>, insere o HTML como texto seguro
+      if (imgs.length === 0) {
+        // insere apenas o texto/plain se existir
+        const plain = e.clipboardData.getData('text/plain') || temp.textContent || ''
+        const p = document.createElement('p')
+        p.textContent = plain
+        insertNodeAtCursor(p)
+        return
+      }
+
+      // Mapeia blobs do clipboard (se existirem) para as imagens encontradas.
+      // Estratégia: para cada <img> com src local (file://) ou data:, tentamos:
+      //  - se houver um item image/* no clipboard, usamos esse file (na ordem)
+      //  - se src for data:, convertemos para File e enviamos
+      //  - caso contrário, deixamos a tag como está (não carregável) e logamos
+      let availableFiles = items.filter(i => i.kind === 'file' && i.type && i.type.startsWith('image/')).map(i => i.getAsFile())
+      let fileIndex = 0
+
+      for (const img of imgs) {
+        const src = img.getAttribute('src') || ''
+        let fileToUpload = null
+
+        if (src.startsWith('data:')) {
+          // imagem inline base64 no HTML
+          const filename = `paste-inline-${Date.now()}.png`
+          fileToUpload = dataURLtoFile(src, filename)
+        } else if (src.startsWith('file:')) {
+          // Word/Office costuma referenciar file:///C:/... e o blob real vem no clipboard items
+          if (fileIndex < availableFiles.length) {
+            fileToUpload = availableFiles[fileIndex]
+            fileIndex++
+          } else {
+            console.warn('Imagem referenciada localmente mas nenhum blob correspondente no clipboard:', src)
+          }
+        } else if (src.startsWith('http') || src.startsWith('//')) {
+          // imagem remota: opcionalmente podemos manter a URL remota ou baixar e reupload.
+          // Para evitar tráfego desnecessário, mantemos a URL remota.
+          continue
+        } else {
+          // src vazio ou outro esquema: tentar usar próximo arquivo disponível
+          if (fileIndex < availableFiles.length) {
+            fileToUpload = availableFiles[fileIndex]
+            fileIndex++
+          }
+        }
+
+        if (fileToUpload) {
+          const publicUrl = await uploadToSupabase(fileToUpload)
+          if (publicUrl) {
+            img.src = publicUrl
+            img.style.maxWidth = '100%'
+          } else {
+            console.error('Falha ao enviar imagem para Supabase:', img)
+          }
+        }
+      }
+
+      // Insere o HTML processado no editor
+      // Inserimos os filhos de temp preservando estrutura
+      while (temp.firstChild) {
+        insertNodeAtCursor(temp.firstChild)
+      }
+      return
+    }
+
+    // 3) Caso fallback: texto simples
+    const plain = e.clipboardData.getData('text/plain')
+    if (plain) {
+      const p = document.createElement('p')
+      p.textContent = plain
+      insertNodeAtCursor(p)
+    }
+  } catch (err) {
+    console.error('Erro no handlePaste:', err)
+  }
+}
+
+// registra o listener (remova outros listeners de paste existentes)
+document.removeEventListener('paste', handlePaste) // tentativa segura de remover duplicatas
+document.addEventListener('paste', handlePaste)
 
 // ------------------------ Estado global ------------------------
 let contentData = {};
@@ -13,7 +178,6 @@ let editingCategoria = null;
 let editingId = null;
 let isEditingMode = false;
 let sessionHasSaved = false;
-window._imagesForExport = window._imagesForExport || {};
 if (typeof window.__objectUrlMap === 'undefined') window.__objectUrlMap = {};
 // main.js
 //let contentData = (typeof dataPT !== 'undefined') ? JSON.parse(JSON.stringify(dataPT)) : {};
@@ -376,9 +540,6 @@ document.addEventListener('DOMContentLoaded', () => {
   const addContentBtn = document.getElementById('add-content-btn')
   if (addContentBtn) addContentBtn.addEventListener('click', toggleNewContentPanel)
 
-  const exportBtn = document.getElementById('export-json-btn')
-  if (exportBtn) exportBtn.addEventListener('click', exportContentDataSimple)
-
   // Splash de imagem
   //const splash = document.getElementById('image-splash')
   //if (splash) splash.addEventListener('click', closeSplash)
@@ -471,7 +632,6 @@ function renderMenu(openCategories = []) {
 
 function loadArticle(categoria, id) {
   if (!contentData[categoria] || !contentData[categoria][id]) return;
-  revokeArticleObjectUrls();
 
   const artigo = contentData[categoria][id];
   const container = document.getElementById('article-content');
@@ -495,9 +655,6 @@ container.innerHTML = `
        data-categoria="${categoria}"
        data-id="${id}"
        data-post-id="${artigo.postId}">Editar</a>
-    <button id="download-images-btn" ${btnDisabledAttr}>
-      <span>${btnText}</span>
-    </button>
   </div>
   <h1>${artigo.titulo}</h1>
   <div class="article-body">${artigo.conteudo}</div>
@@ -512,21 +669,6 @@ container.innerHTML = `
 
     editingCategoria = categoria;
     editingId = id;
-
-    linkArticleImagesToObjectUrls(container);
-
-    // Botão de download de imagens
-    const dlBtn = document.getElementById('download-images-btn');
-    if (dlBtn && imgCount > 0) {
-      dlBtn.addEventListener('click', () => {
-        dlBtn.disabled = true;
-        dlBtn.style.cursor = 'progress';
-        downloadAllImagesForArticle(categoria, id).finally(() => {
-          dlBtn.disabled = false;
-          dlBtn.style.cursor = 'pointer';
-        });
-      });
-    }
 
     // Splash de imagens
     console.log('🖼️ Ativando splash screen para imagens...');
@@ -680,8 +822,6 @@ function closeNewContentPanel() {
   isEditingMode = false;
   editingCategoria = null;
   editingId = null;
-
-  setExportButtonVisible(false);
 }
 
 // compatibility: toggle used in some HTML
@@ -711,41 +851,6 @@ function editCurrentArticle() {
   document.getElementById('new-content-panel').style.display = 'block';
   document.getElementById('overlay').style.display = 'block';
   //handleCategoryChange();
-}
-
-// simple JSON export (user requested earlier)
-function exportContentDataSimple(filename = 'conteudo_export.json') {
-  try {
-    const payload = {
-      generatedAt: new Date().toISOString(),
-      content: contentData || {}
-    };
-    const text = JSON.stringify(payload, null, 2);
-    const blob = new Blob([text], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 1500);
-  } catch (e) {
-    console.warn('exportContentDataSimple erro', e);
-  }
-}
-
-// ------------------------ Export UI helpers ------------------------
-function setExportButtonVisible(visible) {
-  const btn = document.getElementById('export-json-btn');
-  if (!btn) return;
-  if (visible) {
-    btn.style.display = 'inline-block'; // ou 'block', dependendo do layout
-    btn.classList.add('visible');
-  } else {
-    btn.classList.remove('visible');
-    btn.style.display = 'none';
-  }
 }
 
 function hasUserAddedContent() {
@@ -951,7 +1056,6 @@ function toggleDebugMode(force) {
 
 // ------------------------ Init ------------------------
 window.addEventListener('DOMContentLoaded', async () => {
-  setExportButtonVisible(false);
   sessionHasSaved = false;
 
   // tenta carregar do Supabase
@@ -980,11 +1084,6 @@ window.addEventListener('DOMContentLoaded', async () => {
   const saveBtn = document.querySelector('#new-content-panel .save-button');
   if (saveBtn && !saveBtn.getAttribute('onclick')) {
     saveBtn.addEventListener('click', addNewContent);
-  }
-
-  // handler de colar imagens
-  if (typeof registerPasteToDataUrlHandler === 'function') {
-    try { registerPasteToDataUrlHandler(); } catch (e) {}
   }
 
   // botão de fechar painel
