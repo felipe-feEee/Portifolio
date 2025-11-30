@@ -21,8 +21,16 @@ async function uploadToSupabase(file) {
   return supabase.storage.from('images').getPublicUrl(fileName).data.publicUrl
 }
 
-// Função principal para tratar colar conteúdo/imagens
-// Converte dataURL para File
+// util: extrai basename de um path/URL
+function basename(path) {
+  try {
+    return path.split('/').pop().split('?')[0]
+  } catch {
+    return path
+  }
+}
+
+// util: converte dataURL para File (já fornecida antes)
 function dataURLtoFile(dataurl, filename) {
   const arr = dataurl.split(',')
   const mime = arr[0].match(/:(.*?);/)[1]
@@ -33,7 +41,7 @@ function dataURLtoFile(dataurl, filename) {
   return new File([u8arr], filename, { type: mime })
 }
 
-// Insere HTML ou elemento no cursor do editor (simples append se não houver seleção)
+// util: insere nó no cursor (ou append se não houver seleção)
 function insertNodeAtCursor(node) {
   const editor = document.getElementById('content-body')
   const sel = window.getSelection()
@@ -44,28 +52,25 @@ function insertNodeAtCursor(node) {
   const range = sel.getRangeAt(0)
   range.deleteContents()
   range.insertNode(node)
-  // move cursor após o nó inserido
   range.setStartAfter(node)
   range.collapse(true)
   sel.removeAllRanges()
   sel.addRange(range)
 }
 
-// Handler principal de paste
 async function handlePaste(e) {
   try {
-    // evita comportamento padrão (colagem direta)
     e.preventDefault()
-
     const editor = document.getElementById('content-body')
     if (!editor) return console.warn('Editor não encontrado: #content-body')
 
     const items = Array.from(e.clipboardData?.items || [])
     const types = Array.from(e.clipboardData?.types || [])
 
-    // 1) Se houver arquivos de imagem diretos no clipboard (printscreen, arquivo)
+    // arquivos de imagem diretos no clipboard (printscreen, arquivo)
     const imageItems = items.filter(i => i.type && i.type.startsWith('image/'))
     if (imageItems.length > 0) {
+      // upload de cada arquivo direto
       for (const it of imageItems) {
         const file = it.getAsFile()
         if (!file) continue
@@ -82,7 +87,7 @@ async function handlePaste(e) {
       return
     }
 
-    // 2) Se houver HTML (ex.: copiar do Word)
+    // HTML colado (ex.: Word)
     if (types.includes('text/html')) {
       const html = e.clipboardData.getData('text/html')
       const temp = document.createElement('div')
@@ -90,10 +95,8 @@ async function handlePaste(e) {
 
       // coleta imagens <img> no HTML
       const imgs = Array.from(temp.querySelectorAll('img'))
-
-      // se não houver <img>, insere o HTML como texto seguro
       if (imgs.length === 0) {
-        // insere apenas o texto/plain se existir
+        // sem imagens: insere texto plain
         const plain = e.clipboardData.getData('text/plain') || temp.textContent || ''
         const p = document.createElement('p')
         p.textContent = plain
@@ -101,62 +104,99 @@ async function handlePaste(e) {
         return
       }
 
-      // Mapeia blobs do clipboard (se existirem) para as imagens encontradas.
-      // Estratégia: para cada <img> com src local (file://) ou data:, tentamos:
-      //  - se houver um item image/* no clipboard, usamos esse file (na ordem)
-      //  - se src for data:, convertemos para File e enviamos
-      //  - caso contrário, deixamos a tag como está (não carregável) e logamos
-      let availableFiles = items.filter(i => i.kind === 'file' && i.type && i.type.startsWith('image/')).map(i => i.getAsFile())
-      let fileIndex = 0
+      // prepara lista de arquivos disponíveis do clipboard
+      let availableFiles = items
+        .filter(i => i.kind === 'file' && i.type && i.type.startsWith('image/'))
+        .map(i => i.getAsFile())
+        .filter(Boolean)
 
-      for (const img of imgs) {
-        const src = img.getAttribute('src') || ''
-        let fileToUpload = null
+      console.log('📦 Blobs capturados do clipboard:', availableFiles)
 
+      // cria mapa por nome para tentativa de match
+      const fileMapByName = {}
+      for (const f of availableFiles) {
+        // normaliza nomes para facilitar match (lowercase)
+        const n = (f.name || '').toLowerCase()
+        if (!fileMapByName[n]) fileMapByName[n] = []
+        fileMapByName[n].push(f)
+      }
+
+      // função para obter arquivo correspondente para uma img src
+      function pickFileForSrc(src) {
+        if (!src) return null
+        // 1) se data: -> convert
         if (src.startsWith('data:')) {
-          // imagem inline base64 no HTML
           const filename = `paste-inline-${Date.now()}.png`
-          fileToUpload = dataURLtoFile(src, filename)
-        } else if (src.startsWith('file:')) {
-          // Word/Office costuma referenciar file:///C:/... e o blob real vem no clipboard items
-          if (fileIndex < availableFiles.length) {
-            fileToUpload = availableFiles[fileIndex]
-            fileIndex++
-          } else {
-            console.warn('Imagem referenciada localmente mas nenhum blob correspondente no clipboard:', src)
-          }
-        } else if (src.startsWith('http') || src.startsWith('//')) {
-          // imagem remota: opcionalmente podemos manter a URL remota ou baixar e reupload.
-          // Para evitar tráfego desnecessário, mantemos a URL remota.
-          continue
-        } else {
-          // src vazio ou outro esquema: tentar usar próximo arquivo disponível
-          if (fileIndex < availableFiles.length) {
-            fileToUpload = availableFiles[fileIndex]
-            fileIndex++
+          return dataURLtoFile(src, filename)
+        }
+        // 2) extrai basename do src (ex: clip_image002.png)
+        const base = basename(src).toLowerCase()
+        if (base && fileMapByName[base] && fileMapByName[base].length > 0) {
+          return fileMapByName[base].shift()
+        }
+        // 3) heurística: procurar arquivo cujo nome contenha o basename
+        for (const key of Object.keys(fileMapByName)) {
+          if (key.includes(base) && fileMapByName[key].length > 0) {
+            return fileMapByName[key].shift()
           }
         }
-
-        if (fileToUpload) {
-          const publicUrl = await uploadToSupabase(fileToUpload)
-          if (publicUrl) {
-            img.src = publicUrl
-            img.style.maxWidth = '100%'
-          } else {
-            console.error('Falha ao enviar imagem para Supabase:', img)
+        // 4) fallback: pegar próximo arquivo disponível (FIFO)
+        for (const key of Object.keys(fileMapByName)) {
+          if (fileMapByName[key].length > 0) {
+            return fileMapByName[key].shift()
           }
+        }
+        // 5) nada encontrado
+        return null
+      }
+
+      // Antes de inserir no DOM, limpamos src locais para evitar tentativa de carregar file://
+      for (const img of imgs) {
+        const src = img.getAttribute('src') || ''
+        if (src.startsWith('file:') || src.startsWith('C:\\') || src.startsWith('file:///')) {
+          // evita que o navegador tente carregar recurso local
+          img.setAttribute('data-local-src', src) // guarda para debug
+          img.removeAttribute('src')
         }
       }
 
-      // Insere o HTML processado no editor
-      // Inserimos os filhos de temp preservando estrutura
+      // Agora processa cada imagem e faz upload quando possível
+      for (const img of imgs) {
+        // tenta obter src original (data-local-src ou src)
+        const originalSrc = img.getAttribute('data-local-src') || img.getAttribute('src') || ''
+        const fileToUpload = pickFileForSrc(originalSrc)
+
+        if (fileToUpload) {
+          try {
+            const publicUrl = await uploadToSupabase(fileToUpload)
+            if (publicUrl) {
+              img.src = publicUrl
+              img.style.maxWidth = '100%'
+              img.removeAttribute('data-local-src')
+            } else {
+              console.error('Falha ao enviar imagem para Supabase:', originalSrc)
+            }
+          } catch (err) {
+            console.error('Erro upload imagem:', err)
+          }
+        } else {
+          console.warn('Imagem referenciada localmente mas nenhum blob correspondente no clipboard:', originalSrc)
+          // opcional: inserir um placeholder visual em vez de src local
+          const placeholder = document.createElement('span')
+          placeholder.textContent = '[imagem não disponível]'
+          placeholder.style.color = '#888'
+          img.replaceWith(placeholder)
+        }
+      }
+
+      // Insere o HTML processado no editor (filhos de temp)
       while (temp.firstChild) {
         insertNodeAtCursor(temp.firstChild)
       }
       return
     }
 
-    // 3) Caso fallback: texto simples
+    // fallback: texto simples
     const plain = e.clipboardData.getData('text/plain')
     if (plain) {
       const p = document.createElement('p')
@@ -168,8 +208,8 @@ async function handlePaste(e) {
   }
 }
 
-// registra o listener (remova outros listeners de paste existentes)
-document.removeEventListener('paste', handlePaste) // tentativa segura de remover duplicatas
+// registra listener (remova duplicatas anteriores)
+document.removeEventListener('paste', handlePaste)
 document.addEventListener('paste', handlePaste)
 
 // ------------------------ Estado global ------------------------
