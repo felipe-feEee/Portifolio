@@ -12,7 +12,7 @@ window.supabase = createClient(supabaseUrl, supabaseKey)
 async function uploadToSupabase(file) {
   const fileName = `paste-${Date.now()}-${file.name}`
   const { data, error } = await supabase.storage
-    .from('monanoteimages')
+    .from('images')
     .upload(fileName, file)
 
   if (error) {
@@ -30,7 +30,7 @@ async function uploadToSupabase(file) {
     return ''
   }
 
-  return supabase.storage.from('monanoteimages').getPublicUrl(fileName).data.publicUrl
+  return supabase.storage.from('images').getPublicUrl(fileName).data.publicUrl
 }
 
 // -----------------------------
@@ -505,7 +505,7 @@ function enableImageSplash(containerEl) {
 async function uploadImagemParaSupabase(img) {
   const fileName = `${Date.now()}-${sanitizeFilename(img.name)}`
   const { error } = await window.supabase.storage
-    .from('monanoteimages')
+    .from('images')
     .upload(fileName, img.blob)
 
   if (error) {
@@ -514,7 +514,7 @@ async function uploadImagemParaSupabase(img) {
   }
 
   const { data: pub } = window.supabase.storage
-    .from('monanoteimages')
+    .from('images')
     .getPublicUrl(fileName)
 
   return pub.publicUrl
@@ -586,14 +586,14 @@ async function addNewContent() {
     const img = tempImages[0]
     const fileName = `${Date.now()}-${sanitizeFilename(img.name || 'image')}`
     const { error: uploadError } = await window.supabase.storage
-      .from('monanoteimages')
+      .from('images')
       .upload(fileName, img.blob)
 
     if (uploadError) {
       console.error('Erro ao subir imagem:', uploadError)
     } else {
       const { data: pub } = window.supabase.storage
-        .from('monanoteimages')
+        .from('images')
         .getPublicUrl(fileName)
       imageUrl = pub?.publicUrl || null
     }
@@ -612,13 +612,13 @@ async function addNewContent() {
 
   if (isEditing) {
     const resp = await window.supabase
-      .from('monanote')
+      .from('posts')
       .update(payload)
       .eq('id', window.editingPostId)
     error = resp.error
   } else {
     const resp = await window.supabase
-      .from('monanote')
+      .from('posts')
       .insert(payload)
     error = resp.error
   }
@@ -734,7 +734,7 @@ function renderWelcome() {
 
 async function carregarPostsDoBanco() {
   const { data, error } = await window.supabase
-    .from('monanote')
+    .from('posts')
     .select('*')
     .order('created_at', { ascending: false })
 
