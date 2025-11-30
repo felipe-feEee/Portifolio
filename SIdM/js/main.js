@@ -655,6 +655,44 @@ document.addEventListener('DOMContentLoaded', () => {
 })
 
 document.addEventListener('DOMContentLoaded', () => {
+  const btn = document.querySelector('button.apply-debug')
+  if (!btn) return console.warn('Botão .apply-debug não encontrado')
+
+  // remove qualquer handler inline/antigo para evitar execução dupla
+  try { btn.onclick = null } catch (e) {}
+
+  async function onApplyClick(e) {
+    e.preventDefault()
+    if (btn.disabled) return
+    btn.disabled = true
+    const originalText = btn.textContent
+    btn.textContent = 'Aplicando...'
+
+    try {
+      if (typeof applyDebugChanges === 'function') {
+        await Promise.resolve(applyDebugChanges(e))
+      } else {
+        console.warn('applyDebugChanges não encontrada')
+      }
+    } catch (err) {
+      console.error('Erro em applyDebugChanges:', err)
+      const notice = document.createElement('div')
+      notice.style.color = '#b33'
+      notice.style.fontSize = '0.9rem'
+      notice.textContent = 'Erro ao aplicar alterações. Veja console.'
+      btn.insertAdjacentElement('afterend', notice)
+      setTimeout(() => notice.remove(), 5000)
+    } finally {
+      btn.disabled = false
+      btn.textContent = originalText
+    }
+  }
+
+  btn.removeEventListener('click', onApplyClick)
+  btn.addEventListener('click', onApplyClick)
+})
+
+document.addEventListener('DOMContentLoaded', () => {
   const editLink = document.getElementById('edit-article-link')
   if (editLink) {
     editLink.addEventListener('click', e => {
