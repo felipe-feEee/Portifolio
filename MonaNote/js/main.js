@@ -139,45 +139,110 @@ function extractDataUrlsFromHtml(html) {
 // -----------------------------
 // Placeholder + upload manual para imagens faltantes
 // -----------------------------
-function createMissingImagePlaceholder(name) {
+function createMissingImagePlaceholderWithPath(localPath) {
   const wrapper = document.createElement('div')
   wrapper.className = 'missing-image-placeholder'
   wrapper.style.border = '1px dashed #ccc'
-  wrapper.style.padding = '0.5rem'
+  wrapper.style.padding = '0.6rem'
   wrapper.style.margin = '0.5rem 0'
   wrapper.style.display = 'flex'
-  wrapper.style.alignItems = 'center'
-  wrapper.style.justifyContent = 'space-between'
+  wrapper.style.flexDirection = 'column'
+  wrapper.style.gap = '0.4rem'
+  wrapper.style.background = '#fafafa'
 
-  const label = document.createElement('span')
-  label.textContent = name ? `[imagem ausente: ${name}]` : '[imagem ausente]'
-  label.style.color = '#666'
-  label.style.fontStyle = 'italic'
+  const topRow = document.createElement('div')
+  topRow.style.display = 'flex'
+  topRow.style.justifyContent = 'space-between'
+  topRow.style.alignItems = 'center'
 
-  const btn = document.createElement('button')
-  btn.type = 'button'
-  btn.textContent = 'Enviar imagem'
-  btn.style.background = '#0b5fff'
-  btn.style.color = '#fff'
-  btn.style.border = 'none'
-  btn.style.padding = '0.3rem 0.6rem'
-  btn.style.borderRadius = '4px'
-  btn.style.cursor = 'pointer'
+  const label = document.createElement('div')
+  label.style.color = '#333'
+  label.style.fontSize = '0.95rem'
+  label.style.fontWeight = '500'
+  label.textContent = 'Imagem não incluída no clipboard'
 
-  wrapper.appendChild(label)
-  wrapper.appendChild(btn)
+  const name = document.createElement('div')
+  name.style.color = '#666'
+  name.style.fontSize = '0.85rem'
+  name.textContent = localPath ? localPath.split('/').pop() : ''
+
+  topRow.appendChild(label)
+  topRow.appendChild(name)
+
+  const pathRow = document.createElement('div')
+  pathRow.style.display = 'flex'
+  pathRow.style.gap = '0.5rem'
+  pathRow.style.alignItems = 'center'
+
+  const pathText = document.createElement('code')
+  pathText.style.flex = '1'
+  pathText.style.whiteSpace = 'nowrap'
+  pathText.style.overflow = 'hidden'
+  pathText.style.textOverflow = 'ellipsis'
+  pathText.style.display = 'block'
+  pathText.style.padding = '0.25rem'
+  pathText.style.background = '#fff'
+  pathText.style.border = '1px solid #eee'
+  pathText.style.borderRadius = '4px'
+  pathText.title = localPath || ''
+  pathText.textContent = localPath || '[caminho não disponível]'
+
+  const copyBtn = document.createElement('button')
+  copyBtn.type = 'button'
+  copyBtn.textContent = 'Copiar caminho'
+  copyBtn.style.padding = '0.3rem 0.6rem'
+  copyBtn.style.borderRadius = '4px'
+  copyBtn.style.border = 'none'
+  copyBtn.style.background = '#0b5fff'
+  copyBtn.style.color = '#fff'
+  copyBtn.style.cursor = 'pointer'
+
+  copyBtn.addEventListener('click', async () => {
+    try {
+      await navigator.clipboard.writeText(localPath || '')
+      copyBtn.textContent = 'Copiado'
+      setTimeout(() => (copyBtn.textContent = 'Copiar caminho'), 1500)
+    } catch (err) {
+      console.warn('Falha ao copiar caminho:', err)
+      alert('Não foi possível copiar automaticamente. Selecione e copie manualmente.')
+    }
+  })
+
+  pathRow.appendChild(pathText)
+  pathRow.appendChild(copyBtn)
+
+  const hint = document.createElement('div')
+  hint.style.color = '#666'
+  hint.style.fontSize = '0.85rem'
+  hint.innerHTML =
+    'Abra o Explorador do Windows e cole o caminho na barra de endereços, ou pressione <strong>Win + R</strong> e cole o caminho. ' +
+    'Se o arquivo existir, selecione-o e use o botão Enviar imagem abaixo.'
+
+  const actionsRow = document.createElement('div')
+  actionsRow.style.display = 'flex'
+  actionsRow.style.gap = '0.5rem'
+  actionsRow.style.marginTop = '0.25rem'
+
+  const uploadBtn = document.createElement('button')
+  uploadBtn.type = 'button'
+  uploadBtn.textContent = 'Enviar imagem'
+  uploadBtn.style.padding = '0.35rem 0.7rem'
+  uploadBtn.style.borderRadius = '4px'
+  uploadBtn.style.border = 'none'
+  uploadBtn.style.background = '#0b5fff'
+  uploadBtn.style.color = '#fff'
+  uploadBtn.style.cursor = 'pointer'
 
   const fileInput = document.createElement('input')
   fileInput.type = 'file'
   fileInput.accept = 'image/*'
   fileInput.style.display = 'none'
-  wrapper.appendChild(fileInput)
 
   fileInput.addEventListener('change', async () => {
     const file = fileInput.files && fileInput.files[0]
     if (!file) return
-    btn.disabled = true
-    btn.textContent = 'Enviando...'
+    uploadBtn.disabled = true
+    uploadBtn.textContent = 'Enviando...'
     try {
       const publicUrl = await uploadToSupabase(file)
       if (publicUrl) {
@@ -186,19 +251,64 @@ function createMissingImagePlaceholder(name) {
         img.style.maxWidth = '100%'
         wrapper.replaceWith(img)
       } else {
-        btn.disabled = false
-        btn.textContent = 'Enviar imagem'
+        uploadBtn.disabled = false
+        uploadBtn.textContent = 'Enviar imagem'
         alert('Falha ao enviar imagem. Tente novamente.')
       }
     } catch (err) {
       console.error('Erro upload manual:', err)
-      btn.disabled = false
-      btn.textContent = 'Enviar imagem'
+      uploadBtn.disabled = false
+      uploadBtn.textContent = 'Enviar imagem'
       alert('Erro ao enviar imagem.')
     }
   })
 
-  btn.addEventListener('click', () => fileInput.click())
+  uploadBtn.addEventListener('click', () => fileInput.click())
+
+  // botão opcional para tentar recuperar blobs via clipboard.read()
+  const tryReadBtn = document.createElement('button')
+  tryReadBtn.type = 'button'
+  tryReadBtn.textContent = 'Tentar detectar imagens no clipboard'
+  tryReadBtn.style.padding = '0.35rem 0.7rem'
+  tryReadBtn.style.borderRadius = '4px'
+  tryReadBtn.style.border = '1px solid #ccc'
+  tryReadBtn.style.background = '#fff'
+  tryReadBtn.style.cursor = 'pointer'
+
+  tryReadBtn.addEventListener('click', async () => {
+    tryReadBtn.disabled = true
+    tryReadBtn.textContent = 'Detectando...'
+    try {
+      const files = await tryClipboardReadForImages()
+      if (files.length > 0) {
+        // insere a primeira imagem detectada imediatamente
+        const publicUrl = await uploadToSupabase(files[0])
+        if (publicUrl) {
+          const img = document.createElement('img')
+          img.src = publicUrl
+          img.style.maxWidth = '100%'
+          wrapper.replaceWith(img)
+          return
+        }
+      }
+      alert('Nenhuma imagem detectada no clipboard. Cole a imagem separadamente ou selecione o arquivo manualmente.')
+    } catch (err) {
+      console.warn('Erro ao tentar read():', err)
+      alert('Não foi possível acessar o clipboard. Garanta foco na página e permissões.')
+    } finally {
+      tryReadBtn.disabled = false
+      tryReadBtn.textContent = 'Tentar detectar imagens no clipboard'
+    }
+  })
+
+  actionsRow.appendChild(uploadBtn)
+  actionsRow.appendChild(tryReadBtn)
+  actionsRow.appendChild(fileInput)
+
+  wrapper.appendChild(topRow)
+  wrapper.appendChild(pathRow)
+  wrapper.appendChild(hint)
+  wrapper.appendChild(actionsRow)
 
   return wrapper
 }
@@ -325,33 +435,67 @@ async function handlePaste(e) {
       }
 
       // processa cada imagem: tenta mapear e enviar; se não conseguir, cria placeholder com upload manual
-      for (const img of imgs) {
-        const originalSrc = img.getAttribute('data-local-src') || img.getAttribute('src') || ''
-        const fileToUpload = pickFileForSrc(originalSrc)
+for (const img of imgs) {
+  const originalSrc = img.getAttribute('data-local-src') || img.getAttribute('src') || ''
+  const fileToUpload = pickFileForSrc(originalSrc)
 
-        if (fileToUpload) {
-          try {
-            const publicUrl = await uploadToSupabase(fileToUpload)
-            if (publicUrl) {
-              img.src = publicUrl
-              img.style.maxWidth = '100%'
-              img.removeAttribute('data-local-src')
-            } else {
-              console.error('Falha ao enviar imagem para Supabase:', originalSrc)
-              const placeholder = createMissingImagePlaceholder(basename(originalSrc))
-              img.replaceWith(placeholder)
-            }
-          } catch (err) {
-            console.error('Erro upload imagem:', err)
-            const placeholder = createMissingImagePlaceholder(basename(originalSrc))
-            img.replaceWith(placeholder)
-          }
-        } else {
-          console.warn('Imagem referenciada localmente mas nenhum blob correspondente no clipboard:', originalSrc)
-          const placeholder = createMissingImagePlaceholder(basename(originalSrc))
-          img.replaceWith(placeholder)
-        }
+  if (fileToUpload) {
+    try {
+      const publicUrl = await uploadToSupabase(fileToUpload)
+      if (publicUrl) {
+        img.src = publicUrl
+        img.style.maxWidth = '100%'
+        img.removeAttribute('data-local-src')
+      } else {
+        console.error('Falha ao enviar imagem para Supabase:', originalSrc)
+        const placeholder = createMissingImagePlaceholderWithPath(originalSrc)
+        img.replaceWith(placeholder)
       }
+    } catch (err) {
+      console.error('Erro upload imagem:', err)
+      const placeholder = createMissingImagePlaceholderWithPath(originalSrc)
+      img.replaceWith(placeholder)
+    }
+  } else {
+    console.warn('Imagem referenciada localmente mas nenhum blob correspondente no clipboard:', originalSrc)
+    const placeholder = createMissingImagePlaceholderWithPath(originalSrc)
+
+    // liga o botão "Tentar detectar imagens no clipboard" deste placeholder
+    const tryReadBtn = Array.from(placeholder.querySelectorAll('button'))
+      .find(b => /detectar imagens no clipboard/i.test(b.textContent || ''))
+
+    if (tryReadBtn) {
+      tryReadBtn.addEventListener('click', async () => {
+        tryReadBtn.disabled = true
+        const originalText = tryReadBtn.textContent
+        tryReadBtn.textContent = 'Detectando...'
+        try {
+          const files = await tryClipboardReadForImages()
+          if (files.length > 0) {
+            // usa o primeiro arquivo detectado para este placeholder
+            const publicUrl = await uploadToSupabase(files[0])
+            if (publicUrl) {
+              const imgEl = document.createElement('img')
+              imgEl.src = publicUrl
+              imgEl.style.maxWidth = '100%'
+              placeholder.replaceWith(imgEl)
+              return
+            }
+          }
+          // sem arquivos detectados: informa sem bloquear
+          console.info('Nenhuma imagem detectada no clipboard para este placeholder.')
+        } catch (err) {
+          console.warn('Erro ao tentar read():', err)
+        } finally {
+          tryReadBtn.disabled = false
+          tryReadBtn.textContent = originalText
+        }
+      }, { once: true })
+    }
+
+    img.replaceWith(placeholder)
+  }
+}
 
       // Insere o HTML processado no editor (filhos de temp)
       while (temp.firstChild) {
