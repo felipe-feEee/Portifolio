@@ -7,11 +7,8 @@ const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS
 window.supabase = createClient(supabaseUrl, supabaseKey)
 
 // -----------------------------
-// Upload helper
+// Upload helper (Supabase)
 // -----------------------------
-// Trecho reescrito e simplificado: leitura/recuperação de imagens do clipboard (Word, RTF, data:)
-// Mantém upload automático quando houver blobs; quando não houver, insere mensagem instruindo a colar apenas a imagem.
-
 async function uploadToSupabase(file) {
   const fileName = `paste-${Date.now()}-${file.name}`
   const { data, error } = await supabase.storage
@@ -68,7 +65,7 @@ function insertNodeAtCursor(node) {
 }
 
 // -----------------------------
-// Tentativas de reconstrução automática
+// Reconstrução automática (RTF, data:, clipboard.read)
 // -----------------------------
 function hexToBlob(hex, mime = 'image/png') {
   const bytes = new Uint8Array(hex.length / 2)
@@ -81,7 +78,6 @@ function hexToBlob(hex, mime = 'image/png') {
 function extractImagesFromRtf(rtfText) {
   if (!rtfText) return []
   const results = []
-  // Captura blocos \pict ... hex ...
   const pictRegex = /\\pict[^\n]*?((?:[0-9A-Fa-f\r\n ]{20,})+?)\\par/gm
   let m
   while ((m = pictRegex.exec(rtfText)) !== null) {
@@ -157,7 +153,7 @@ function createMissingImageMessage() {
 }
 
 // -----------------------------
-// Handler principal de paste (fluxo completo e simplificado)
+// Handler principal de paste (versão final simplificada)
 // -----------------------------
 async function handlePaste(e) {
   try {
@@ -195,7 +191,6 @@ async function handlePaste(e) {
 
       const imgs = Array.from(temp.querySelectorAll('img'))
       if (imgs.length === 0) {
-        // sem imagens: insere texto plain
         const plain = e.clipboardData.getData('text/plain') || temp.textContent || ''
         const p = document.createElement('p')
         p.textContent = plain
@@ -203,7 +198,7 @@ async function handlePaste(e) {
         return
       }
 
-      // 2.a) tenta recuperar blobs do evento (quando presentes)
+      // tenta recuperar blobs do evento (quando presentes)
       let availableFiles = items
         .filter(i => i.kind === 'file' && i.type && i.type.startsWith('image/'))
         .map(i => i.getAsFile())
@@ -211,7 +206,7 @@ async function handlePaste(e) {
 
       console.log('📦 Blobs capturados do clipboard (evento):', availableFiles)
 
-      // 2.b) se não houver blobs, tenta navigator.clipboard.read() (requer foco/permissão)
+      // se não houver blobs, tenta navigator.clipboard.read() (requer foco/permissão)
       if (availableFiles.length === 0) {
         const readFiles = await tryClipboardReadForImages()
         if (readFiles.length > 0) {
@@ -220,7 +215,7 @@ async function handlePaste(e) {
         }
       }
 
-      // 2.c) se ainda não houver blobs, tenta extrair do RTF
+      // se ainda não houver blobs, tenta extrair do RTF
       if (availableFiles.length === 0) {
         const rtf = e.clipboardData.getData('text/rtf')
         const rtfFiles = extractImagesFromRtf(rtf)
@@ -230,7 +225,7 @@ async function handlePaste(e) {
         }
       }
 
-      // 2.d) se ainda não houver blobs, tenta extrair data: URIs do HTML
+      // se ainda não houver blobs, tenta extrair data: URIs do HTML
       if (availableFiles.length === 0) {
         const dataUrlFiles = extractDataUrlsFromHtml(html)
         if (dataUrlFiles.length > 0) {
@@ -279,7 +274,7 @@ async function handlePaste(e) {
         }
       }
 
-      // 2.e) processa cada imagem: upload automático quando possível; caso contrário, insere mensagem simples
+      // processa cada imagem: upload automático quando possível; caso contrário, insere mensagem simples
       for (const img of imgs) {
         const originalSrc = img.getAttribute('data-local-src') || img.getAttribute('src') || ''
         const fileToUpload = pickFileForSrc(originalSrc)
@@ -332,23 +327,6 @@ async function handlePaste(e) {
 // registra listener (remove duplicatas anteriores)
 document.removeEventListener('paste', handlePaste)
 document.addEventListener('paste', handlePaste)
-
-// Opcional: botão para forçar leitura do clipboard via navigator.clipboard.read()
-// (útil quando o usuário clica antes de colar para conceder permissão)
-const tryReadBtn = document.getElementById('try-read-clipboard')
-if (tryReadBtn) {
-  tryReadBtn.addEventListener('click', async () => {
-    try {
-      const files = await tryClipboardReadForImages()
-      console.log('Arquivos detectados via read():', files)
-      // não usar alert(); apenas log e mensagem não bloqueante
-      console.info(`Detectados ${files.length} arquivo(s) no clipboard (veja console).`)
-    } catch (err) {
-      console.warn('Erro ao tentar read():', err)
-      console.info('Não foi possível ler o clipboard. Garanta foco na página e permissões.')
-    }
-  })
-}
 
 // ------------------------ Estado global ------------------------
 let contentData = {};
