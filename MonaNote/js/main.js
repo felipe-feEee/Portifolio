@@ -6,11 +6,13 @@ const supabaseUrl = 'https://pwshckrmqaqymngbosgo.supabase.co'
 const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB3c2hja3JtcWFxeW1uZ2Jvc2dvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQzNjAwOTEsImV4cCI6MjA3OTkzNjA5MX0.f8iX0RoqrdxJmq-EgSyn_YWPgCHMoARQTT4ygtbcoLg'
 window.supabase = createClient(supabaseUrl, supabaseKey)
 
-// Função auxiliar para upload no Supabase
+// -----------------------------
+// Upload helper
+// -----------------------------
 async function uploadToSupabase(file) {
   const fileName = `paste-${Date.now()}-${file.name}`
   const { data, error } = await supabase.storage
-    .from('images')
+    .from('monanoteimages')
     .upload(fileName, file)
 
   if (error) {
@@ -18,10 +20,12 @@ async function uploadToSupabase(file) {
     return ""
   }
 
-  return supabase.storage.from('images').getPublicUrl(fileName).data.publicUrl
+  return supabase.storage.from('monanoteimages').getPublicUrl(fileName).data.publicUrl
 }
 
-// util: extrai basename de um path/URL
+// -----------------------------
+// Utilitários
+// -----------------------------
 function basename(path) {
   try {
     return path.split('/').pop().split('?')[0]
@@ -30,7 +34,6 @@ function basename(path) {
   }
 }
 
-// util: converte dataURL para File (já fornecida antes)
 function dataURLtoFile(dataurl, filename) {
   const arr = dataurl.split(',')
   const mime = arr[0].match(/:(.*?);/)[1]
@@ -41,7 +44,6 @@ function dataURLtoFile(dataurl, filename) {
   return new File([u8arr], filename, { type: mime })
 }
 
-// util: insere nó no cursor (ou append se não houver seleção)
 function insertNodeAtCursor(node) {
   const editor = document.getElementById('content-body')
   const sel = window.getSelection()
@@ -58,6 +60,152 @@ function insertNodeAtCursor(node) {
   sel.addRange(range)
 }
 
+// -----------------------------
+// Reconstrução de imagens quando clipboard não traz blobs
+// -----------------------------
+function hexToBlob(hex, mime = 'image/png') {
+  const bytes = new Uint8Array(hex.length / 2)
+  for (let i = 0; i < bytes.length; i++) {
+    bytes[i] = parseInt(hex.substr(i * 2, 2), 16)
+  }
+  return new Blob([bytes], { type: mime })
+}
+
+function extractImagesFromRtf(rtfText) {
+  if (!rtfText) return []
+  const results = []
+  // captura blocos \pict ... hex ...
+  const pictRegex = /\\pict[^\n]*?((?:[0-9A-Fa-f\r\n ]{20,})+?)\\par/gm
+  let m
+  while ((m = pictRegex.exec(rtfText)) !== null) {
+    const hex = m[1].replace(/[\s\r\n]/g, '')
+    const contextStart = Math.max(0, m.index - 80)
+    const context = rtfText.slice(contextStart, m.index + 20).toLowerCase()
+    let mime = 'image/png'
+    if (context.includes('\\jpegblip')) mime = 'image/jpeg'
+    if (hex.length > 20) {
+      const blob = hexToBlob(hex, mime)
+      const ext = mime === 'image/jpeg' ? 'jpg' : 'png'
+      results.push(new File([blob], `rtf-extract-${Date.now()}.${ext}`, { type: mime }))
+    }
+  }
+  return results
+}
+
+async function tryClipboardReadForImages() {
+  try {
+    if (!navigator.clipboard || !navigator.clipboard.read) return []
+    const items = await navigator.clipboard.read()
+    const files = []
+    for (const item of items) {
+      for (const type of item.types) {
+        if (type.startsWith('image/')) {
+          const blob = await item.getType(type)
+          const ext = type.split('/')[1] || 'png'
+          files.push(new File([blob], `clipboard-${Date.now()}.${ext}`, { type }))
+        }
+      }
+    }
+    return files
+  } catch (err) {
+    console.warn('clipboard.read() indisponível ou sem permissão:', err)
+    return []
+  }
+}
+
+function extractDataUrlsFromHtml(html) {
+  const dataFiles = []
+  const dataRegex = /src=["'](data:[^"']+)["']/ig
+  let m
+  while ((m = dataRegex.exec(html)) !== null) {
+    const dataurl = m[1]
+    try {
+      const arr = dataurl.split(',')
+      const mime = arr[0].match(/:(.*?);/)[1]
+      const bstr = atob(arr[1])
+      let n = bstr.length
+      const u8arr = new Uint8Array(n)
+      while (n--) u8arr[n] = bstr.charCodeAt(n)
+      const ext = mime.split('/')[1] || 'png'
+      const file = new File([u8arr], `inline-${Date.now()}.${ext}`, { type: mime })
+      dataFiles.push({ file, dataurl })
+    } catch (err) {
+      console.warn('Falha ao converter data: url', err)
+    }
+  }
+  return dataFiles
+}
+
+// -----------------------------
+// Placeholder + upload manual para imagens faltantes
+// -----------------------------
+function createMissingImagePlaceholder(name) {
+  const wrapper = document.createElement('div')
+  wrapper.className = 'missing-image-placeholder'
+  wrapper.style.border = '1px dashed #ccc'
+  wrapper.style.padding = '0.5rem'
+  wrapper.style.margin = '0.5rem 0'
+  wrapper.style.display = 'flex'
+  wrapper.style.alignItems = 'center'
+  wrapper.style.justifyContent = 'space-between'
+
+  const label = document.createElement('span')
+  label.textContent = name ? `[imagem ausente: ${name}]` : '[imagem ausente]'
+  label.style.color = '#666'
+  label.style.fontStyle = 'italic'
+
+  const btn = document.createElement('button')
+  btn.type = 'button'
+  btn.textContent = 'Enviar imagem'
+  btn.style.background = '#0b5fff'
+  btn.style.color = '#fff'
+  btn.style.border = 'none'
+  btn.style.padding = '0.3rem 0.6rem'
+  btn.style.borderRadius = '4px'
+  btn.style.cursor = 'pointer'
+
+  wrapper.appendChild(label)
+  wrapper.appendChild(btn)
+
+  const fileInput = document.createElement('input')
+  fileInput.type = 'file'
+  fileInput.accept = 'image/*'
+  fileInput.style.display = 'none'
+  wrapper.appendChild(fileInput)
+
+  fileInput.addEventListener('change', async () => {
+    const file = fileInput.files && fileInput.files[0]
+    if (!file) return
+    btn.disabled = true
+    btn.textContent = 'Enviando...'
+    try {
+      const publicUrl = await uploadToSupabase(file)
+      if (publicUrl) {
+        const img = document.createElement('img')
+        img.src = publicUrl
+        img.style.maxWidth = '100%'
+        wrapper.replaceWith(img)
+      } else {
+        btn.disabled = false
+        btn.textContent = 'Enviar imagem'
+        alert('Falha ao enviar imagem. Tente novamente.')
+      }
+    } catch (err) {
+      console.error('Erro upload manual:', err)
+      btn.disabled = false
+      btn.textContent = 'Enviar imagem'
+      alert('Erro ao enviar imagem.')
+    }
+  })
+
+  btn.addEventListener('click', () => fileInput.click())
+
+  return wrapper
+}
+
+// -----------------------------
+// Handler principal de paste (fluxo completo)
+// -----------------------------
 async function handlePaste(e) {
   try {
     e.preventDefault()
@@ -67,10 +215,9 @@ async function handlePaste(e) {
     const items = Array.from(e.clipboardData?.items || [])
     const types = Array.from(e.clipboardData?.types || [])
 
-    // arquivos de imagem diretos no clipboard (printscreen, arquivo)
+    // 1) arquivos de imagem diretos no clipboard (printscreen, arquivo)
     const imageItems = items.filter(i => i.type && i.type.startsWith('image/'))
     if (imageItems.length > 0) {
-      // upload de cada arquivo direto
       for (const it of imageItems) {
         const file = it.getAsFile()
         if (!file) continue
@@ -87,16 +234,14 @@ async function handlePaste(e) {
       return
     }
 
-    // HTML colado (ex.: Word)
+    // 2) HTML colado (ex.: Word)
     if (types.includes('text/html')) {
       const html = e.clipboardData.getData('text/html')
       const temp = document.createElement('div')
       temp.innerHTML = html
 
-      // coleta imagens <img> no HTML
       const imgs = Array.from(temp.querySelectorAll('img'))
       if (imgs.length === 0) {
-        // sem imagens: insere texto plain
         const plain = e.clipboardData.getData('text/plain') || temp.textContent || ''
         const p = document.createElement('p')
         p.textContent = plain
@@ -104,65 +249,83 @@ async function handlePaste(e) {
         return
       }
 
-      // prepara lista de arquivos disponíveis do clipboard
+      // tenta recuperar blobs do evento (quando presentes)
       let availableFiles = items
         .filter(i => i.kind === 'file' && i.type && i.type.startsWith('image/'))
         .map(i => i.getAsFile())
         .filter(Boolean)
 
-      console.log('📦 Blobs capturados do clipboard:', availableFiles)
+      console.log('📦 Blobs capturados do clipboard (evento):', availableFiles)
+
+      // se não houver blobs, tenta navigator.clipboard.read() (requer foco/permissão)
+      if (availableFiles.length === 0) {
+        const readFiles = await tryClipboardReadForImages()
+        if (readFiles.length > 0) {
+          availableFiles = availableFiles.concat(readFiles)
+          console.log('📦 Blobs capturados via navigator.clipboard.read():', readFiles)
+        }
+      }
+
+      // se ainda não houver blobs, tenta extrair do RTF
+      if (availableFiles.length === 0) {
+        const rtf = e.clipboardData.getData('text/rtf')
+        const rtfFiles = extractImagesFromRtf(rtf)
+        if (rtfFiles.length > 0) {
+          availableFiles = availableFiles.concat(rtfFiles)
+          console.log('📦 Blobs extraídos do RTF:', rtfFiles)
+        }
+      }
+
+      // se ainda não houver blobs, tenta extrair data: URIs do HTML
+      const dataUrlFiles = extractDataUrlsFromHtml(html)
+      if (availableFiles.length === 0 && dataUrlFiles.length > 0) {
+        // dataUrlFiles é array de {file, dataurl}
+        availableFiles = availableFiles.concat(dataUrlFiles.map(d => d.file))
+        console.log('📦 Blobs extraídos de data: URIs no HTML:', dataUrlFiles)
+      }
 
       // cria mapa por nome para tentativa de match
       const fileMapByName = {}
       for (const f of availableFiles) {
-        // normaliza nomes para facilitar match (lowercase)
         const n = (f.name || '').toLowerCase()
         if (!fileMapByName[n]) fileMapByName[n] = []
         fileMapByName[n].push(f)
       }
 
-      // função para obter arquivo correspondente para uma img src
       function pickFileForSrc(src) {
         if (!src) return null
-        // 1) se data: -> convert
         if (src.startsWith('data:')) {
           const filename = `paste-inline-${Date.now()}.png`
           return dataURLtoFile(src, filename)
         }
-        // 2) extrai basename do src (ex: clip_image002.png)
         const base = basename(src).toLowerCase()
         if (base && fileMapByName[base] && fileMapByName[base].length > 0) {
           return fileMapByName[base].shift()
         }
-        // 3) heurística: procurar arquivo cujo nome contenha o basename
         for (const key of Object.keys(fileMapByName)) {
           if (key.includes(base) && fileMapByName[key].length > 0) {
             return fileMapByName[key].shift()
           }
         }
-        // 4) fallback: pegar próximo arquivo disponível (FIFO)
         for (const key of Object.keys(fileMapByName)) {
           if (fileMapByName[key].length > 0) {
             return fileMapByName[key].shift()
           }
         }
-        // 5) nada encontrado
         return null
       }
 
-      // Antes de inserir no DOM, limpamos src locais para evitar tentativa de carregar file://
+      // evita que o navegador tente carregar file:// — guarda src original e remove src
       for (const img of imgs) {
         const src = img.getAttribute('src') || ''
-        if (src.startsWith('file:') || src.startsWith('C:\\') || src.startsWith('file:///')) {
-          // evita que o navegador tente carregar recurso local
-          img.setAttribute('data-local-src', src) // guarda para debug
+        if (src.startsWith('file:') || src.startsWith('C:\\') || src.includes('msohtmlclip')) {
+          img.setAttribute('data-local-src', src)
           img.removeAttribute('src')
         }
       }
 
-      // Agora processa cada imagem e faz upload quando possível
+      // processa cada imagem: tenta mapear e enviar; se não conseguir, cria placeholder com upload manual
       for (const img of imgs) {
-        // tenta obter src original (data-local-src ou src)
         const originalSrc = img.getAttribute('data-local-src') || img.getAttribute('src') || ''
         const fileToUpload = pickFileForSrc(originalSrc)
 
@@ -175,16 +338,17 @@ async function handlePaste(e) {
               img.removeAttribute('data-local-src')
             } else {
               console.error('Falha ao enviar imagem para Supabase:', originalSrc)
+              const placeholder = createMissingImagePlaceholder(basename(originalSrc))
+              img.replaceWith(placeholder)
             }
           } catch (err) {
             console.error('Erro upload imagem:', err)
+            const placeholder = createMissingImagePlaceholder(basename(originalSrc))
+            img.replaceWith(placeholder)
           }
         } else {
           console.warn('Imagem referenciada localmente mas nenhum blob correspondente no clipboard:', originalSrc)
-          // opcional: inserir um placeholder visual em vez de src local
-          const placeholder = document.createElement('span')
-          placeholder.textContent = '[imagem não disponível]'
-          placeholder.style.color = '#888'
+          const placeholder = createMissingImagePlaceholder(basename(originalSrc))
           img.replaceWith(placeholder)
         }
       }
@@ -193,10 +357,12 @@ async function handlePaste(e) {
       while (temp.firstChild) {
         insertNodeAtCursor(temp.firstChild)
       }
+      // se houve placeholders, informa o usuário via console (pode trocar por toast)
+      console.info('Se houver placeholders, use "Enviar imagem" para anexar manualmente as imagens faltantes.')
       return
     }
 
-    // fallback: texto simples
+    // 3) fallback: texto simples
     const plain = e.clipboardData.getData('text/plain')
     if (plain) {
       const p = document.createElement('p')
@@ -211,6 +377,22 @@ async function handlePaste(e) {
 // registra listener (remova duplicatas anteriores)
 document.removeEventListener('paste', handlePaste)
 document.addEventListener('paste', handlePaste)
+
+// Opcional: botão para forçar leitura do clipboard via navigator.clipboard.read()
+// útil quando o usuário clica antes de colar para conceder permissão
+const tryReadBtn = document.getElementById('try-read-clipboard')
+if (tryReadBtn) {
+  tryReadBtn.addEventListener('click', async () => {
+    try {
+      const files = await tryClipboardReadForImages()
+      console.log('Arquivos detectados via read():', files)
+      alert(`Detectados ${files.length} arquivo(s) no clipboard (veja console).`)
+    } catch (err) {
+      console.warn('Erro ao tentar read():', err)
+      alert('Não foi possível ler o clipboard. Garanta foco na página e permissões.')
+    }
+  })
+}
 
 // ------------------------ Estado global ------------------------
 let contentData = {};
@@ -379,7 +561,7 @@ function enableImageSplash(containerEl) {
 async function uploadImagemParaSupabase(img) {
   const fileName = `${Date.now()}-${sanitizeFilename(img.name)}`
   const { error } = await window.supabase.storage
-    .from('images')
+    .from('monanoteimages')
     .upload(fileName, img.blob)
 
   if (error) {
@@ -388,7 +570,7 @@ async function uploadImagemParaSupabase(img) {
   }
 
   const { data: pub } = window.supabase.storage
-    .from('images')
+    .from('monanoteimages')
     .getPublicUrl(fileName)
 
   return pub.publicUrl
@@ -460,14 +642,14 @@ async function addNewContent() {
     const img = tempImages[0]
     const fileName = `${Date.now()}-${sanitizeFilename(img.name || 'image')}`
     const { error: uploadError } = await window.supabase.storage
-      .from('images')
+      .from('monanoteimages')
       .upload(fileName, img.blob)
 
     if (uploadError) {
       console.error('Erro ao subir imagem:', uploadError)
     } else {
       const { data: pub } = window.supabase.storage
-        .from('images')
+        .from('monanoteimages')
         .getPublicUrl(fileName)
       imageUrl = pub?.publicUrl || null
     }
