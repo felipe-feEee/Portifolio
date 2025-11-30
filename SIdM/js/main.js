@@ -44,22 +44,6 @@ function basename(path) {
   }
 }
 
-function applyDebugChanges() {
-  const body = document.getElementById('content-body');
-  const textarea = document.getElementById('debug-code');
-  if (!body || !textarea) return;
-
-  // Aplica o HTML editado ao editor
-  body.innerHTML = textarea.value;
-
-  // Limpa qualquer estado de debug antigo
-  body.removeAttribute('data-debug-mode');
-  body.removeAttribute('data-html-original');
-  window.__debugMode = false;
-
-  closeDebugPopup();
-}
-
 function dataURLtoFile(dataurl, filename) {
   const arr = dataurl.split(',')
   const mime = arr[0].match(/:(.*?);/)[1]
