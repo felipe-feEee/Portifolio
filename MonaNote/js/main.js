@@ -811,7 +811,7 @@ function loadArticle(categoria, id) {
   setTimeout(() => {
     console.log(`🧾 Renderizando artigo ${categoria}|${id}`);
 
-    const imgCount = getImageCountForArticle(categoria, id);
+    //const imgCount = getImageCountForArticle(categoria, id);
     const btnText = imgCount > 0 ? `Baixar imagens (${imgCount})` : 'Nenhuma imagem';
     const btnDisabledAttr = imgCount > 0 ? '' : 'disabled';
 
