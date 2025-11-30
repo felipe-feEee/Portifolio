@@ -184,9 +184,34 @@ function createMissingImageMessage() {
 async function handlePaste(e) {
   try {
     e.preventDefault()
-    const editor = document.getElementById('content-body')
-    if (!editor) return console.warn('Editor não encontrado: #content-body')
 
+    const contentBody = document.getElementById('content-body') || document.querySelector('.content-body')
+    if (!contentBody) return console.warn('Editor não encontrado: #content-body')
+
+    const target = e.target || document.activeElement
+    const isTargetContentBody = contentBody && (target === contentBody || contentBody.contains(target))
+
+    // Se o destino NÃO for o editor content-body, trate apenas como texto em inputs/textarea e saia.
+    if (!isTargetContentBody) {
+      // Se for textarea/input, insere texto simples no cursor
+      if (target && (target.tagName === 'TEXTAREA' || target.tagName === 'INPUT')) {
+        try {
+          const plain = e.clipboardData.getData('text/plain') || ''
+          const el = target
+          const start = typeof el.selectionStart === 'number' ? el.selectionStart : el.value.length
+          const end = typeof el.selectionEnd === 'number' ? el.selectionEnd : el.value.length
+          el.value = el.value.slice(0, start) + plain + el.value.slice(end)
+          el.selectionStart = el.selectionEnd = start + plain.length
+          el.dispatchEvent(new Event('input', { bubbles: true }))
+        } catch (err) {
+          console.warn('Erro ao inserir texto no input/textarea:', err)
+        }
+      }
+      // Não processamos HTML/imagens fora do content-body
+      return
+    }
+
+    // A partir daqui, sabemos que o destino é o editor content-body — processamos imagens/HTML normalmente
     const items = Array.from(e.clipboardData?.items || [])
     const types = Array.from(e.clipboardData?.types || [])
 
@@ -209,7 +234,7 @@ async function handlePaste(e) {
       return
     }
 
-    // 2) HTML colado (ex.: Word)
+    // 2) HTML colado (ex.: Word) — somente para content-body
     if (types.includes('text/html')) {
       const html = e.clipboardData.getData('text/html')
       const temp = document.createElement('div')
@@ -338,7 +363,7 @@ async function handlePaste(e) {
       return
     }
 
-    // 3) fallback: texto simples
+    // 3) fallback: texto simples (somente content-body chega aqui)
     const plain = e.clipboardData.getData('text/plain')
     if (plain) {
       const p = document.createElement('p')
