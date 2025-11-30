@@ -812,8 +812,8 @@ function loadArticle(categoria, id) {
     console.log(`🧾 Renderizando artigo ${categoria}|${id}`);
 
     //const imgCount = getImageCountForArticle(categoria, id);
-    const btnText = imgCount > 0 ? `Baixar imagens (${imgCount})` : 'Nenhuma imagem';
-    const btnDisabledAttr = imgCount > 0 ? '' : 'disabled';
+    //const btnText = imgCount > 0 ? `Baixar imagens (${imgCount})` : 'Nenhuma imagem';
+    //const btnDisabledAttr = imgCount > 0 ? '' : 'disabled';
 
 container.innerHTML = `
   <div class="control-bar">
