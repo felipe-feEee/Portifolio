@@ -1284,10 +1284,6 @@ window.addEventListener('DOMContentLoaded', async () => {
     // 2. Carrega dados do Supabase
     await carregarPostsDoBanco();
 
-    // 3. Renderiza interface inicial
-    renderMenu();
-    renderWelcome();
-
   } catch (e) {
     console.error('Erro ao carregar do Supabase, usando fallback local:', e);
 
