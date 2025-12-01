@@ -801,6 +801,29 @@ function renderMenu(openCategories = []) {
   menu.appendChild(ul);
 }
 
+function initButtons() {
+  // botão de adicionar conteúdo
+  const addBtn = document.getElementById('add-content-btn');
+  if (addBtn && !addBtn.getAttribute('onclick')) {
+    addBtn.addEventListener('click', () => openNewContentPanel({ forEdit: false }));
+  }
+
+  // botão de salvar conteúdo
+  const saveBtn = document.querySelector('#new-content-panel .save-button');
+  if (saveBtn && !saveBtn.getAttribute('onclick')) {
+    saveBtn.addEventListener('click', addNewContent);
+  }
+
+  // botão de fechar painel
+  const closeBtn = document.getElementById('close-panel-btn');
+  if (closeBtn) {
+    closeBtn.removeAttribute('onclick');
+    const newBtn = closeBtn.cloneNode(true);
+    closeBtn.parentNode.replaceChild(newBtn, closeBtn);
+    newBtn.addEventListener('click', () => closeNewContentPanel());
+  }
+}
+
 function loadArticle(categoria, id) {
   if (!contentData[categoria] || !contentData[categoria][id]) return;
 
@@ -1254,11 +1277,21 @@ function toggleDebugMode(force) {
 window.addEventListener('DOMContentLoaded', async () => {
   sessionHasSaved = false;
 
-  // tenta carregar do Supabase
+  // 1. Mostra loading imediatamente
+  showLoading('Carregando conteúdo...');
+
   try {
+    // 2. Carrega dados do Supabase
     await carregarPostsDoBanco();
+
+    // 3. Renderiza interface inicial
+    renderMenu();
+    renderWelcome();
+
   } catch (e) {
     console.error('Erro ao carregar do Supabase, usando fallback local:', e);
+
+    // 4. Fallback para dados locais
     if (typeof window.dataPT !== 'undefined') {
       try {
         contentData = JSON.parse(JSON.stringify(window.dataPT));
@@ -1266,28 +1299,15 @@ window.addEventListener('DOMContentLoaded', async () => {
         contentData = window.dataPT || {};
       }
     }
+
     renderMenu();
     renderWelcome();
-  }
+    showError('Não foi possível carregar do Supabase. Exibindo conteúdo local.');
+  } finally {
+    // 5. Esconde loading
+    hideLoading();
 
-  // botão de adicionar conteúdo
-  const addBtn = document.getElementById('add-content-btn');
-  if (addBtn && !addBtn.getAttribute('onclick')) {
-    addBtn.addEventListener('click', () => openNewContentPanel({ forEdit: false }));
-  }
-
-  // botão de salvar conteúdo
-  const saveBtn = document.querySelector('#new-content-panel .save-button');
-  if (saveBtn && !saveBtn.getAttribute('onclick')) {
-    saveBtn.addEventListener('click', addNewContent);
-  }
-
-  // botão de fechar painel
-  const closeBtn = document.getElementById('close-panel-btn');
-  if (closeBtn) {
-    closeBtn.removeAttribute('onclick');
-    const newBtn = closeBtn.cloneNode(true);
-    closeBtn.parentNode.replaceChild(newBtn, closeBtn);
-    newBtn.addEventListener('click', () => closeNewContentPanel());
+    // 6. Inicializa botões
+    initButtons();
   }
 });
