@@ -24,7 +24,7 @@ async function uploadToSupabase(file) {
       warn.style.color = '#b33'
       warn.style.fontSize = '0.9rem'
       warn.style.margin = '0.25rem 0'
-      warn.textContent = 'Falha ao enviar imagem: verifique permissões do bucket images(Storage RLS).'
+      warn.textContent = 'Falha ao enviar imagem: verifique permissões do bucket (Storage RLS).'
       editor.appendChild(warn)
     }
     return ''
@@ -1087,10 +1087,35 @@ function execCmd(command, value = null) {
 
   switch (command) {
     case 'insertImage': {
-      const url = prompt('URL da imagem:')
-      if (url) document.execCommand('insertImage', false, url)
-      break
-    }
+	  const input = document.createElement('input');
+	  input.type = 'file';
+	  input.accept = 'image/*';
+	  input.style.display = 'none';
+	
+	  input.addEventListener('change', async () => {
+	    const file = input.files[0];
+	    if (!file) return;
+	
+	    try {
+	      const publicUrl = await uploadToSupabase(file);
+	      if (publicUrl) {
+	        const img = document.createElement('img');
+	        img.src = publicUrl;
+	        img.style.maxWidth = '100%';
+	        insertNodeAtCursor(img);
+	      }
+	    } catch (err) {
+	      console.error('Erro ao enviar imagem:', err);
+	      const msg = createMissingImageMessage();
+	      insertNodeAtCursor(msg);
+	    }
+	  });
+	
+	  document.body.appendChild(input);
+	  input.click();
+	  document.body.removeChild(input);
+	  break;
+	}
     case 'createLink': {
       const url = prompt('URL do link:')
       if (url) document.execCommand('createLink', false, url)
