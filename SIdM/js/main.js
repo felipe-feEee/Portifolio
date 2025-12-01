@@ -271,7 +271,7 @@ if (typeof window.__objectUrlMap === 'undefined') window.__objectUrlMap = {};
 
 document.addEventListener('DOMContentLoaded', async () => {
   // Opcional: estado de carregamento
-  showLoading('Carregando conteúdo...')
+  showLoading('Carregando postagens e imagens...')
 
   try {
     await carregarPostsDoBanco() // isso vai sobrescrever contentData e chamar renderMenu/renderWelcome
