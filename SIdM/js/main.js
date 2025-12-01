@@ -24,7 +24,7 @@ async function uploadToSupabase(file) {
       warn.style.color = '#b33'
       warn.style.fontSize = '0.9rem'
       warn.style.margin = '0.25rem 0'
-      warn.textContent = 'Falha ao enviar imagem: verifique permissões do bucket (Storage RLS).'
+      warn.textContent = 'Falha ao enviar imagem: verifique permissões do bucket images(Storage RLS).'
       editor.appendChild(warn)
     }
     return ''
