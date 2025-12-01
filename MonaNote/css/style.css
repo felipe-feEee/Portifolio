@@ -1,6 +1,6 @@
 :root {
-  --color-primary: #3399ff;
-  --color-primary-dark: #2673cc;
+  --color-primary: #ff6666;
+  --color-primary-dark: #e65c5c;
   --color-dark: #0b1a2b;
   --color-light: #f0f8ff;
   --color-text: #1a1a1a;
@@ -25,6 +25,120 @@ body {
   min-height: 100vh;
   background-color: #e6edf4;
   /* overflow: hidden; --> remover para permitir scroll quando necessário */
+}
+
+/* Overlay cobrindo toda a tela */
+#error {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  animation: fadeIn 0.3s ease;
+}
+
+/* Caixa central de erro */
+.error-box {
+  background: #fff;
+  padding: 25px 35px;
+  border-radius: 8px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.25);
+  text-align: center;
+  max-width: 400px;
+  animation: scaleIn 0.3s ease;
+}
+
+/* Texto de erro */
+.error-text {
+  font-size: 1.1rem;
+  color: #c00;
+  margin-bottom: 20px;
+  font-weight: 600;
+}
+
+/* Botão de fechar */
+.error-close {
+  background: #c00;
+  color: #fff;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: background 0.2s ease;
+}
+
+.error-close:hover {
+  background: #a00;
+}
+
+/* Animações */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes scaleIn {
+  from { transform: scale(0.9); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+/* Overlay cobrindo toda a tela */
+#loading {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  animation: fadeIn 0.3s ease;
+}
+
+/* Caixa central */
+.loading-box {
+  background: #fff;
+  padding: 30px 40px;
+  border-radius: 8px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.25);
+  text-align: center;
+  animation: scaleIn 0.3s ease;
+}
+
+/* Texto */
+.loading-text {
+  font-size: 1.2rem;
+  color: #333;
+  margin-top: 15px;
+  font-weight: 500;
+}
+
+/* Spinner animado */
+.spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid #ddd;
+  border-top: 4px solid #409eff;
+  border-radius: 50%;
+  margin: 0 auto;
+  animation: spin 1s linear infinite;
+}
+
+/* Animações */
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes scaleIn {
+  from { transform: scale(0.9); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
 }
 
 .container {
@@ -131,7 +245,7 @@ body {
 
 .close-debug-btn {
   align-self: flex-end;
-  background: #3399ff;
+  background: #ff6666;
   color: white;
   border: none;
   padding: 0.5rem 1rem;
@@ -220,7 +334,7 @@ body {
 /* Link ativo do submenu */
 .sidebar li ul li a.active {
   background-color: #1f2f3f; /* fundo mais escuro */
-  color: #3399ff; /* texto vermelho */
+  color: #ff6666; /* texto vermelho */
   border-left-color: #ff0000; /* borda vermelha mais intensa */
 }
 
@@ -229,7 +343,7 @@ body {
 .sidebar li ul li a:hover {
   background-color: #14273d;
   color: #fff;
-  border-left-color: #3399ff; /* opcional: borda acompanha o hover */
+  border-left-color: #ff6666; /* opcional: borda acompanha o hover */
 }
 
 /* Destaque em vermelho */
@@ -285,7 +399,7 @@ body {
 /* Links */
 #article-content a,
 #content-body a {
-  color: #3399ff;
+  color: #ff6666;
   text-decoration: underline;
   font-size: 1rem;
 }
@@ -406,7 +520,7 @@ body {
 /* Estilo global para barras de rolagem */
 * {
   scrollbar-width: thin;              /* Firefox */
-  scrollbar-color: #3399ff #f0f8ff;   /* Firefox */
+  scrollbar-color: #ff6666 #f0f8ff;   /* Firefox */
 }
 
 /* WebKit (Chrome, Edge, Safari) */
@@ -421,13 +535,13 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background-color: #3399ff; /* cor do "botão" da barra */
+  background-color: #ff6666; /* cor do "botão" da barra */
   border-radius: 4px;
   border: 2px solid #f0f8ff; /* borda para dar contraste */
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background-color: #2673cc; /* hover mais claro */
+  background-color: #e65c5c; /* hover mais claro */
 }
 
 /* Botão export: escondido por padrão; mostrado quando a classe .visible for aplicada */
@@ -458,7 +572,7 @@ body {
   width: 100%;
   margin-top: 1rem;
   padding: 0.6rem;
-  background-color: #3399ff;
+  background-color: #ff6666;
   color: white;
   border: none;
   border-radius: 0;
@@ -468,7 +582,7 @@ body {
 }
 
 #add-content-btn:hover {
-  background-color: #2673cc;
+  background-color: #e65c5c;
 }
 
 #close-panel-btn {
@@ -486,7 +600,7 @@ body {
 }
 
 #close-panel-btn:hover {
-  background-color: #3399ff;
+  background-color: #ff6666;
 }
 
 #new-content-panel {
@@ -532,7 +646,7 @@ body {
 #new-content-panel button {
   margin-top: 1.5rem;
   padding: 0.7rem 1.5rem;
-  background-color: #3399ff;
+  background-color: #ff6666;
   color: white;
   border: none;
   border-radius: 4px;
@@ -543,7 +657,7 @@ body {
 }
 
 #new-content-panel button:hover {
-  background-color: #3399ff;
+  background-color: #ff6666;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35); /* sombra mais intensa no hover */
 }
 
@@ -733,7 +847,7 @@ img {
   width: 60%;
   max-width: 500px;
   padding: 0.6rem 1rem;
-  border: 1px solid #3399ff;
+  border: 1px solid #ff6666;
   border-radius: 14px;
   background-color: rgba(255, 182, 193, 0.15); /* 30% transparência */
   font-size: 1rem;
