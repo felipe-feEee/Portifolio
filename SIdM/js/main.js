@@ -286,27 +286,29 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 })
 
-function showLoading(msg) {
-  let el = document.getElementById('loading')
+function showLoading(msg = 'Carregando conteúdo...') {
+  let el = document.getElementById('loading');
   if (!el) {
-    el = document.createElement('div')
-    el.id = 'loading'
-    el.style.position = 'fixed'
-    el.style.top = '10px'
-    el.style.right = '10px'
-    el.style.background = '#333'
-    el.style.color = '#fff'
-    el.style.padding = '5px 10px'
-    el.style.borderRadius = '4px'
-    document.body.appendChild(el)
+    el = document.createElement('div');
+    el.id = 'loading';
+    el.innerHTML = `
+      <div class="loading-overlay">
+        <div class="loading-box">
+          <div class="spinner"></div>
+          <p class="loading-text">${msg}</p>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(el);
+  } else {
+    el.querySelector('.loading-text').textContent = msg;
   }
-  el.textContent = msg
-  el.style.display = 'block'
+  el.style.display = 'block';
 }
 
 function hideLoading() {
-  const el = document.getElementById('loading')
-  if (el) el.style.display = 'none'
+  const el = document.getElementById('loading');
+  if (el) el.style.display = 'none';
 }
 
 function showError(msg) {
