@@ -12,7 +12,16 @@
   <script type="module" src="./js/main.js"></script>
 </head>
 <body>
-  <div class="container">
+  <!-- Tela de carregamento inicial -->
+  <div id="initial-loading">
+    <div class="loading-box">
+      <div class="spinner"></div>
+      <p>Iniciando sistema...</p>
+    </div>
+  </div>
+
+  <!-- resto do layout -->
+  <div class="container" style="display:none;">
     <aside class="sidebar">
 	  <button id="add-content-btn">+ Adicionar Conteúdo</button>
 	  <button id="export-json-btn" style="display: none">Exportar Dados</button>
