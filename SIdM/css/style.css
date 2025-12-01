@@ -21,8 +21,10 @@
 
 body {
   font-family: var(--font-main);
-  min-height: 100vh;
+  height: 100vh;
+  margin: 0;
   background-color: #e6edf4;
+  overflow: hidden; /* impede scroll no body */
 }
 
 /* Scrollbar WebKit */
@@ -105,7 +107,8 @@ body {
 .container {
   display: flex;
   width: 100%;
-  min-height: 100vh;
+  height: 100vh; /* ocupa toda a viewport */
+  overflow: hidden; /* impede scroll no container */
 }
 
 /* Sidebar (desktop) */
@@ -243,7 +246,9 @@ body {
   padding: 55px;
   position: relative;
   background-color: #e6edf4;
-  overflow: hidden;
+  overflow: hidden; /* impede scroll no content */
+  display: flex;
+  flex-direction: column;
 }
 
 /* Barra de busca */
@@ -299,6 +304,10 @@ body {
 /* Artigo e editor */
 #article-content,
 #content-body {
+  flex: 1; /* ocupa espaço disponível */
+  min-height: 0; /* necessário para flexbox não estourar */
+  overflow-y: auto; /* ativa scroll interno */
+  overflow-x: hidden;
   font-family: var(--font-main);
   font-size: var(--font-size-base);
   line-height: 1.6;
@@ -306,7 +315,6 @@ body {
   background-color: #fff;
   padding: 1.5rem;
   border-radius: 8px;
-  overflow-wrap: break-word;
 }
 
 #article-content {
