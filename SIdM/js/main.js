@@ -1275,19 +1275,13 @@ function toggleDebugMode(force) {
 
 // ------------------------ Init ------------------------
 window.addEventListener('DOMContentLoaded', async () => {
-  sessionHasSaved = false;
-
-  // 1. Mostra loading imediatamente
-  showLoading('Carregando conteúdo...');
+  const loadingEl = document.getElementById('initial-loading');
+  const containerEl = document.querySelector('.container');
 
   try {
-    // 2. Carrega dados do Supabase
     await carregarPostsDoBanco();
-
   } catch (e) {
     console.error('Erro ao carregar do Supabase, usando fallback local:', e);
-
-    // 4. Fallback para dados locais
     if (typeof window.dataPT !== 'undefined') {
       try {
         contentData = JSON.parse(JSON.stringify(window.dataPT));
@@ -1295,15 +1289,13 @@ window.addEventListener('DOMContentLoaded', async () => {
         contentData = window.dataPT || {};
       }
     }
-
     renderMenu();
     renderWelcome();
-    showError('Não foi possível carregar do Supabase. Exibindo conteúdo local.');
   } finally {
-    // 5. Esconde loading
-    hideLoading();
-
-    // 6. Inicializa botões
-    initButtons();
+    // Esconde loading e mostra conteúdo
+    if (loadingEl) loadingEl.style.display = 'none';
+    if (containerEl) containerEl.style.display = 'flex';
   }
+
+  initButtons();
 });
