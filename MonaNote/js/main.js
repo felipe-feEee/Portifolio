@@ -271,7 +271,7 @@ if (typeof window.__objectUrlMap === 'undefined') window.__objectUrlMap = {};
 
 document.addEventListener('DOMContentLoaded', async () => {
   // Opcional: estado de carregamento
-  showLoading('Carregando conteúdo...')
+  showLoading('Carregando postagens e imagens...')
 
   try {
     await carregarPostsDoBanco() // isso vai sobrescrever contentData e chamar renderMenu/renderWelcome
@@ -286,45 +286,54 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 })
 
-function showLoading(msg) {
-  let el = document.getElementById('loading')
+function showLoading(msg = 'Carregando conteúdo...') {
+  let el = document.getElementById('loading');
   if (!el) {
-    el = document.createElement('div')
-    el.id = 'loading'
-    el.style.position = 'fixed'
-    el.style.top = '10px'
-    el.style.right = '10px'
-    el.style.background = '#333'
-    el.style.color = '#fff'
-    el.style.padding = '5px 10px'
-    el.style.borderRadius = '4px'
-    document.body.appendChild(el)
+    el = document.createElement('div');
+    el.id = 'loading';
+    el.innerHTML = `
+      <div class="loading-overlay">
+        <div class="loading-box">
+          <div class="spinner"></div>
+          <p class="loading-text">${msg}</p>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(el);
+  } else {
+    el.querySelector('.loading-text').textContent = msg;
   }
-  el.textContent = msg
-  el.style.display = 'block'
+  el.style.display = 'block';
 }
 
 function hideLoading() {
-  const el = document.getElementById('loading')
-  if (el) el.style.display = 'none'
+  const el = document.getElementById('loading');
+  if (el) el.style.display = 'none';
 }
 
-function showError(msg) {
-  let el = document.getElementById('error')
+function showError(msg = 'Ocorreu um erro') {
+  let el = document.getElementById('error');
   if (!el) {
-    el = document.createElement('div')
-    el.id = 'error'
-    el.style.position = 'fixed'
-    el.style.bottom = '10px'
-    el.style.right = '10px'
-    el.style.background = '#c00'
-    el.style.color = '#fff'
-    el.style.padding = '5px 10px'
-    el.style.borderRadius = '4px'
-    document.body.appendChild(el)
+    el = document.createElement('div');
+    el.id = 'error';
+    el.innerHTML = `
+      <div class="error-overlay">
+        <div class="error-box">
+          <p class="error-text">${msg}</p>
+          <button class="error-close">Fechar</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(el);
+
+    // Botão de fechar
+    el.querySelector('.error-close').addEventListener('click', () => {
+      el.style.display = 'none';
+    });
+  } else {
+    el.querySelector('.error-text').textContent = msg;
   }
-  el.textContent = msg
-  el.style.display = 'block'
+  el.style.display = 'block';
 }
 
 
@@ -792,6 +801,29 @@ function renderMenu(openCategories = []) {
   menu.appendChild(ul);
 }
 
+function initButtons() {
+  // botão de adicionar conteúdo
+  const addBtn = document.getElementById('add-content-btn');
+  if (addBtn && !addBtn.getAttribute('onclick')) {
+    addBtn.addEventListener('click', () => openNewContentPanel({ forEdit: false }));
+  }
+
+  // botão de salvar conteúdo
+  const saveBtn = document.querySelector('#new-content-panel .save-button');
+  if (saveBtn && !saveBtn.getAttribute('onclick')) {
+    saveBtn.addEventListener('click', addNewContent);
+  }
+
+  // botão de fechar painel
+  const closeBtn = document.getElementById('close-panel-btn');
+  if (closeBtn) {
+    closeBtn.removeAttribute('onclick');
+    const newBtn = closeBtn.cloneNode(true);
+    closeBtn.parentNode.replaceChild(newBtn, closeBtn);
+    newBtn.addEventListener('click', () => closeNewContentPanel());
+  }
+}
+
 function loadArticle(categoria, id) {
   if (!contentData[categoria] || !contentData[categoria][id]) return;
 
@@ -1243,9 +1275,9 @@ function toggleDebugMode(force) {
 
 // ------------------------ Init ------------------------
 window.addEventListener('DOMContentLoaded', async () => {
-  sessionHasSaved = false;
+  const loadingEl = document.getElementById('initial-loading');
+  const containerEl = document.querySelector('.container');
 
-  // tenta carregar do Supabase
   try {
     await carregarPostsDoBanco();
   } catch (e) {
@@ -1259,26 +1291,11 @@ window.addEventListener('DOMContentLoaded', async () => {
     }
     renderMenu();
     renderWelcome();
+  } finally {
+    // Esconde loading e mostra conteúdo
+    if (loadingEl) loadingEl.style.display = 'none';
+    if (containerEl) containerEl.style.display = 'flex';
   }
 
-  // botão de adicionar conteúdo
-  const addBtn = document.getElementById('add-content-btn');
-  if (addBtn && !addBtn.getAttribute('onclick')) {
-    addBtn.addEventListener('click', () => openNewContentPanel({ forEdit: false }));
-  }
-
-  // botão de salvar conteúdo
-  const saveBtn = document.querySelector('#new-content-panel .save-button');
-  if (saveBtn && !saveBtn.getAttribute('onclick')) {
-    saveBtn.addEventListener('click', addNewContent);
-  }
-
-  // botão de fechar painel
-  const closeBtn = document.getElementById('close-panel-btn');
-  if (closeBtn) {
-    closeBtn.removeAttribute('onclick');
-    const newBtn = closeBtn.cloneNode(true);
-    closeBtn.parentNode.replaceChild(newBtn, closeBtn);
-    newBtn.addEventListener('click', () => closeNewContentPanel());
-  }
+  initButtons();
 });
