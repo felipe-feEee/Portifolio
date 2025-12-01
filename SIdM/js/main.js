@@ -311,22 +311,29 @@ function hideLoading() {
   if (el) el.style.display = 'none';
 }
 
-function showError(msg) {
-  let el = document.getElementById('error')
+function showError(msg = 'Ocorreu um erro') {
+  let el = document.getElementById('error');
   if (!el) {
-    el = document.createElement('div')
-    el.id = 'error'
-    el.style.position = 'fixed'
-    el.style.bottom = '10px'
-    el.style.right = '10px'
-    el.style.background = '#c00'
-    el.style.color = '#fff'
-    el.style.padding = '5px 10px'
-    el.style.borderRadius = '4px'
-    document.body.appendChild(el)
+    el = document.createElement('div');
+    el.id = 'error';
+    el.innerHTML = `
+      <div class="error-overlay">
+        <div class="error-box">
+          <p class="error-text">${msg}</p>
+          <button class="error-close">Fechar</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(el);
+
+    // Botão de fechar
+    el.querySelector('.error-close').addEventListener('click', () => {
+      el.style.display = 'none';
+    });
+  } else {
+    el.querySelector('.error-text').textContent = msg;
   }
-  el.textContent = msg
-  el.style.display = 'block'
+  el.style.display = 'block';
 }
 
 
