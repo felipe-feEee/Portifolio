@@ -167,201 +167,97 @@ function createMissingImageMessage() {
 // -----------------------------
 async function handlePaste(e) {
   try {
-    e.preventDefault()
+    e.preventDefault();
 
-    const contentBody = document.getElementById('content-body') || document.querySelector('.content-body')
-    if (!contentBody) return console.warn('Editor não encontrado: #content-body')
+    const contentBody = document.getElementById('content-body') || document.querySelector('.content-body');
+    if (!contentBody) return console.warn('Editor não encontrado: #content-body');
 
-    const target = e.target || document.activeElement
-    const isTargetContentBody = contentBody && (target === contentBody || contentBody.contains(target))
+    const target = e.target || document.activeElement;
+    const isTargetContentBody = contentBody && (target === contentBody || contentBody.contains(target));
 
-    // Se o destino NÃO for o editor content-body, trate apenas como texto em inputs/textarea e saia.
+    // Fora do editor → apenas texto simples
     if (!isTargetContentBody) {
-      // Se for textarea/input, insere texto simples no cursor
       if (target && (target.tagName === 'TEXTAREA' || target.tagName === 'INPUT')) {
-        try {
-          const plain = e.clipboardData.getData('text/plain') || ''
-          const el = target
-          const start = typeof el.selectionStart === 'number' ? el.selectionStart : el.value.length
-          const end = typeof el.selectionEnd === 'number' ? el.selectionEnd : el.value.length
-          el.value = el.value.slice(0, start) + plain + el.value.slice(end)
-          el.selectionStart = el.selectionEnd = start + plain.length
-          el.dispatchEvent(new Event('input', { bubbles: true }))
-        } catch (err) {
-          console.warn('Erro ao inserir texto no input/textarea:', err)
-        }
+        const plain = e.clipboardData.getData('text/plain') || '';
+        const el = target;
+        const start = typeof el.selectionStart === 'number' ? el.selectionStart : el.value.length;
+        const end = typeof el.selectionEnd === 'number' ? el.selectionEnd : el.value.length;
+        el.value = el.value.slice(0, start) + plain + el.value.slice(end);
+        el.selectionStart = el.selectionEnd = start + plain.length;
+        el.dispatchEvent(new Event('input', { bubbles: true }));
       }
-      // Não processamos HTML/imagens fora do content-body
-      return
+      return;
     }
 
-    // A partir daqui, sabemos que o destino é o editor content-body — processamos imagens/HTML normalmente
-    const items = Array.from(e.clipboardData?.items || [])
-    const types = Array.from(e.clipboardData?.types || [])
+    const items = Array.from(e.clipboardData?.items || []);
+    const types = Array.from(e.clipboardData?.types || []);
 
-    // 1) arquivos de imagem diretos no clipboard (printscreen, arquivo)
-    const imageItems = items.filter(i => i.type && i.type.startsWith('image/'))
+    // 1) Imagens diretas
+    const imageItems = items.filter(i => i.type && i.type.startsWith('image/'));
     if (imageItems.length > 0) {
       for (const it of imageItems) {
-        const file = it.getAsFile()
-        if (!file) continue
-        console.log('📦 Blobs capturados do clipboard:', file)
-        const publicUrl = await uploadToSupabase(file)
+        const file = it.getAsFile();
+        if (!file) continue;
+        const publicUrl = await uploadToSupabase(file);
         if (publicUrl) {
-          const img = document.createElement('img')
-          img.src = publicUrl
-          img.alt = file.name || 'pasted-image'
-          img.style.maxWidth = '100%'
-          insertNodeAtCursor(img)
+          const img = document.createElement('img');
+          img.src = publicUrl;
+          img.style.maxWidth = '100%';
+          insertNodeAtCursor(img);
         }
       }
-      return
+      return;
     }
 
-    // 2) HTML colado (ex.: Word) — somente para content-body
+    // 2) HTML colado
     if (types.includes('text/html')) {
-      const html = e.clipboardData.getData('text/html')
-      const temp = document.createElement('div')
-      temp.innerHTML = html
-
-      const imgs = Array.from(temp.querySelectorAll('img'))
-      if (imgs.length === 0) {
-        const plain = e.clipboardData.getData('text/plain') || temp.textContent || ''
-        const p = document.createElement('p')
-        p.textContent = plain
-        insertNodeAtCursor(p)
-        return
-      }
-
-      // tenta recuperar blobs do evento (quando presentes)
-      let availableFiles = items
-        .filter(i => i.kind === 'file' && i.type && i.type.startsWith('image/'))
-        .map(i => i.getAsFile())
-        .filter(Boolean)
-
-      console.log('📦 Blobs capturados do clipboard (evento):', availableFiles)
-
-      // se não houver blobs, tenta navigator.clipboard.read() (requer foco/permissão)
-      if (availableFiles.length === 0) {
-        const readFiles = await tryClipboardReadForImages()
-        if (readFiles.length > 0) {
-          availableFiles = availableFiles.concat(readFiles)
-          console.log('📦 Blobs capturados via navigator.clipboard.read():', readFiles)
-        }
-      }
-
-      // se ainda não houver blobs, tenta extrair do RTF
-      if (availableFiles.length === 0) {
-        const rtf = e.clipboardData.getData('text/rtf')
-        const rtfFiles = extractImagesFromRtf(rtf)
-        if (rtfFiles.length > 0) {
-          availableFiles = availableFiles.concat(rtfFiles)
-          console.log('📦 Blobs extraídos do RTF:', rtfFiles)
-        }
-      }
-
-      // se ainda não houver blobs, tenta extrair data: URIs do HTML
-      if (availableFiles.length === 0) {
-        const dataUrlFiles = extractDataUrlsFromHtml(html)
-        if (dataUrlFiles.length > 0) {
-          availableFiles = availableFiles.concat(dataUrlFiles.map(d => d.file))
-          console.log('📦 Blobs extraídos de data: URIs no HTML:', dataUrlFiles)
-        }
-      }
-
-      // cria mapa por nome para tentativa de match
-      const fileMapByName = {}
-      for (const f of availableFiles) {
-        const n = (f.name || '').toLowerCase()
-        if (!fileMapByName[n]) fileMapByName[n] = []
-        fileMapByName[n].push(f)
-      }
-
-      function pickFileForSrc(src) {
-        if (!src) return null
-        if (src.startsWith('data:')) {
-          const filename = `paste-inline-${Date.now()}.png`
-          return dataURLtoFile(src, filename)
-        }
-        const base = basename(src).toLowerCase()
-        if (base && fileMapByName[base] && fileMapByName[base].length > 0) {
-          return fileMapByName[base].shift()
-        }
-        for (const key of Object.keys(fileMapByName)) {
-          if (key.includes(base) && fileMapByName[key].length > 0) {
-            return fileMapByName[key].shift()
-          }
-        }
-        for (const key of Object.keys(fileMapByName)) {
-          if (fileMapByName[key].length > 0) {
-            return fileMapByName[key].shift()
-          }
-        }
-        return null
-      }
-
-      // evita que o navegador tente carregar file:// — guarda src original e remove src
-      for (const img of imgs) {
-        const src = img.getAttribute('src') || ''
-        if (src.startsWith('file:') || src.startsWith('C:\\') || src.includes('msohtmlclip')) {
-          img.setAttribute('data-local-src', src)
-          img.removeAttribute('src')
-        }
-      }
-
-      // processa cada imagem: upload automático quando possível; caso contrário, insere mensagem simples
-      for (const img of imgs) {
-        const originalSrc = img.getAttribute('data-local-src') || img.getAttribute('src') || ''
-        const fileToUpload = pickFileForSrc(originalSrc)
-
-        if (fileToUpload) {
-          try {
-            const publicUrl = await uploadToSupabase(fileToUpload)
-            if (publicUrl) {
-              img.src = publicUrl
-              img.style.maxWidth = '100%'
-              img.removeAttribute('data-local-src')
-            } else {
-              console.error('Falha ao enviar imagem para Supabase:', originalSrc)
-              const msg = createMissingImageMessage()
-              img.replaceWith(msg)
-            }
-          } catch (err) {
-            console.error('Erro upload imagem:', err)
-            const msg = createMissingImageMessage()
-            img.replaceWith(msg)
-          }
-        } else {
-          console.warn('Imagem referenciada localmente mas nenhum blob correspondente no clipboard:', originalSrc)
-          const msg = createMissingImageMessage()
-          img.replaceWith(msg)
-        }
-      }
-
-      // Insere o HTML processado no editor (filhos de temp)
-      while (temp.firstChild) {
-        insertNodeAtCursor(temp.firstChild)
-      }
-
-      console.info('Se houver mensagens indicando imagens faltantes, cole apenas a imagem (sem texto) para inseri-la automaticamente.')
-      return
+      const html = e.clipboardData.getData('text/html');
+      cleanWordHtmlAndInsert(html); // sanitiza e insere
+      return;
     }
 
-    // 3) fallback: texto simples (somente content-body chega aqui)
-    const plain = e.clipboardData.getData('text/plain')
+    // 3) Texto simples
+    const plain = e.clipboardData.getData('text/plain');
     if (plain) {
-      const p = document.createElement('p')
-      p.textContent = plain
-      insertNodeAtCursor(p)
+      const p = document.createElement('p');
+      p.textContent = plain;
+      insertNodeAtCursor(p);
     }
   } catch (err) {
-    console.error('Erro no handlePaste:', err)
+    console.error('Erro no handlePaste:', err);
   }
 }
 
 // registra listener (remove duplicatas anteriores)
 document.removeEventListener('paste', handlePaste)
 document.addEventListener('paste', handlePaste)
+
+const editor = document.getElementById('content-body');
+
+editor.addEventListener('dragover', e => {
+  e.preventDefault(); // necessário para permitir drop
+});
+
+editor.addEventListener('drop', async e => {
+  e.preventDefault();
+  const files = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/'));
+
+  for (const file of files) {
+    try {
+      const publicUrl = await uploadToSupabase(file);
+      if (publicUrl) {
+        const img = document.createElement('img');
+        img.src = publicUrl;
+        img.style.maxWidth = '100%';
+        insertNodeAtCursor(img);
+      }
+    } catch (err) {
+      console.error('Erro ao enviar imagem via drag&drop:', err);
+      const msg = createMissingImageMessage();
+      insertNodeAtCursor(msg);
+    }
+  }
+});
 
 // ------------------------ Estado global ------------------------
 let contentData = {};
@@ -449,45 +345,57 @@ function cleanWordHtmlAndInsert(rawHtml) {
     const parser = new DOMParser();
     const doc = parser.parseFromString(rawHtml, 'text/html');
 
-    // 🔥 Remove elementos indesejados
-    const tagsToRemove = ['meta', 'link', 'style', 'script', 'xml'];
-    tagsToRemove.forEach(tag => {
-      doc.querySelectorAll(tag).forEach(el => el.remove());
-    });
+    // Whitelist de tags permitidas
+    const allowedTags = [
+      'p','br','b','strong','i','em','u',
+      'ul','ol','li',
+      'h1','h2','h3','h4','h5','h6',
+      'table','thead','tbody','tfoot','tr','td','th',
+      'a','img'
+    ];
 
-    // 🔥 Remove namespaces do Word (w:, o:, v:)
-    Array.from(doc.querySelectorAll('*')).forEach(el => {
-      if (/^(w:|o:|v:)/.test(el.tagName.toLowerCase())) el.remove();
-    });
-
-    // 🔥 Remove comentários
+    // Remove comentários
     const walker = document.createTreeWalker(doc.body, NodeFilter.SHOW_COMMENT, null, false);
     const comments = [];
     while (walker.nextNode()) comments.push(walker.currentNode);
     comments.forEach(c => c.parentNode?.removeChild(c));
 
-    // 🔥 Remove atributos inúteis
-    Array.from(doc.querySelectorAll('*')).forEach(el => {
-      [...el.attributes].forEach(attr => {
-        if (/^(class|style|lang|data-|mso|xmlns)/i.test(attr.name)) el.removeAttribute(attr.name);
-      });
-    });
-
-    // ✅ Mantém apenas texto, listas e imagens
-    const allowedTags = ['p', 'div', 'span', 'img', 'ul', 'ol', 'li', 'br', 'strong', 'em', 'b', 'i'];
+    // Remove tags não permitidas (exceto div.missing-image-message)
     Array.from(doc.body.querySelectorAll('*')).forEach(el => {
-      if (!allowedTags.includes(el.tagName.toLowerCase())) {
-        const replacement = document.createElement('div');
-        replacement.innerHTML = el.innerHTML;
-        el.replaceWith(...replacement.childNodes);
+      const tag = el.tagName.toLowerCase();
+      if (!allowedTags.includes(tag)) {
+        if (!(tag === 'div' && el.classList.contains('missing-image-message'))) {
+          const replacement = document.createElement('div');
+          replacement.innerHTML = el.innerHTML;
+          el.replaceWith(...replacement.childNodes);
+        }
+      } else {
+        sanitizeAttributes(el);
       }
     });
 
-    // ✅ Insere conteúdo limpo no ponto do cursor
+    // Insere conteúdo limpo no ponto do cursor
     insertHtmlAtCaret(doc.body.innerHTML);
 
   } catch (e) {
     console.warn('Erro ao limpar HTML colado:', e);
+  }
+}
+
+function sanitizeAttributes(el) {
+  const tag = el.tagName.toLowerCase();
+  [...el.attributes].forEach(attr => {
+    const name = attr.name.toLowerCase();
+    if (tag === 'img') {
+      if (name !== 'src') el.removeAttribute(attr.name);
+    } else if (tag === 'a') {
+      if (name !== 'href') el.removeAttribute(attr.name);
+    } else {
+      el.removeAttribute(attr.name);
+    }
+  });
+  if (tag === 'a') {
+    el.setAttribute('target', '_blank');
   }
 }
 
@@ -575,100 +483,87 @@ function extractFilenameFromPath(path) {
 
 // ------------------------ Save flow (integrado) ------------------------
 async function addNewContent() {
-  const titleEl = document.getElementById('content-title')
-  const contentEl = document.getElementById('content-body')
-  const selectEl = document.getElementById('category-select')
-  const newCatEl = document.getElementById('new-category')
+  const titleEl = document.getElementById('content-title');
+  const contentEl = document.getElementById('content-body');
+  const selectEl = document.getElementById('category-select');
+  const newCatEl = document.getElementById('new-category');
 
   if (!titleEl || !contentEl || !selectEl || !newCatEl) {
-    console.error('Campos do formulário não encontrados')
-    return
+    console.error('Campos do formulário não encontrados');
+    return;
   }
 
-  const title = titleEl.value.trim()
-  const content = contentEl.innerHTML.trim()
+  const title = titleEl.value.trim();
+  let content = contentEl.innerHTML.trim();
 
-  const selectedValue = (selectEl.value || '').trim()
-  const newCategoryValue = (newCatEl.value || '').trim()
-  const isNewCategory = selectedValue === '' // "-- Nova Categoria --" com value=""
+  const selectedValue = (selectEl.value || '').trim();
+  const newCategoryValue = (newCatEl.value || '').trim();
+  const isNewCategory = selectedValue === '';
 
-  const categoriaFinal = isNewCategory ? (newCategoryValue || 'geral') : selectedValue
+  const categoriaFinal = isNewCategory ? (newCategoryValue || 'geral') : selectedValue;
 
   if (!title || !content) {
-    alert('Título e conteúdo são obrigatórios!')
-    return
+    alert('Título e conteúdo são obrigatórios!');
+    return;
   }
   if (isNewCategory && !newCategoryValue) {
-    alert('Informe o nome da nova categoria ou escolha uma existente.')
-    return
+    alert('Informe o nome da nova categoria ou escolha uma existente.');
+    return;
   }
 
-  const processedHtml = content
+  // Sanitiza antes de salvar
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(content, 'text/html');
+  cleanWordHtmlAndInsert(doc.body.innerHTML);
+  const processedHtml = document.getElementById('content-body').innerHTML.trim();
 
-  // Upload de imagens coladas (se houver)
-  let imageUrl = null
+  // Upload de imagem colada (se houver)
+  let imageUrl = null;
   if (typeof tempImages !== 'undefined' && Array.isArray(tempImages) && tempImages.length > 0) {
-    const img = tempImages[0]
-    const fileName = `${Date.now()}-${sanitizeFilename(img.name || 'image')}`
+    const img = tempImages[0];
+    const fileName = `${Date.now()}-${sanitizeFilename(img.name || 'image')}`;
     const { error: uploadError } = await window.supabase.storage
       .from('images')
-      .upload(fileName, img.blob)
+      .upload(fileName, img.blob);
 
-    if (uploadError) {
-      console.error('Erro ao subir imagem:', uploadError)
-    } else {
-      const { data: pub } = window.supabase.storage
-        .from('images')
-        .getPublicUrl(fileName)
-      imageUrl = pub?.publicUrl || null
+    if (!uploadError) {
+      const { data: pub } = window.supabase.storage.from('images').getPublicUrl(fileName);
+      imageUrl = pub?.publicUrl || null;
     }
   }
 
-  // Monta payload (não sobrescreve image_url quando não há nova imagem)
-  const payload = {
-    title,
-    content: processedHtml,
-    categoria: categoriaFinal
-  }
-  if (imageUrl) payload.image_url = imageUrl
+  const payload = { title, content: processedHtml, categoria: categoriaFinal };
+  if (imageUrl) payload.image_url = imageUrl;
 
-  const isEditing = !!window.editingPostId
-  let error
+  const isEditing = !!window.editingPostId;
+  let error;
 
   if (isEditing) {
-    const resp = await window.supabase
-      .from('posts')
-      .update(payload)
-      .eq('id', window.editingPostId)
-    error = resp.error
+    const resp = await window.supabase.from('posts').update(payload).eq('id', window.editingPostId);
+    error = resp.error;
   } else {
-    const resp = await window.supabase
-      .from('posts')
-      .insert(payload)
-    error = resp.error
+    const resp = await window.supabase.from('posts').insert(payload);
+    error = resp.error;
   }
 
   if (error) {
-    console.error('Erro ao salvar no Supabase:', error)
-    alert('Erro ao salvar conteúdo.')
-    return
+    console.error('Erro ao salvar no Supabase:', error);
+    alert('Erro ao salvar conteúdo.');
+    return;
   }
 
-  await carregarPostsDoBanco()
+  await carregarPostsDoBanco();
 
-  // Limpa formulário e estado de edição
-  titleEl.value = ''
-  contentEl.innerHTML = ''
-  selectEl.value = ''          // volta para "-- Nova Categoria --"
-  newCatEl.value = ''
-  if (typeof tempImages !== 'undefined') tempImages = []
-  const wasEditing = isEditing
-  window.editingPostId = null  // sai do modo edição
+  // Limpa formulário
+  titleEl.value = '';
+  contentEl.innerHTML = '';
+  selectEl.value = '';
+  newCatEl.value = '';
+  if (typeof tempImages !== 'undefined') tempImages = [];
+  window.editingPostId = null;
 
-  alert(wasEditing ? 'Conteúdo atualizado com sucesso!' : 'Conteúdo salvo com sucesso!')
-
-  // Fecha o painel após salvar
-  closeNewContentPanel()
+  alert(isEditing ? 'Conteúdo atualizado com sucesso!' : 'Conteúdo salvo com sucesso!');
+  closeNewContentPanel();
 }
 
 //onclick do HTML
@@ -1192,10 +1087,35 @@ function execCmd(command, value = null) {
 
   switch (command) {
     case 'insertImage': {
-      const url = prompt('URL da imagem:')
-      if (url) document.execCommand('insertImage', false, url)
-      break
-    }
+	  const input = document.createElement('input');
+	  input.type = 'file';
+	  input.accept = 'image/*';
+	  input.style.display = 'none';
+	
+	  input.addEventListener('change', async () => {
+	    const file = input.files[0];
+	    if (!file) return;
+	
+	    try {
+	      const publicUrl = await uploadToSupabase(file);
+	      if (publicUrl) {
+	        const img = document.createElement('img');
+	        img.src = publicUrl;
+	        img.style.maxWidth = '100%';
+	        insertNodeAtCursor(img);
+	      }
+	    } catch (err) {
+	      console.error('Erro ao enviar imagem:', err);
+	      const msg = createMissingImageMessage();
+	      insertNodeAtCursor(msg);
+	    }
+	  });
+	
+	  document.body.appendChild(input);
+	  input.click();
+	  document.body.removeChild(input);
+	  break;
+	}
     case 'createLink': {
       const url = prompt('URL do link:')
       if (url) document.execCommand('createLink', false, url)
