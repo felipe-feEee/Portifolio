@@ -953,4 +953,11 @@ window.addEventListener('DOMContentLoaded', async () => {
   // Botão adicionar
   const addBtn = document.getElementById('add-content-btn');
   if (addBtn) addBtn.addEventListener('click', () => renderEditorUI({ mode: 'add' }));
+
+// garante que o sidebar/hamburger sejam configurados uma vez
+  setupSidebarAutoClose();
+
+  // Se você tem um elemento de loading, esconda-o aqui quando tudo estiver pronto:
+  const loadingEl = document.getElementById('initial-loading');
+  if (loadingEl) loadingEl.style.display = 'none';
 });
