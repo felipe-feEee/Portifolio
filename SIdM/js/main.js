@@ -338,29 +338,36 @@ const allowedTags = [
 // Substitua a função sanitizeAttributes existente por esta versão
 function sanitizeAttributes(el) {
   const tag = el.tagName.toLowerCase();
-  [...el.attributes].forEach(attr => {
+  // iterar com for...of para permitir continue/skip corretamente
+  for (const attr of Array.from(el.attributes)) {
     const name = attr.name.toLowerCase();
-    // img: mantém apenas src, alt, width, height
+
     if (tag === 'img') {
-      if (!['src','alt','width','height'].includes(name)) el.removeAttribute(attr.name);
+      // permite apenas atributos seguros para imagens
+      if (!['src', 'alt', 'width', 'height'].includes(name)) {
+        el.removeAttribute(attr.name);
+      }
       continue;
     }
-    // a: mantém href, target, rel e data-*/aria-*
+
     if (tag === 'a') {
+      // permite href, target, rel, data-* e aria-*
       if (name === 'href' || name === 'target' || name === 'rel' || name.startsWith('data-') || name.startsWith('aria-')) {
-        // ok
+        // preserva
       } else {
         el.removeAttribute(attr.name);
       }
       continue;
     }
-    // para outras tags: permite class, data-*, aria-*
+
+    // para outras tags: preserva class, data-* e aria-*; remove o resto
     if (name === 'class' || name.startsWith('data-') || name.startsWith('aria-')) {
       // preserva
     } else {
       el.removeAttribute(attr.name);
     }
-  });
+  }
+
   if (tag === 'a') el.setAttribute('target', '_blank');
 }
 
