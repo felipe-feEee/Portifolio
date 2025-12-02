@@ -530,3 +530,48 @@ button:focus, a:focus, input:focus{outline:3px solid rgba(255,102,102,0.18);outl
 /* ========== Small helpers for JS toggles ========== */
 /* When sidebar is open on mobile, add a class to body to prevent background scroll */
 body.sidebar-open{overflow:hidden}
+
+/* Mensagem amigável para imagens faltantes (sem botão) */
+.missing-image-message {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.45rem 0.6rem;
+  border-radius: 8px;
+  background: #fff8f0;
+  color: #6b4a2a;
+  border: 1px solid rgba(107,74,42,0.12);
+  font-size: 0.95rem;
+  font-style: italic;
+  line-height: 1.2;
+  max-width: 100%;
+  box-shadow: 0 2px 6px rgba(11,26,43,0.04);
+}
+
+/* Ícone decorativo antes do texto */
+.missing-image-message::before {
+  content: "⚠️";
+  display: inline-block;
+  font-size: 1.05rem;
+  line-height: 1;
+  margin-left: 0.1rem;
+  opacity: 0.95;
+}
+
+/* Variante de erro mais visível (opcional) */
+.missing-image-message.error {
+  background: #fff1f0;
+  color: #8a1f1f;
+  border-color: rgba(138,31,31,0.12);
+}
+.missing-image-message.error::before { content: "❗"; }
+
+/* Responsividade: ocupa largura do editor em telas pequenas */
+@media (max-width: 480px) {
+  .missing-image-message {
+    display: block;
+    width: calc(100% - 1rem);
+    padding: 0.5rem;
+  }
+}
+
