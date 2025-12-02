@@ -926,6 +926,9 @@ function loadArticle(categoria, id) {
   const container = document.getElementById('article-content');
   if (!container) return;
 
+  // após renderizar:
+  setActiveArticle(id);
+
   container.innerHTML = `
     <h1 id="article-title">${artigo.titulo}</h1>
     <button id="edit-article-link" data-categoria="${categoria}" data-id="${id}" data-post-id="${artigo.postId}">Editar</button>
@@ -951,8 +954,6 @@ function loadArticle(categoria, id) {
     });
   }
   closeSidebarIfMobile();
-  // após renderizar:
-  setActiveArticle(id);
 }
 
 /* ============================
