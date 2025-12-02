@@ -407,6 +407,29 @@ function insertHtmlAtCaret(html) {
 
 /* ---------- Helpers de imagem e paste (importados do MonaNote) ---------- */
 
+function extractDataUrlsFromHtml(html) {
+  const dataFiles = [];
+  const dataRegex = /src=["'](data:[^"']+)["']/ig;
+  let m;
+  while ((m = dataRegex.exec(html)) !== null) {
+    const dataurl = m[1];
+    try {
+      const arr = dataurl.split(',');
+      const mime = arr[0].match(/:(.*?);/)[1];
+      const bstr = atob(arr[1]);
+      let n = bstr.length;
+      const u8arr = new Uint8Array(n);
+      while (n--) u8arr[n] = bstr.charCodeAt(n);
+      const ext = mime.split('/')[1] || 'png';
+      const file = new File([u8arr], `inline-${Date.now()}.${ext}`, { type: mime });
+      dataFiles.push({ file, dataurl });
+    } catch (err) {
+      console.warn('Falha ao converter data: url', err);
+    }
+  }
+  return dataFiles;
+}
+
 function dataURLtoFile(dataurl, filename) {
   const arr = dataurl.split(',');
   const mime = arr[0].match(/:(.*?);/)[1];
@@ -482,29 +505,6 @@ async function tryClipboardReadForImages() {
     console.warn('clipboard.read() indisponível ou sem permissão:', err);
     return [];
   }
-}
-
-function extractDataUrlsFromHtml(html) {
-  const dataFiles = [];
-  const dataRegex = /src=["'](data:[^"']+)["']/ig;
-  let m;
-  while ((m = dataRegex.exec(html)) !== null) {
-    const dataurl = m[1];
-    try {
-      const arr = dataurl.split(',');
-      const mime = arr[0].match(/:(.*?);/)[1];
-      const bstr = atob(arr[1]);
-      let n = bstr.length;
-      const u8arr = new Uint8Array(n);
-      while (n--) u8arr[n] = bstr.charCodeAt(n);
-      const ext = mime.split('/')[1] || 'png';
-      const file = new File([u8arr], `inline-${Date.now()}.${ext}`, { type: mime });
-      dataFiles.push({ file, dataurl });
-    } catch (err) {
-      console.warn('Falha ao converter data: url', err);
-    }
-  }
-  return dataFiles;
 }
 
 function createMissingImageMessage() {
@@ -602,10 +602,6 @@ async function handlePaste(e) {
   }
 }
 
-/* Instala listeners de paste/drag apenas uma vez */
-document.removeEventListener('paste', handlePaste);
-document.addEventListener('paste', handlePaste);
-
 // Chame attachDragDropHandlers() sempre que o editor for renderizado (ex: no final de renderEditorUI)
 function attachDragDropHandlers() {
   const editor = document.getElementById('content-body');
@@ -645,6 +641,10 @@ function attachDragDropHandlers() {
 
   function onEditorDragOver(e) { e.preventDefault(); }
 }
+
+/* Instala listeners de paste/drag apenas uma vez */
+document.removeEventListener('paste', handlePaste);
+document.addEventListener('paste', handlePaste);
 
 /* ============================
    Toolbar (execCommand + insertImage)
