@@ -578,15 +578,28 @@ async function handlePaste(e) {
     const html = clipboard.getData('text/html') || '';
     const plain = clipboard.getData('text/plain') || '';
 
-    // se não houver HTML, insere texto simples e retorna
+    // se não houver HTML, insere texto simples no ponto da seleção/cursor
     if (!html) {
       if (plain) {
-        const p = document.createElement('p');
-        p.textContent = plain;
-        contentBody.appendChild(p);
+        const sel = window.getSelection();
+        if (sel && sel.rangeCount > 0) {
+          const range = sel.getRangeAt(0);
+          // converte quebras de linha em <br> para preservar formato
+          const safeText = plain.replace(/\n/g, '<br>');
+          const fragToInsert = range.createContextualFragment(safeText);
+          range.deleteContents();
+          range.insertNode(fragToInsert);
+          sel.collapse(range.endContainer, range.endOffset);
+        } else {
+          // fallback: se não houver seleção, insere no fim
+          const p = document.createElement('p');
+          p.textContent = plain;
+          contentBody.appendChild(p);
+        }
       }
       return;
     }
+
 
     // parse HTML em fragmento (clona para não alterar original)
     const parser = new DOMParser();
@@ -645,23 +658,19 @@ async function handlePaste(e) {
     }
 
     // 2) serializa o fragmento, sanitiza
-const tmp = document.createElement('div');
-tmp.appendChild(frag);
-const sanitized = (typeof sanitizeHtml === 'function') ? sanitizeHtml(tmp.innerHTML || '') : tmp.innerHTML;
+    const tmp = document.createElement('div');
+    tmp.appendChild(frag);
+    const sanitized = (typeof sanitizeHtml === 'function') ? sanitizeHtml(tmp.innerHTML || '') : tmp.innerHTML;
 
   // insere no ponto atual da seleção/cursor
   const sel = window.getSelection();
   if (sel && sel.rangeCount > 0) {
     const range = sel.getRangeAt(0);
-    // cria fragmento DOM a partir do HTML sanitizado
     const fragToInsert = range.createContextualFragment(sanitized);
-    range.deleteContents(); // remove seleção atual
+    range.deleteContents(); // remove seleção atual (se houver)
     range.insertNode(fragToInsert);
-    // reposiciona o cursor após o conteúdo inserido
+    // reposiciona o cursor logo após o conteúdo inserido
     sel.collapse(range.endContainer, range.endOffset);
-  } else {
-    // fallback: se não houver seleção, insere no fim
-    contentBody.insertAdjacentHTML('beforeend', sanitized);
   }
   } catch (err) {
     console.error('Erro no handlePaste:', err);
@@ -1187,7 +1196,7 @@ async function saveNewContent() {
     ) || Object.keys(contentData[catKey]).pop();
 
     loadArticle(catKey, newKey);
-    alert('Conteúdo adicionado com sucesso!');
+    //alert('Conteúdo adicionado com sucesso!');
   } catch (e) {
     console.error('Erro ao adicionar:', e);
     alert('Erro ao adicionar conteúdo.');
