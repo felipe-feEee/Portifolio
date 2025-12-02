@@ -260,17 +260,19 @@ body {
 .search-header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: center;
   gap: 0.5rem;
   padding: 0.5rem 1rem;
   background-color: var(--color-light);
   z-index: 10;
+  position: relative;
+  margin-bottom: 1rem;
 }
 
 .search-bar {
   flex: 1;
-  width: 60%;
-  max-width: 500px;
+  width: 100%;
+  max-width: 700px;
   padding: 0.6rem 1rem;
   border: 1px solid var(--color-primary);
   border-radius: 14px;
@@ -278,6 +280,7 @@ body {
   font-size: 1rem;
   outline: none;
   transition: box-shadow 0.25s ease;
+  margin: 0 auto;
 }
 .search-bar:focus {
   box-shadow: 0 0 8px rgba(0, 123, 255, 0.5);
@@ -285,16 +288,14 @@ body {
 
 .search-suggestions {
   position: absolute;
-  top: 100%;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 60%;
-  max-width: 500px;
+  top: calc(100% + 4px);
+  left: 0;
+  width: 100%;
+  max-width: 700px;
   background-color: #fff;
   border: 1px solid #ccc;
   border-radius: 8px;
   box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-  margin-top: 0.5rem;
   z-index: 20;
   list-style: none;
   padding-left: 0;
@@ -304,7 +305,6 @@ body {
   padding: 0.6rem 1rem;
   cursor: pointer;
   border-bottom: 1px solid #eee;
-  list-style: none;
 }
 .search-suggestions li:hover {
   background-color: var(--color-light);
