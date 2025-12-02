@@ -19,11 +19,6 @@
       <p>Iniciando sistema...</p>
     </div>
   </div>
-  <button class="hamburger" id="hamburger-btn">
-	  <span></span>
-	  <span></span>
-	  <span></span>
-  </button>
 
   <!-- resto do layout -->
   <div class="container" style="display:none;">
@@ -33,10 +28,18 @@
       <nav id="menu"></nav>
 
     </aside>
+	  
 	<main class="content">
-	  <div class="search-bar-container">
-		<input type="text" id="search-input" class="search-bar" placeholder="Buscar conteúdo...">
-		<ul id="search-suggestions" class="search-suggestions" style="display: none;"></ul>
+	  <div class="top-bar-wrapper">
+		  <button class="hamburger" id="hamburger-btn">
+			  <span></span>
+			  <span></span>
+			  <span></span>
+		  </button>
+		  <div class="search-bar-container">
+			<input type="text" id="search-input" class="search-bar" placeholder="Buscar conteúdo...">
+			<ul id="search-suggestions" class="search-suggestions" style="display: none;"></ul>
+		  </div>
 	  </div>
 
 	  <article id="article-content">
