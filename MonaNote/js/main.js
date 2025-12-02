@@ -1,184 +1,563 @@
-// main.js — versão mesclada e final (sem suporte a idiomas)
-// Integra: processamento de imagens, UI, busca, painel, export
-import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm'
+// main.js — versão unificada e compatível com tabela "posts" e bucket "images"
 
-const supabaseUrl = 'https://pwshckrmqaqymngbosgo.supabase.co'
-const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB3c2hja3JtcWFxeW1uZ2Jvc2dvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQzNjAwOTEsImV4cCI6MjA3OTkzNjA5MX0.f8iX0RoqrdxJmq-EgSyn_YWPgCHMoARQTT4ygtbcoLg'
-window.supabase = createClient(supabaseUrl, supabaseKey)
+// ---------- Sidebar / Hamburger (inicialização única) ----------
+let _sidebarAutoCloseInitialized = false;
 
-// -----------------------------
-// Upload helper (Supabase)
-// -----------------------------
-async function uploadToSupabase(file) {
-  const fileName = `paste-${Date.now()}-${file.name}`
-  const { data, error } = await supabase.storage
-    .from('monanoteimages')
-    .upload(fileName, file)
-
-  if (error) {
-    console.error('Erro ao enviar para Supabase:', error)
-    // mostra mensagem amigável no editor (não bloqueante)
-    const editor = document.getElementById('content-body')
-    if (editor) {
-      const warn = document.createElement('div')
-      warn.style.color = '#b33'
-      warn.style.fontSize = '0.9rem'
-      warn.style.margin = '0.25rem 0'
-      warn.textContent = 'Falha ao enviar imagem: verifique permissões do bucket (Storage RLS).'
-      editor.appendChild(warn)
-    }
-    return ''
+function closeSidebarIfMobile() {
+  const sidebar = document.querySelector('.sidebar');
+  const hamburger = document.getElementById('hamburger-btn') || document.querySelector('.hamburger');
+  if (!sidebar) return;
+  if (window.innerWidth <= 768 && sidebar.classList.contains('open')) {
+    sidebar.classList.remove('open');
+    document.body.classList.remove('sidebar-open');
+    if (hamburger) hamburger.classList.remove('open');
   }
-
-  return supabase.storage.from('monanoteimages').getPublicUrl(fileName).data.publicUrl
 }
 
-// -----------------------------
-// Utilitários
-// -----------------------------
-function basename(path) {
-  try {
-    return String(path).split('/').pop().split('?')[0]
-  } catch {
-    return path
+function setupSidebarAutoClose() {
+  if (_sidebarAutoCloseInitialized) return;
+  _sidebarAutoCloseInitialized = true;
+
+  const sidebar = document.querySelector('.sidebar');
+  const hamburger = document.getElementById('hamburger-btn') || document.querySelector('.hamburger');
+
+  if (!sidebar || !hamburger) return;
+
+  // evita que cliques dentro da sidebar fechem ela
+  sidebar.addEventListener('click', (e) => e.stopPropagation());
+
+  // hamburger abre/fecha (apenas um listener)
+  hamburger.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const opening = !sidebar.classList.contains('open');
+    sidebar.classList.toggle('open');
+    if (opening) {
+      hamburger.classList.add('open');
+      document.body.classList.add('sidebar-open');
+    } else {
+      hamburger.classList.remove('open');
+      document.body.classList.remove('sidebar-open');
+    }
+  });
+
+  // clique fora fecha
+  document.addEventListener('click', (e) => {
+    const target = e.target;
+    if (hamburger && (hamburger === target || hamburger.contains(target))) return;
+    if (sidebar.contains(target)) return;
+    if (sidebar.classList.contains('open')) {
+      sidebar.classList.remove('open');
+      document.body.classList.remove('sidebar-open');
+      if (hamburger) hamburger.classList.remove('open');
+    }
+  });
+
+  // fecha ao redimensionar para desktop
+  window.addEventListener('resize', () => {
+    if (window.innerWidth > 768 && sidebar.classList.contains('open')) {
+      sidebar.classList.remove('open');
+      document.body.classList.remove('sidebar-open');
+      if (hamburger) hamburger.classList.remove('open');
+    }
+  });
+}
+
+// Chame setupSidebarAutoClose() uma vez na inicialização do app
+window.addEventListener('DOMContentLoaded', () => {
+  setupSidebarAutoClose();
+});
+
+/* ============================
+   Configurações e estado
+   ============================ */
+const TITLE_MAX = 120;
+const CATEGORY_MAX = 64;
+
+let contentData = {};        // estrutura: { categoria: { key: { postId, titulo, conteudo, categoria } } }
+let currentCategoria = null;
+let currentId = null;
+let currentPostId = null;
+
+/* ============================
+  Configurador dinâmico do Supabase
+  Permite alterar: supabaseUrl, supabaseKey, tableName, bucketName
+  Uso:
+    setSupabaseConfig({
+      supabaseUrl: 'https://...supabase.co',
+      supabaseKey: 'public-or-service-key',
+      tableName: 'posts',
+      bucketName: 'images'
+    });
+    await initializeSupabase();
+  Ou em runtime:
+    window.configureSupabase({ ... });
+  ============================ */
+
+const SupabaseConfig = {
+  supabaseUrl: 'https://pwshckrmqaqymngbosgo.supabase.co',
+  supabaseKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB3c2hja3JtcWFxeW1uZ2Jvc2dvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQzNjAwOTEsImV4cCI6MjA3OTkzNjA5MX0.f8iX0RoqrdxJmq-EgSyn_YWPgCHMoARQTT4ygtbcoLg',
+  tableName: 'posts',   // padrão: posts
+  bucketName: 'images'  // padrão: images
+};
+
+// Função pública para configurar em runtime
+function setSupabaseConfig({ supabaseUrl, supabaseKey, tableName, bucketName } = {}) {
+  if (supabaseUrl) SupabaseConfig.supabaseUrl = supabaseUrl;
+  if (supabaseKey) SupabaseConfig.supabaseKey = supabaseKey;
+  if (tableName) SupabaseConfig.tableName = tableName;
+  if (bucketName) SupabaseConfig.bucketName = bucketName;
+  // expõe globalmente para conveniência (opcional)
+  window.SupabaseConfig = SupabaseConfig;
+}
+window.configureSupabase = setSupabaseConfig;
+
+// Inicializa o cliente Supabase usando a configuração atual
+async function initializeSupabase() {
+  // Se já existir window.supabase, respeita (não re-cria)
+  if (window.supabase) {
+    console.info('Supabase já inicializado (window.supabase).');
+    return;
   }
+
+  // Se não houver URL/KEY na config, tenta variáveis globais antigas (compatibilidade)
+  const url = SupabaseConfig.supabaseUrl || window.supabaseUrl || window.SUPABASE_URL || null;
+  const key = SupabaseConfig.supabaseKey || window.supabaseKey || window.SUPABASE_KEY || null;
+
+  if (!url || !key) {
+    console.warn('Supabase: credenciais não configuradas. Use setSupabaseConfig(...) antes de inicializar.');
+    return;
+  }
+
+  try {
+    // Import dinâmico do cliente (ESM CDN)
+    const mod = await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm');
+    const { createClient } = mod;
+    window.supabase = createClient(url, key);
+    console.info('Supabase inicializado com sucesso.');
+  } catch (err) {
+    console.error('Falha ao importar/inicializar Supabase:', err);
+  }
+}
+
+/* ============================
+  Funções utilitárias que usam a configuração
+  - carregarPostsDoBanco
+  - uploadToSupabase
+  - insertPost
+  - updatePost
+  Observação: todas usam SupabaseConfig.tableName / bucketName
+  ============================ */
+
+async function carregarPostsDoBanco() {
+  // tenta inicializar se necessário
+  if (!window.supabase) {
+    console.warn('Supabase indisponível. Tentando inicializar automaticamente...');
+    await initializeSupabase();
+  }
+
+  // fallback local se supabase não estiver disponível
+  if (!window.supabase) {
+    console.warn('Supabase indisponível. Carregando dados locais se houver.');
+    if (typeof window.dataPT !== 'undefined') {
+      try {
+        if (Array.isArray(window.dataPT)) {
+          contentData = {};
+          window.dataPT.forEach(post => {
+            const categoria = post.categoria || 'geral';
+            const key = `post-${post.id || Date.now()}`;
+            if (!contentData[categoria]) contentData[categoria] = {};
+            contentData[categoria][key] = {
+              postId: post.id || Date.now(),
+              titulo: post.title || post.titulo || '(Sem título)',
+              conteudo: post.content || post.conteudo || '',
+              categoria
+            };
+          });
+        } else {
+          contentData = JSON.parse(JSON.stringify(window.dataPT));
+        }
+      } catch (err) {
+        console.error('Erro ao usar dataPT como fallback:', err);
+        contentData = {};
+      }
+    } else {
+      contentData = {};
+    }
+    renderMenu();
+    renderWelcome();
+    return;
+  }
+
+  // usa a tabela configurada
+  const table = SupabaseConfig.tableName || 'posts';
+
+  try {
+    const { data, error } = await window.supabase
+      .from(table)
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error(`Erro ao buscar dados da tabela "${table}":`, error);
+      contentData = {};
+      renderMenu();
+      renderWelcome();
+      return;
+    }
+
+    // normaliza para contentData
+    contentData = {};
+    (data || []).forEach(post => {
+      const categoria = post.categoria || post.category || 'geral';
+      const key = `post-${post.id}`;
+      if (!contentData[categoria]) contentData[categoria] = {};
+      contentData[categoria][key] = {
+        postId: post.id,
+        // tenta mapear campos comuns (title / titulo), ajuste se necessário
+        titulo: post.title || post.titulo || '(Sem título)',
+        conteudo: post.content || post.conteudo || '',
+        categoria,
+        image_url: post.image_url || post.image || null,
+        created_at: post.created_at || null
+      };
+    });
+
+    renderMenu();
+    renderWelcome();
+  } catch (err) {
+    console.error('Erro inesperado ao carregar posts:', err);
+    contentData = {};
+    renderMenu();
+    renderWelcome();
+  }
+}
+
+async function uploadToSupabase(file) {
+  if (!file) return '';
+  if (!window.supabase) {
+    console.warn('uploadToSupabase: Supabase não inicializado.');
+    return '';
+  }
+
+  const bucket = SupabaseConfig.bucketName || 'images';
+  const safeName = sanitizeFilename(file.name || `file-${Date.now()}`);
+  const filePath = `${safeName.startsWith('/') ? safeName.slice(1) : safeName}`;
+
+  try {
+    // Faz upload para o bucket configurado
+    const { data, error } = await window.supabase.storage.from(bucket).upload(filePath, file, {
+      cacheControl: '3600',
+      upsert: false
+    });
+    if (error) {
+      console.error(`Erro no upload para bucket "${bucket}":`, error);
+      return '';
+    }
+    const { data: urlData } = window.supabase.storage.from(bucket).getPublicUrl(filePath);
+    return urlData?.publicUrl || '';
+  } catch (err) {
+    console.error('uploadToSupabase erro inesperado:', err);
+    return '';
+  }
+}
+
+async function insertPost(payload) {
+  if (!window.supabase) {
+    console.warn('insertPost: Supabase não inicializado. Fallback local.');
+    return null;
+  }
+  const table = SupabaseConfig.tableName || 'posts';
+  try {
+    const resp = await window.supabase.from(table).insert(payload).select().single();
+    if (resp.error) {
+      console.error(`Erro ao inserir na tabela "${table}":`, resp.error);
+      return null;
+    }
+    return resp.data;
+  } catch (err) {
+    console.error('insertPost erro inesperado:', err);
+    return null;
+  }
+}
+
+async function updatePost(postId, payload) {
+  if (!window.supabase) {
+    console.warn('updatePost: Supabase não inicializado. Fallback local.');
+    return null;
+  }
+  const table = SupabaseConfig.tableName || 'posts';
+  try {
+    const resp = await window.supabase.from(table).update(payload).eq('id', postId);
+    if (resp.error) {
+      console.error(`Erro ao atualizar na tabela "${table}":`, resp.error);
+      return null;
+    }
+    return resp.data;
+  } catch (err) {
+    console.error('updatePost erro inesperado:', err);
+    return null;
+  }
+}
+
+/* ============================
+  Exemplo rápido de uso (opcional)
+  Você pode chamar isso antes do DOMContentLoaded:
+    setSupabaseConfig({ supabaseUrl: 'https://...', supabaseKey: '...', tableName: 'posts', bucketName: 'images' });
+    await initializeSupabase();
+  Ou em runtime no console:
+    window.configureSupabase({ supabaseUrl: '...', supabaseKey: '...', tableName: 'posts', bucketName: 'images' });
+  ============================ */
+
+// expõe utilitários para debug/uso externo
+window.setSupabaseConfig = setSupabaseConfig;
+window.initializeSupabase = initializeSupabase;
+window.insertPost = insertPost;
+window.updatePost = updatePost;
+window.uploadToSupabase = uploadToSupabase;
+
+/* ============================
+   Sanitização
+   ============================ */
+function sanitizePlainText(input, maxLen) {
+  let s = String(input || '').replace(/\u00A0/g, ' ');
+  s = s.replace(/<[^>]*>/g, '');
+  s = s.replace(/\s+/g, ' ').trim();
+  if (s.length > maxLen) s = s.slice(0, maxLen);
+  return s;
+}
+
+// Atualize allowedTags para incluir 'div' (substitua a declaração existente)
+const allowedTags = [
+  'div','p','br','b','strong','i','em','u',
+  'ul','ol','li',
+  'h1','h2','h3','h4','h5','h6',
+  'table','thead','tbody','tfoot','tr','td','th',
+  'a','img'
+];
+
+// Substitua a função sanitizeAttributes existente por esta versão
+function sanitizeAttributes(el) {
+  const tag = el.tagName.toLowerCase();
+  // iterar com for...of para permitir continue/skip corretamente
+  for (const attr of Array.from(el.attributes)) {
+    const name = attr.name.toLowerCase();
+
+    if (tag === 'img') {
+      // permite apenas atributos seguros para imagens
+      if (!['src', 'alt', 'width', 'height'].includes(name)) {
+        el.removeAttribute(attr.name);
+      }
+      continue;
+    }
+
+    if (tag === 'a') {
+      // permite href, target, rel, data-* e aria-*
+      if (name === 'href' || name === 'target' || name === 'rel' || name.startsWith('data-') || name.startsWith('aria-')) {
+        // preserva
+      } else {
+        el.removeAttribute(attr.name);
+      }
+      continue;
+    }
+
+    // para outras tags: preserva class, data-* e aria-*; remove o resto
+    if (name === 'class' || name.startsWith('data-') || name.startsWith('aria-')) {
+      // preserva
+    } else {
+      el.removeAttribute(attr.name);
+    }
+  }
+
+  if (tag === 'a') el.setAttribute('target', '_blank');
+}
+
+function sanitizeHtml(html) {
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(html || '', 'text/html');
+
+  // Remove comentários
+  const walker = document.createTreeWalker(doc.body, NodeFilter.SHOW_COMMENT, null, false);
+  const comments = [];
+  while (walker.nextNode()) comments.push(walker.currentNode);
+  comments.forEach(c => c.parentNode?.removeChild(c));
+
+  // Remove tags não permitidas e limpa atributos
+  Array.from(doc.body.querySelectorAll('*')).forEach(el => {
+    const tag = el.tagName.toLowerCase();
+    if (!allowedTags.includes(tag)) {
+      const replacement = document.createElement('div');
+      replacement.innerHTML = el.innerHTML;
+      el.replaceWith(...replacement.childNodes);
+    } else {
+      sanitizeAttributes(el);
+    }
+  });
+
+  return doc.body.innerHTML.trim();
+}
+
+/* ============================
+   Utilitários de arquivo / nome
+   ============================ */
+function sanitizeFilename(name) {
+  if (!name) name = `file-${Date.now()}`;
+  name = String(name).split('/').pop().split('\\').pop();
+  name = name.replace(/[^\w\-.]+/g, '_');
+  if (name.length > 120) name = name.slice(0, 120);
+  return name;
+}
+
+function insertHtmlAtCaret(html) {
+  const cb = document.getElementById('content-body');
+  const sel = window.getSelection();
+  if (!sel || sel.rangeCount === 0) {
+    if (cb) cb.insertAdjacentHTML('beforeend', html);
+    return;
+  }
+  const range = sel.getRangeAt(0);
+  range.deleteContents();
+  const frag = document.createRange().createContextualFragment(html);
+  range.insertNode(frag);
+  sel.removeAllRanges();
+  const newRange = document.createRange();
+  const last = frag.lastChild;
+  if (last) newRange.setStartAfter(last);
+  else { newRange.selectNodeContents(cb); newRange.collapse(false); }
+  newRange.collapse(true);
+  sel.addRange(newRange);
+}
+
+/* ---------- Helpers de imagem e paste (importados do MonaNote) ---------- */
+
+function extractDataUrlsFromHtml(html) {
+  const dataFiles = [];
+  const dataRegex = /src=["'](data:[^"']+)["']/ig;
+  let m;
+  while ((m = dataRegex.exec(html)) !== null) {
+    const dataurl = m[1];
+    try {
+      const arr = dataurl.split(',');
+      const mime = arr[0].match(/:(.*?);/)[1];
+      const bstr = atob(arr[1]);
+      let n = bstr.length;
+      const u8arr = new Uint8Array(n);
+      while (n--) u8arr[n] = bstr.charCodeAt(n);
+      const ext = mime.split('/')[1] || 'png';
+      const file = new File([u8arr], `inline-${Date.now()}.${ext}`, { type: mime });
+      dataFiles.push({ file, dataurl });
+    } catch (err) {
+      console.warn('Falha ao converter data: url', err);
+    }
+  }
+  return dataFiles;
 }
 
 function dataURLtoFile(dataurl, filename) {
-  const arr = dataurl.split(',')
-  const mime = arr[0].match(/:(.*?);/)[1]
-  const bstr = atob(arr[1])
-  let n = bstr.length
-  const u8arr = new Uint8Array(n)
-  while (n--) u8arr[n] = bstr.charCodeAt(n)
-  return new File([u8arr], filename, { type: mime })
+  const arr = dataurl.split(',');
+  const mime = arr[0].match(/:(.*?);/)[1];
+  const bstr = atob(arr[1]);
+  let n = bstr.length;
+  const u8arr = new Uint8Array(n);
+  while (n--) u8arr[n] = bstr.charCodeAt(n);
+  return new File([u8arr], filename, { type: mime });
 }
 
 function insertNodeAtCursor(node) {
-  const editor = document.getElementById('content-body')
+  const editor = document.getElementById('content-body');
   if (!editor) {
-    console.warn('Editor não encontrado: #content-body')
-    return
+    console.warn('Editor não encontrado: #content-body');
+    return;
   }
-  const sel = window.getSelection()
+  const sel = window.getSelection();
   if (!sel || sel.rangeCount === 0) {
-    editor.appendChild(node)
-    return
+    editor.appendChild(node);
+    return;
   }
-  const range = sel.getRangeAt(0)
-  range.deleteContents()
-  range.insertNode(node)
-  range.setStartAfter(node)
-  range.collapse(true)
-  sel.removeAllRanges()
-  sel.addRange(range)
+  const range = sel.getRangeAt(0);
+  range.deleteContents();
+  range.insertNode(node);
+  range.setStartAfter(node);
+  range.collapse(true);
+  sel.removeAllRanges();
+  sel.addRange(range);
 }
 
-// -----------------------------
-// Reconstrução automática (RTF, data:, clipboard.read)
-// -----------------------------
 function hexToBlob(hex, mime = 'image/png') {
-  const bytes = new Uint8Array(hex.length / 2)
-  for (let i = 0; i < bytes.length; i++) {
-    bytes[i] = parseInt(hex.substr(i * 2, 2), 16)
-  }
-  return new Blob([bytes], { type: mime })
+  const bytes = new Uint8Array(hex.length / 2);
+  for (let i = 0; i < bytes.length; i++) bytes[i] = parseInt(hex.substr(i * 2, 2), 16);
+  return new Blob([bytes], { type: mime });
 }
 
 function extractImagesFromRtf(rtfText) {
-  if (!rtfText) return []
-  const results = []
-  const pictRegex = /\\pict[^\n]*?((?:[0-9A-Fa-f\r\n ]{20,})+?)\\par/gm
-  let m
+  if (!rtfText) return [];
+  const results = [];
+  const pictRegex = /\\pict[^\n]*?((?:[0-9A-Fa-f\r\n ]{20,})+?)\\par/gm;
+  let m;
   while ((m = pictRegex.exec(rtfText)) !== null) {
-    const hex = m[1].replace(/[\s\r\n]/g, '')
-    const contextStart = Math.max(0, m.index - 80)
-    const context = rtfText.slice(contextStart, m.index + 20).toLowerCase()
-    let mime = 'image/png'
-    if (context.includes('\\jpegblip')) mime = 'image/jpeg'
+    const hex = m[1].replace(/[\s\r\n]/g, '');
+    const contextStart = Math.max(0, m.index - 80);
+    const context = rtfText.slice(contextStart, m.index + 20).toLowerCase();
+    let mime = 'image/png';
+    if (context.includes('\\jpegblip')) mime = 'image/jpeg';
     if (hex.length > 20) {
-      const blob = hexToBlob(hex, mime)
-      const ext = mime === 'image/jpeg' ? 'jpg' : 'png'
-      results.push(new File([blob], `rtf-extract-${Date.now()}.${ext}`, { type: mime }))
+      const blob = hexToBlob(hex, mime);
+      const ext = mime === 'image/jpeg' ? 'jpg' : 'png';
+      results.push(new File([blob], `rtf-extract-${Date.now()}.${ext}`, { type: mime }));
     }
   }
-  return results
+  return results;
 }
 
 async function tryClipboardReadForImages() {
   try {
-    if (!navigator.clipboard || !navigator.clipboard.read) return []
-    const items = await navigator.clipboard.read()
-    const files = []
+    if (!navigator.clipboard || !navigator.clipboard.read) return [];
+    const items = await navigator.clipboard.read();
+    const files = [];
     for (const item of items) {
       for (const type of item.types) {
         if (type.startsWith('image/')) {
-          const blob = await item.getType(type)
-          const ext = type.split('/')[1] || 'png'
-          files.push(new File([blob], `clipboard-${Date.now()}.${ext}`, { type }))
+          const blob = await item.getType(type);
+          const ext = type.split('/')[1] || 'png';
+          files.push(new File([blob], `clipboard-${Date.now()}.${ext}`, { type }));
         }
       }
     }
-    return files
+    return files;
   } catch (err) {
-    console.warn('clipboard.read() indisponível ou sem permissão:', err)
-    return []
+    console.warn('clipboard.read() indisponível ou sem permissão:', err);
+    return [];
   }
 }
 
-function extractDataUrlsFromHtml(html) {
-  const dataFiles = []
-  const dataRegex = /src=["'](data:[^"']+)["']/ig
-  let m
-  while ((m = dataRegex.exec(html)) !== null) {
-    const dataurl = m[1]
-    try {
-      const arr = dataurl.split(',')
-      const mime = arr[0].match(/:(.*?);/)[1]
-      const bstr = atob(arr[1])
-      let n = bstr.length
-      const u8arr = new Uint8Array(n)
-      while (n--) u8arr[n] = bstr.charCodeAt(n)
-      const ext = mime.split('/')[1] || 'png'
-      const file = new File([u8arr], `inline-${Date.now()}.${ext}`, { type: mime })
-      dataFiles.push({ file, dataurl })
-    } catch (err) {
-      console.warn('Falha ao converter data: url', err)
-    }
-  }
-  return dataFiles
-}
-
-// -----------------------------
-// Mensagem simples para imagens não coladas
-// -----------------------------
 function createMissingImageMessage() {
-  const msg = document.createElement('div')
-  msg.className = 'missing-image-message'
-  msg.textContent = 'Imagem não foi colada. Cole apenas a imagem (sem texto) para inseri-la automaticamente.'
-  msg.style.color = '#666'
-  msg.style.fontStyle = 'italic'
-  msg.style.padding = '0.25rem 0'
-  return msg
+  const msg = document.createElement('div');
+  msg.className = 'missing-image-message';
+  msg.textContent = '';
+  msg.style.color = '#666';
+  msg.style.fontStyle = 'italic';
+  msg.style.padding = '0.25rem 0';
+
+  // Torna o bloco atômico dentro do contenteditable
+  msg.setAttribute('contenteditable', 'false');
+  // Permite foco por teclado (opcional, melhora acessibilidade)
+  msg.setAttribute('tabindex', '0');
+
+  return msg;
 }
 
-// -----------------------------
-// Handler principal de paste (versão final simplificada)
-// -----------------------------
+/* Handler de paste (integra com uploadToSupabase e insertNodeAtCursor) */
+// Substitua a função handlePaste existente por esta
 async function handlePaste(e) {
   try {
-    e.preventDefault();
-
-    const contentBody = document.getElementById('content-body') || document.querySelector('.content-body');
-    if (!contentBody) return console.warn('Editor não encontrado: #content-body');
-
+    const clipboard = e.clipboardData || window.clipboardData;
+    if (!clipboard) return;
+    const contentBody = document.getElementById('content-body');
     const target = e.target || document.activeElement;
-    const isTargetContentBody = contentBody && (target === contentBody || contentBody.contains(target));
-
-    // Fora do editor → apenas texto simples
-    if (!isTargetContentBody) {
+    const isEditor = contentBody && (target === contentBody || contentBody.contains(target));
+    if (!isEditor) {
+      // fallback para inputs/textareas
       if (target && (target.tagName === 'TEXTAREA' || target.tagName === 'INPUT')) {
-        const plain = e.clipboardData.getData('text/plain') || '';
+        const plain = clipboard.getData('text/plain') || '';
         const el = target;
         const start = typeof el.selectionStart === 'number' ? el.selectionStart : el.value.length;
         const end = typeof el.selectionEnd === 'number' ? el.selectionEnd : el.value.length;
@@ -189,15 +568,111 @@ async function handlePaste(e) {
       return;
     }
 
-    const items = Array.from(e.clipboardData?.items || []);
-    const types = Array.from(e.clipboardData?.types || []);
+    e.preventDefault();
 
-    // 1) Imagens diretas
-    const imageItems = items.filter(i => i.type && i.type.startsWith('image/'));
-    if (imageItems.length > 0) {
-      for (const it of imageItems) {
-        const file = it.getAsFile();
-        if (!file) continue;
+    // pega HTML e plain
+    const html = clipboard.getData('text/html') || '';
+    const plain = clipboard.getData('text/plain') || '';
+
+    // se não houver HTML, insere texto simples e retorna
+    if (!html) {
+      if (plain) {
+        const p = document.createElement('p');
+        p.textContent = plain;
+        contentBody.appendChild(p);
+      }
+      return;
+    }
+
+    // parse HTML em fragmento (clona para não alterar original)
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(html, 'text/html');
+    const frag = document.createDocumentFragment();
+    Array.from(doc.body.childNodes).forEach(n => frag.appendChild(n.cloneNode(true)));
+
+    // 1) processa imagens/data URLs no fragmento
+    const imgs = Array.from(frag.querySelectorAll('img'));
+    for (const img of imgs) {
+      const src = (img.getAttribute('src') || '').trim();
+      let replaced = false;
+
+      // a) data: URLs embutidas
+      if (src.startsWith('data:')) {
+        try {
+          const dataFiles = typeof extractDataUrlsFromHtml === 'function' ? extractDataUrlsFromHtml(img.outerHTML || '') : [];
+          if (dataFiles && dataFiles.length > 0) {
+            const file = dataFiles[0].file;
+            let publicUrl = null;
+            if (typeof uploadToSupabase === 'function') {
+              try { publicUrl = await uploadToSupabase(file); } catch (err) { console.warn('upload failed', err); }
+            }
+            if (publicUrl) { img.setAttribute('src', publicUrl); replaced = true; }
+          }
+        } catch (err) { console.warn('data-url upload failed', err); }
+      }
+
+      // b) blob: ou file:/// (imagens locais do Word) — tenta clipboard.read() fallback
+      if (!replaced && (src.startsWith('blob:') || src === '' || src.startsWith('file:'))) {
+        try {
+          if (typeof tryClipboardReadForImages === 'function') {
+            const files = await tryClipboardReadForImages();
+            if (files && files.length > 0) {
+              const file = files.shift();
+              let publicUrl = null;
+              if (typeof uploadToSupabase === 'function') {
+                try { publicUrl = await uploadToSupabase(file); } catch (err) { console.warn('upload failed', err); }
+              }
+              if (publicUrl) { img.setAttribute('src', publicUrl); replaced = true; }
+            }
+          }
+        } catch (err) { console.warn('clipboard.read fallback failed', err); }
+      }
+
+      // c) se não substituiu, substitui o <img> por mensagem amigável (preserva texto ao redor)
+      if (!replaced) {
+        const msg = (typeof createMissingImageMessage === 'function') ? createMissingImageMessage() : (() => {
+          const d = document.createElement('div');
+          d.className = 'missing-image-message';
+          d.textContent = 'Imagem não foi colada. Cole apenas a imagem (sem texto) para inseri-la automaticamente.';
+          return d;
+        })();
+        img.replaceWith(msg);
+      }
+    }
+
+    // 2) serializa o fragmento, sanitiza e insere no editor
+    const tmp = document.createElement('div');
+    tmp.appendChild(frag);
+    const sanitized = (typeof sanitizeHtml === 'function') ? sanitizeHtml(tmp.innerHTML || '') : tmp.innerHTML;
+    // append (preserva conteúdo existente)
+    contentBody.insertAdjacentHTML('beforeend', sanitized);
+  } catch (err) {
+    console.error('Erro no handlePaste:', err);
+  }
+}
+
+// Chame attachDragDropHandlers() sempre que o editor for renderizado (ex: no final de renderEditorUI)
+function attachDragDropHandlers() {
+  const editor = document.getElementById('content-body');
+  if (!editor) return;
+
+  // remove listeners antigos (mesma referência de função)
+  editor.removeEventListener('dragover', onEditorDragOver);
+  editor.removeEventListener('drop', onEditorDrop);
+
+  editor.addEventListener('dragover', onEditorDragOver);
+  editor.addEventListener('drop', onEditorDrop);
+
+  async function onEditorDrop(e) {
+    e.preventDefault();
+    const files = Array.from(e.dataTransfer.files || []).filter(f => f.type.startsWith('image/'));
+    if (files.length === 0) {
+      const msg = createMissingImageMessage();
+      insertNodeAtCursor(msg);
+      return;
+    }
+    for (const file of files) {
+      try {
         const publicUrl = await uploadToSupabase(file);
         if (publicUrl) {
           const img = document.createElement('img');
@@ -205,858 +680,152 @@ async function handlePaste(e) {
           img.style.maxWidth = '100%';
           insertNodeAtCursor(img);
         }
+      } catch (err) {
+        console.error('Erro ao enviar imagem via drag&drop:', err);
+        const msg = createMissingImageMessage();
+        insertNodeAtCursor(msg);
       }
-      return;
-    }
-
-    // 2) HTML colado
-    if (types.includes('text/html')) {
-      const html = e.clipboardData.getData('text/html');
-      cleanWordHtmlAndInsert(html); // sanitiza e insere
-      return;
-    }
-
-    // 3) Texto simples
-    const plain = e.clipboardData.getData('text/plain');
-    if (plain) {
-      const p = document.createElement('p');
-      p.textContent = plain;
-      insertNodeAtCursor(p);
-    }
-  } catch (err) {
-    console.error('Erro no handlePaste:', err);
-  }
-}
-
-// registra listener (remove duplicatas anteriores)
-document.removeEventListener('paste', handlePaste)
-document.addEventListener('paste', handlePaste)
-
-const editor = document.getElementById('content-body');
-
-editor.addEventListener('dragover', e => {
-  e.preventDefault(); // necessário para permitir drop
-});
-
-editor.addEventListener('drop', async e => {
-  e.preventDefault();
-  const files = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/'));
-
-  for (const file of files) {
-    try {
-      const publicUrl = await uploadToSupabase(file);
-      if (publicUrl) {
-        const img = document.createElement('img');
-        img.src = publicUrl;
-        img.style.maxWidth = '100%';
-        insertNodeAtCursor(img);
-      }
-    } catch (err) {
-      console.error('Erro ao enviar imagem via drag&drop:', err);
-      const msg = createMissingImageMessage();
-      insertNodeAtCursor(msg);
     }
   }
-});
 
-// ------------------------ Estado global ------------------------
-let contentData = {};
-let editingCategoria = null;
-let editingId = null;
-let isEditingMode = false;
-let sessionHasSaved = false;
-if (typeof window.__objectUrlMap === 'undefined') window.__objectUrlMap = {};
-// main.js
-//let contentData = (typeof dataPT !== 'undefined') ? JSON.parse(JSON.stringify(dataPT)) : {};
-
-document.addEventListener('DOMContentLoaded', async () => {
-  // Opcional: estado de carregamento
-  showLoading('Carregando postagens e imagens...')
-
-  try {
-    await carregarPostsDoBanco() // isso vai sobrescrever contentData e chamar renderMenu/renderWelcome
-  } catch (e) {
-    console.error(e)
-    // fallback para JSON local se der erro
-    renderMenu()
-    renderWelcome()
-    showError('Não foi possível carregar do Supabase. Exibindo conteúdo local.')
-  } finally {
-    hideLoading()
-  }
-})
-
-function showLoading(msg = 'Carregando conteúdo...') {
-  let el = document.getElementById('loading');
-  if (!el) {
-    el = document.createElement('div');
-    el.id = 'loading';
-    el.innerHTML = `
-      <div class="loading-overlay">
-        <div class="loading-box">
-          <div class="spinner"></div>
-          <p class="loading-text">${msg}</p>
-        </div>
-      </div>
-    `;
-    document.body.appendChild(el);
-  } else {
-    el.querySelector('.loading-text').textContent = msg;
-  }
-  el.style.display = 'block';
+  function onEditorDragOver(e) { e.preventDefault(); }
 }
 
-function hideLoading() {
-  const el = document.getElementById('loading');
-  if (el) el.style.display = 'none';
-}
+/* Instala listeners de paste/drag apenas uma vez */
+document.removeEventListener('paste', handlePaste);
+document.addEventListener('paste', handlePaste);
 
-function showError(msg = 'Ocorreu um erro') {
-  let el = document.getElementById('error');
-  if (!el) {
-    el = document.createElement('div');
-    el.id = 'error';
-    el.innerHTML = `
-      <div class="error-overlay">
-        <div class="error-box">
-          <p class="error-text">${msg}</p>
-          <button class="error-close">Fechar</button>
-        </div>
-      </div>
-    `;
-    document.body.appendChild(el);
-
-    // Botão de fechar
-    el.querySelector('.error-close').addEventListener('click', () => {
-      el.style.display = 'none';
-    });
-  } else {
-    el.querySelector('.error-text').textContent = msg;
-  }
-  el.style.display = 'block';
-}
-
-
-// ------------------------ Utilitários ------------------------
-function sanitizeFilename(name) {
-  if (!name) name = `file-${Date.now()}`;
-  name = String(name).split('/').pop().split('\\').pop();
-  name = name.replace(/[^\w\-.]+/g, '_');
-  if (name.length > 120) name = name.slice(0, 120);
-  return name;
-}
-
-function escapeRegex(str) { return (str || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
-function normalizeStr(s) { return (s || '').replace(/\u00A0/g, ' ').trim(); }
-
-function cleanWordHtmlAndInsert(rawHtml) {
-  try {
-    const parser = new DOMParser();
-    const doc = parser.parseFromString(rawHtml, 'text/html');
-
-    // Whitelist de tags permitidas
-    const allowedTags = [
-      'p','br','b','strong','i','em','u',
-      'ul','ol','li',
-      'h1','h2','h3','h4','h5','h6',
-      'table','thead','tbody','tfoot','tr','td','th',
-      'a','img'
-    ];
-
-    // Remove comentários
-    const walker = document.createTreeWalker(doc.body, NodeFilter.SHOW_COMMENT, null, false);
-    const comments = [];
-    while (walker.nextNode()) comments.push(walker.currentNode);
-    comments.forEach(c => c.parentNode?.removeChild(c));
-
-    // Remove tags não permitidas (exceto div.missing-image-message)
-    Array.from(doc.body.querySelectorAll('*')).forEach(el => {
-      const tag = el.tagName.toLowerCase();
-      if (!allowedTags.includes(tag)) {
-        if (!(tag === 'div' && el.classList.contains('missing-image-message'))) {
-          const replacement = document.createElement('div');
-          replacement.innerHTML = el.innerHTML;
-          el.replaceWith(...replacement.childNodes);
+/* ============================
+   Toolbar (execCommand + insertImage)
+   ============================ */
+function execCmd(command, value = null) {
+  const body = document.getElementById('content-body');
+  if (!body) return;
+  body.focus();
+  switch (command) {
+    case 'insertImage': {
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = 'image/*';
+      input.style.display = 'none';
+      input.addEventListener('change', async () => {
+        const file = input.files[0];
+        if (!file) return;
+        const publicUrl = await uploadToSupabase(file);
+        if (publicUrl) {
+          const img = document.createElement('img');
+          img.src = publicUrl;
+          img.style.maxWidth = '100%';
+          insertNodeAtCursor(img);
+        } else {
+          const hint = document.createElement('div');
+          hint.textContent = 'Falha ao enviar imagem.';
+          hint.style.color = '#b33';
+          insertNodeAtCursor(hint);
         }
-      } else {
-        sanitizeAttributes(el);
-      }
-    });
-
-    // Insere conteúdo limpo no ponto do cursor
-    insertHtmlAtCaret(doc.body.innerHTML);
-
-  } catch (e) {
-    console.warn('Erro ao limpar HTML colado:', e);
-  }
-}
-
-function sanitizeAttributes(el) {
-  const tag = el.tagName.toLowerCase();
-  [...el.attributes].forEach(attr => {
-    const name = attr.name.toLowerCase();
-    if (tag === 'img') {
-      if (name !== 'src') el.removeAttribute(attr.name);
-    } else if (tag === 'a') {
-      if (name !== 'href') el.removeAttribute(attr.name);
-    } else {
-      el.removeAttribute(attr.name);
+      });
+      document.body.appendChild(input);
+      input.click();
+      document.body.removeChild(input);
+      break;
     }
-  });
-  if (tag === 'a') {
-    el.setAttribute('target', '_blank');
+    case 'createLink': {
+      const url = prompt('URL do link:');
+      if (url) document.execCommand('createLink', false, url);
+      break;
+    }
+    case 'formatBlock': {
+      if (value) document.execCommand('formatBlock', false, value);
+      break;
+    }
+    default: {
+      document.execCommand(command, false, value);
+      break;
+    }
   }
 }
 
+/* ============================
+   Splash de imagem (ampliar)
+   ============================ */
 function enableImageSplash(containerEl) {
-  if (!containerEl) containerEl = document.getElementById('article-content');
-  if (!containerEl) return;
-
-  containerEl.querySelectorAll('img').forEach(img => {
+  const container = containerEl || document.getElementById('article-content');
+  if (!container) return;
+  container.querySelectorAll('img').forEach(img => {
     img.style.cursor = 'zoom-in';
     img.addEventListener('click', () => {
-	  console.log(`🖱️ Imagem clicada: ${img.src}`);
       const splash = document.createElement('div');
       splash.style = `
         position:fixed;top:0;left:0;right:0;bottom:0;
-        background:rgba(0,0,0,0.8);display:flex;
+        background:rgba(0,0,0,0.85);display:flex;
         align-items:center;justify-content:center;
-        z-index:999999;animation:fadeIn 0.3s ease;
+        z-index:9999;
       `;
-
       const enlarged = document.createElement('img');
       enlarged.src = img.src;
       enlarged.style = `
         max-width:90%;max-height:90%;
-        box-shadow:0 0 20px rgba(0,0,0,0.5);
-        border-radius:8px;
+        border-radius:12px;box-shadow:0 0 20px rgba(255,255,255,0.2);
       `;
-
       splash.appendChild(enlarged);
       splash.addEventListener('click', () => document.body.removeChild(splash));
       document.body.appendChild(splash);
     });
   });
-  const imgs = containerEl.querySelectorAll('img');
-  console.log(`🔍 Encontradas ${imgs.length} imagens para splash`);
-
 }
 
-// ------------------------ Storage helpers ------------------------
-
-async function uploadImagemParaSupabase(img) {
-  const fileName = `${Date.now()}-${sanitizeFilename(img.name)}`
-  const { error } = await window.supabase.storage
-    .from('monanoteimages')
-    .upload(fileName, img.blob)
-
-  if (error) {
-    console.error('Erro ao subir imagem:', error)
-    return null
-  }
-
-  const { data: pub } = window.supabase.storage
-    .from('monanoteimages')
-    .getPublicUrl(fileName)
-
-  return pub.publicUrl
-}
-
-function insertHtmlAtCaret(html) {
-  const sel = window.getSelection();
-  if (!sel || sel.rangeCount === 0) {
-    const cb = document.getElementById('content-body');
-    if (cb) cb.insertAdjacentHTML('beforeend', html);
-    return;
-  }
-
-  const range = sel.getRangeAt(0);
-  range.deleteContents();
-  const frag = document.createRange().createContextualFragment(html);
-  range.insertNode(frag);
-
-  sel.removeAllRanges();
-  const newRange = document.createRange();
-  newRange.setStartAfter(frag.lastChild || range.endContainer);
-  newRange.collapse(true);
-  sel.addRange(newRange);
-}
-
-function extractFilenameFromPath(path) {
-  try {
-    return decodeURIComponent(path.split(/[\\/]/).pop().split('?')[0]);
-  } catch {
-    return null;
-  }
-}
-
-// ------------------------ Save flow (integrado) ------------------------
-async function addNewContent() {
-  const titleEl = document.getElementById('content-title');
-  const contentEl = document.getElementById('content-body');
-  const selectEl = document.getElementById('category-select');
-  const newCatEl = document.getElementById('new-category');
-
-  if (!titleEl || !contentEl || !selectEl || !newCatEl) {
-    console.error('Campos do formulário não encontrados');
-    return;
-  }
-
-  const title = titleEl.value.trim();
-  let content = contentEl.innerHTML.trim();
-
-  const selectedValue = (selectEl.value || '').trim();
-  const newCategoryValue = (newCatEl.value || '').trim();
-  const isNewCategory = selectedValue === '';
-
-  const categoriaFinal = isNewCategory ? (newCategoryValue || 'geral') : selectedValue;
-
-  if (!title || !content) {
-    alert('Título e conteúdo são obrigatórios!');
-    return;
-  }
-  if (isNewCategory && !newCategoryValue) {
-    alert('Informe o nome da nova categoria ou escolha uma existente.');
-    return;
-  }
-
-  // Sanitiza antes de salvar
-  const parser = new DOMParser();
-  const doc = parser.parseFromString(content, 'text/html');
-  cleanWordHtmlAndInsert(doc.body.innerHTML);
-  const processedHtml = document.getElementById('content-body').innerHTML.trim();
-
-  // Upload de imagem colada (se houver)
-  let imageUrl = null;
-  if (typeof tempImages !== 'undefined' && Array.isArray(tempImages) && tempImages.length > 0) {
-    const img = tempImages[0];
-    const fileName = `${Date.now()}-${sanitizeFilename(img.name || 'image')}`;
-    const { error: uploadError } = await window.supabase.storage
-      .from('monanoteimages')
-      .upload(fileName, img.blob);
-
-    if (!uploadError) {
-      const { data: pub } = window.supabase.storage.from('monanoteimages').getPublicUrl(fileName);
-      imageUrl = pub?.publicUrl || null;
-    }
-  }
-
-  const payload = { title, content: processedHtml, categoria: categoriaFinal };
-  if (imageUrl) payload.image_url = imageUrl;
-
-  const isEditing = !!window.editingPostId;
-  let error;
-
-  if (isEditing) {
-    const resp = await window.supabase.from('posts').update(payload).eq('id', window.editingPostId);
-    error = resp.error;
-  } else {
-    const resp = await window.supabase.from('posts').insert(payload);
-    error = resp.error;
-  }
-
-  if (error) {
-    console.error('Erro ao salvar no Supabase:', error);
-    alert('Erro ao salvar conteúdo.');
-    return;
-  }
-
-  await carregarPostsDoBanco();
-
-  // Limpa formulário
-  titleEl.value = '';
-  contentEl.innerHTML = '';
-  selectEl.value = '';
-  newCatEl.value = '';
-  if (typeof tempImages !== 'undefined') tempImages = [];
-  window.editingPostId = null;
-
-  alert(isEditing ? 'Conteúdo atualizado com sucesso!' : 'Conteúdo salvo com sucesso!');
-  closeNewContentPanel();
-}
-
-//onclick do HTML
-document.addEventListener('DOMContentLoaded', () => {
-  const saveBtn = document.querySelector('#new-content-panel .save-button')
-  if (saveBtn) {
-    saveBtn.addEventListener('click', addNewContent)
-  }
-})
-
-document.addEventListener('DOMContentLoaded', () => {
-  const btn = document.querySelector('button.apply-debug')
-  if (!btn) return console.warn('Botão .apply-debug não encontrado')
-
-  // remove qualquer handler inline/antigo para evitar execução dupla
-  try { btn.onclick = null } catch (e) {}
-
-  async function onApplyClick(e) {
-    e.preventDefault()
-    if (btn.disabled) return
-    btn.disabled = true
-    const originalText = btn.textContent
-    btn.textContent = 'Aplicando...'
-
-    try {
-      if (typeof applyDebugChanges === 'function') {
-        await Promise.resolve(applyDebugChanges(e))
-      } else {
-        console.warn('applyDebugChanges não encontrada')
-      }
-    } catch (err) {
-      console.error('Erro em applyDebugChanges:', err)
-      const notice = document.createElement('div')
-      notice.style.color = '#b33'
-      notice.style.fontSize = '0.9rem'
-      notice.textContent = 'Erro ao aplicar alterações. Veja console.'
-      btn.insertAdjacentElement('afterend', notice)
-      setTimeout(() => notice.remove(), 5000)
-    } finally {
-      btn.disabled = false
-      btn.textContent = originalText
-    }
-  }
-
-  btn.removeEventListener('click', onApplyClick)
-  btn.addEventListener('click', onApplyClick)
-})
-
-document.addEventListener('DOMContentLoaded', () => {
-  const btn = document.querySelector('button.apply-debug')
-  if (!btn) return console.warn('Botão .apply-debug não encontrado')
-
-  // remove qualquer handler inline/antigo para evitar execução dupla
-  try { btn.onclick = null } catch (e) {}
-
-  async function onApplyClick(e) {
-    e.preventDefault()
-    if (btn.disabled) return
-    btn.disabled = true
-    const originalText = btn.textContent
-    btn.textContent = 'Aplicando...'
-
-    try {
-      if (typeof applyDebugChanges === 'function') {
-        await Promise.resolve(applyDebugChanges(e))
-      } else {
-        console.warn('applyDebugChanges não encontrada')
-      }
-    } catch (err) {
-      console.error('Erro em applyDebugChanges:', err)
-      const notice = document.createElement('div')
-      notice.style.color = '#b33'
-      notice.style.fontSize = '0.9rem'
-      notice.textContent = 'Erro ao aplicar alterações. Veja console.'
-      btn.insertAdjacentElement('afterend', notice)
-      setTimeout(() => notice.remove(), 5000)
-    } finally {
-      btn.disabled = false
-      btn.textContent = originalText
-    }
-  }
-
-  btn.removeEventListener('click', onApplyClick)
-  btn.addEventListener('click', onApplyClick)
-})
-
-document.addEventListener('DOMContentLoaded', () => {
-  const editLink = document.getElementById('edit-article-link')
-  if (editLink) {
-    editLink.addEventListener('click', e => {
-      e.preventDefault()
-      const categoria = editLink.dataset.categoria
-      const id = editLink.dataset.id
-      const postId = editLink.dataset.postId // id supabase
-
-      if (!categoria || !id) {
-        console.error('Categoria ou ID não definidos no link de edição')
-        return
-      }
-      startEditing(categoria, id, postId)
-    })
-  }
-})
-
-document.addEventListener('DOMContentLoaded', () => {
-  document.querySelectorAll('.copy-path-btn').forEach(btn => {
-    btn.addEventListener('click', async () => {
-      const path = btn.dataset.path
-      if (path) {
-        try {
-          await navigator.clipboard.writeText(path)
-          alert('Caminho copiado para a área de transferência!')
-        } catch (err) {
-          console.error('Erro ao copiar caminho:', err)
-          alert('Não foi possível copiar o caminho.')
-        }
-      }
-    })
-  })
-})
-
-document.addEventListener('DOMContentLoaded', () => {
-  // Botões de comandos Rich Text
-  document.querySelectorAll('.cmd-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const cmd = btn.dataset.cmd
-      const val = btn.dataset.value || null
-      execCmd(cmd, val)
-    })
-  })
-
-  // Botões de painel
-  const closePanelBtn = document.getElementById('close-panel-btn')
-  if (closePanelBtn) closePanelBtn.addEventListener('click', toggleNewContentPanel)
-
-  const addContentBtn = document.getElementById('add-content-btn')
-  if (addContentBtn) addContentBtn.addEventListener('click', toggleNewContentPanel)
-
-  // Splash de imagem
-  //const splash = document.getElementById('image-splash')
-  //if (splash) splash.addEventListener('click', closeSplash)
-
-  // Debug popup
-  const closeDebugBtn = document.querySelector('.close-debug-btn')
-  if (closeDebugBtn) closeDebugBtn.addEventListener('click', closeDebugPopup)
-
-  const applyDebugBtn = document.getElementById('apply-debug-btn')
-  if (applyDebugBtn) applyDebugBtn.addEventListener('click', applyDebugChanges)
-
-  // Select de categoria
-  //const categorySelect = document.getElementById('category-select')
-  //if (categorySelect) categorySelect.addEventListener('change', handleCategoryChange)
-})
-
-// ------------------------ UI / Render ------------------------
+/* ============================
+   Render / Menu / Busca / Artigo
+   ============================ */
 function renderWelcome() {
   const article = document.getElementById('article-content');
   if (!article) return;
   article.innerHTML = `
-    <h1>Bem-vindo</h1>
-    <p>Selecione um item no menu para ver o conteúdo.</p>
+    <h1 id="article-title">Bem-vindo</h1>
+    <button id="edit-article-link" style="display:none;">Editar</button>
+    <div id="content-body" contenteditable="false" data-placeholder="Digite ou cole o conteúdo aqui">
+      <p>Selecione um item no menu para ver o conteúdo.</p>
+    </div>
   `;
 }
 
-async function carregarPostsDoBanco() {
-  const { data, error } = await window.supabase
-    .from('posts')
-    .select('*')
-    .order('created_at', { ascending: false })
-
-  if (error) {
-    console.error('Erro ao carregar posts:', error)
-    return
-  }
-
-  // Reorganiza em formato antigo: contentData[categoria][id]
-  contentData = {}
-  data.forEach(post => {
-    const categoria = post.categoria || 'geral'
-    const id = `post${post.id}`
-    if (!contentData[categoria]) contentData[categoria] = {}
-    contentData[categoria][id] = {
-	  postId: post.id,
-      titulo: post.title,
-      conteudo: post.content,
-      imagem: post.image_url || null
-    }
-  })
-
-  renderMenu()
-  renderWelcome()
-  window.contentData = contentData
-}
-
-function renderMenu(openCategories = []) {
+function renderMenu() {
   const menu = document.getElementById('menu');
   if (!menu) return;
   menu.innerHTML = '';
   const ul = document.createElement('ul');
+
   for (const categoria in contentData) {
     const liCategoria = document.createElement('li');
     const span = document.createElement('span');
     span.textContent = categoria;
-    if (openCategories.includes(categoria)) liCategoria.classList.add('active');
+    span.style.cursor = 'pointer';
     span.onclick = () => liCategoria.classList.toggle('active');
     liCategoria.appendChild(span);
+
     const ulTitulos = document.createElement('ul');
     for (const id in contentData[categoria]) {
       const artigo = contentData[categoria][id];
       const liTitulo = document.createElement('li');
       const link = document.createElement('a');
-		link.href = '#';
-		link.textContent = artigo.titulo;
-		link.setAttribute('data-categoria', categoria); // 👈 Adiciona categoria
-		link.setAttribute('data-id', id);               // 👈 Adiciona id
-		link.onclick = (e) => {
-		  e.preventDefault();
-		  loadArticle(categoria, id);
-		};
+      link.href = '#';
+      link.textContent = artigo.titulo;
+      link.dataset.categoria = categoria;
+      link.dataset.id = id;
+      link.onclick = (e) => {
+        e.preventDefault();
+        loadArticle(categoria, id);
+      };
       liTitulo.appendChild(link);
       ulTitulos.appendChild(liTitulo);
     }
     liCategoria.appendChild(ulTitulos);
     ul.appendChild(liCategoria);
   }
+
   menu.appendChild(ul);
 }
 
-function initButtons() {
-  // botão de adicionar conteúdo
-  const addBtn = document.getElementById('add-content-btn');
-  if (addBtn && !addBtn.getAttribute('onclick')) {
-    addBtn.addEventListener('click', () => openNewContentPanel({ forEdit: false }));
-  }
-
-  // botão de salvar conteúdo
-  const saveBtn = document.querySelector('#new-content-panel .save-button');
-  if (saveBtn && !saveBtn.getAttribute('onclick')) {
-    saveBtn.addEventListener('click', addNewContent);
-  }
-
-  // botão de fechar painel
-  const closeBtn = document.getElementById('close-panel-btn');
-  if (closeBtn) {
-    closeBtn.removeAttribute('onclick');
-    const newBtn = closeBtn.cloneNode(true);
-    closeBtn.parentNode.replaceChild(newBtn, closeBtn);
-    newBtn.addEventListener('click', () => closeNewContentPanel());
-  }
-}
-
-function loadArticle(categoria, id) {
-  if (!contentData[categoria] || !contentData[categoria][id]) return;
-
-  const artigo = contentData[categoria][id];
-  const container = document.getElementById('article-content');
-  if (!container) return;
-
-  const wasEditing = editingCategoria !== null && editingId !== null;
-  if (wasEditing) closeNewContentPanel();
-
-  container.style.animation = 'slideOutToLeft 0.4s ease forwards';
-
-  setTimeout(() => {
-    console.log(`🧾 Renderizando artigo ${categoria}|${id}`);
-
-    //const imgCount = getImageCountForArticle(categoria, id);
-    //const btnText = imgCount > 0 ? `Baixar imagens (${imgCount})` : 'Nenhuma imagem';
-    //const btnDisabledAttr = imgCount > 0 ? '' : 'disabled';
-
-container.innerHTML = `
-  <div class="control-bar">
-    <a id="edit-article-link" href="#"
-       data-categoria="${categoria}"
-       data-id="${id}"
-       data-post-id="${artigo.postId}">Editar</a>
-  </div>
-  <h1>${artigo.titulo}</h1>
-  <div class="article-body">${artigo.conteudo}</div>
-`;
-
-
-    container.style.animation = 'slideInFromLeft 0.6s ease forwards';
-
-    // Links externos abrem em nova aba
-    const links = container.querySelectorAll('a:not(#edit-article-link)');
-    links.forEach(link => link.setAttribute('target', '_blank'));
-
-    editingCategoria = categoria;
-    editingId = id;
-
-    // Splash de imagens
-    console.log('🖼️ Ativando splash screen para imagens...');
-    enableImageSplash(container);
-
-    // Destaca link ativo no menu
-    const menuLinks = document.querySelectorAll('#menu a');
-    menuLinks.forEach(link => link.classList.remove('active'));
-    const activeLink = document.querySelector(
-      `#menu a[data-categoria="${categoria}"][data-id="${id}"]`
-    );
-    if (activeLink) activeLink.classList.add('active');
-
-    // ✅ Reata listener do link Editar
-const editLink = document.getElementById('edit-article-link')
-  if (editLink) {
-    editLink.addEventListener('click', e => {
-      e.preventDefault()
-      const categoria = editLink.dataset.categoria
-      const id = editLink.dataset.id
-      const postId = editLink.dataset.postId // id supabase
-
-      if (!categoria || !id) {
-        console.error('Categoria ou ID não definidos no link de edição')
-        return
-      }
-      startEditing(categoria, id, postId)
-    })
-  }
-  }, 400);
-}
-
-function startEditing(categoria, id, postId) {
-  if (!categoria || !id) return
-
-  // Carrega dados atuais do artigo (do seu cache/estado)
-  const artigo = contentData?.[categoria]?.[id]
-  if (!artigo) {
-    console.error('Artigo não encontrado para edição')
-    return
-  }
-
-  // Guarda o id do Supabase para atualização
-  window.editingPostId = postId || artigo.postId || null
-  if (!window.editingPostId) {
-    console.warn('editingPostId ausente. Sem ele, a edição fará insert. Garanta data-post-id no link.')
-  }
-
-  // Preenche o formulário
-  const titleEl = document.getElementById('content-title')
-  const contentEl = document.getElementById('content-body')
-  const selectEl = document.getElementById('category-select')
-  const newCatEl = document.getElementById('new-category')
-
-  if (!titleEl || !contentEl || !selectEl || !newCatEl) {
-    console.error('Campos do formulário não encontrados para edição')
-    return
-  }
-
-  titleEl.value = artigo.titulo || ''
-  contentEl.innerHTML = artigo.conteudo || ''
-
-  // Categoria atual do artigo
-  const catAtual = categoria || 'geral'
-  // Se a categoria atual existe no select, seleciona; senão, marca como nova
-  const option = Array.from(selectEl.options).find(opt => (opt.value || '').trim() === catAtual)
-  if (option) {
-    selectEl.value = catAtual
-    newCatEl.value = '' // não é nova
-  } else {
-    selectEl.value = ''       // "-- Nova Categoria --"
-    newCatEl.value = catAtual // preenche como nova
-  }
-
-  // Abre painel em modo edição
-  openNewContentPanel({ forEdit: true, categoria, id })
-}
-
-function openNewContentPanel({ forEdit = false, categoria = null, id = null } = {}) {
-  const panel = document.getElementById('new-content-panel');
-  const overlay = document.getElementById('overlay');
-  if (!panel || !overlay) return;
-
-  const select = document.getElementById('category-select');
-  if (select) {
-    select.innerHTML = '<option value="">-- Nova Categoria --</option>';
-    for (const c in contentData) {
-      const opt = document.createElement('option');
-      opt.value = c;
-      opt.textContent = c;
-      select.appendChild(opt);
-    }
-  }
-  const wrapper = document.getElementById('new-category-wrapper');
-	if (select && wrapper) {
-	  select.addEventListener('change', function () {
-		const isNovaCategoria = this.selectedIndex === 0;
-		wrapper.style.display = isNovaCategoria ? 'block' : 'none';
-	  });
-	}
-
-  const newCatInput = document.getElementById('new-category');
-  const titleInput = document.getElementById('content-title');
-  const bodyInput = document.getElementById('content-body');
-
-  if (forEdit && categoria && id && contentData[categoria] && contentData[categoria][id]) {
-    isEditingMode = true;
-    editingCategoria = categoria;
-    editingId = id;
-    if (newCatInput) newCatInput.value = categoria;
-    if (titleInput) titleInput.value = contentData[categoria][id].titulo || '';
-    if (bodyInput) bodyInput.innerHTML = contentData[categoria][id].conteudo || '';
-  } else {
-    isEditingMode = false;
-    editingCategoria = null;
-    editingId = null;
-    if (select) select.value = '';
-    if (newCatInput) newCatInput.value = '';
-    if (titleInput) titleInput.value = '';
-    if (bodyInput) bodyInput.innerHTML = '';
-  }
-
-  // ✅ Ativa overlay
-  overlay.style.display = 'block';
-
-  // ✅ Prepara painel para entrada com animação
-  panel.style.display = 'block';
-  panel.classList.remove('hidden', 'panel-slide-out-right', 'panel-slide-out-left');
-  void panel.offsetWidth; // força reflow para reiniciar animação
-  panel.classList.add('panel-slide-in-right');
-}
-
-function closeNewContentPanel() {
-  const panel = document.getElementById('new-content-panel');
-  const overlay = document.getElementById('overlay');
-
-  if (panel) {
-    panel.classList.remove('panel-slide-in-right', 'hidden');
-    void panel.offsetWidth; // força reflow
-    panel.classList.add('panel-slide-out-right');
-
-    setTimeout(() => {
-      panel.style.display = 'none';
-      panel.classList.remove('panel-slide-out-right');
-      panel.classList.add('hidden');
-    }, 600);
-  }
-
-  if (overlay) overlay.style.display = 'none';
-
-  isEditingMode = false;
-  editingCategoria = null;
-  editingId = null;
-}
-
-// compatibility: toggle used in some HTML
-window.toggleNewContentPanel = function() {
-  const panel = document.getElementById('new-content-panel');
-  if (!panel) return;
-  const isHidden = panel.style.display === 'none' || panel.style.display === '';
-  if (isHidden) openNewContentPanel({ forEdit:false });
-  else closeNewContentPanel();
-};
-
-// edit current article (works with single-language contentData)
-function editCurrentArticle() {
-  if (!editingCategoria || !editingId) return;
-
-  isEditingMode = true;
-
-  const artigo = contentData[editingCategoria] && contentData[editingCategoria][editingId]
-    ? contentData[editingCategoria][editingId]
-    : { titulo: '', conteudo: '' };
-
-  document.getElementById('category-select').value = '';
-  document.getElementById('new-category').value = editingCategoria;
-  document.getElementById('content-title').value = artigo?.titulo || '';
-  document.getElementById('content-body').innerHTML = artigo?.conteudo || '';
-
-  document.getElementById('new-content-panel').style.display = 'block';
-  document.getElementById('overlay').style.display = 'block';
-  //handleCategoryChange();
-}
-
-function hasUserAddedContent() {
-  try {
-    const current = JSON.stringify(contentData || {});
-    return current !== '{}' && current !== 'null';
-  } catch (e) {
-    return true;
-  }
-}
-
-// ------------------------ Search input ------------------------
 (function attachSearchHandler() {
   const el = document.getElementById('search-input');
   if (!el) return;
@@ -1065,237 +834,353 @@ function hasUserAddedContent() {
     const suggestions = document.getElementById('search-suggestions');
     if (!suggestions) return;
     suggestions.innerHTML = '';
-
     if (!termo) {
       suggestions.style.display = 'none';
       return;
     }
-
     const matches = [];
     for (const categoria in contentData) {
       const artigos = contentData[categoria];
       for (const id in artigos) {
         const { titulo, conteudo } = artigos[id];
-        if (
-          (titulo && titulo.toLowerCase().includes(termo)) ||
-          (conteudo && conteudo.toLowerCase().includes(termo))
-        ) {
+        if ((titulo && titulo.toLowerCase().includes(termo)) ||
+            (conteudo && conteudo.toLowerCase().includes(termo))) {
           matches.push({ categoria, id, titulo });
         }
       }
     }
-
     if (matches.length === 0) {
       suggestions.style.display = 'none';
       return;
     }
-
     matches.slice(0, 10).forEach(({ categoria, id, titulo }) => {
       const li = document.createElement('li');
       li.textContent = titulo;
       li.onclick = () => {
         loadArticle(categoria, id);
         suggestions.style.display = 'none';
-        document.getElementById('search-input').value = '';
+        el.value = '';
       };
       suggestions.appendChild(li);
     });
-
     suggestions.style.display = 'block';
   });
 })();
 
-// Toggle debug mode: mostra/oculta tags HTML no content-body
-window.__debugMode = window.__debugMode || false;
-window.__debugModeStore = window.__debugModeStore || new Map();
+function loadArticle(categoria, id) {
+  if (!contentData[categoria] || !contentData[categoria][id]) return;
+  const artigo = contentData[categoria][id];
+  const container = document.getElementById('article-content');
+  if (!container) return;
 
-// Execução de comandos Rich Text focando no #content-body
-function execCmd(command, value = null) {
-  const body = document.getElementById('content-body')
-  if (!body) return
+  container.innerHTML = `
+    <h1 id="article-title">${artigo.titulo}</h1>
+    <button id="edit-article-link" data-categoria="${categoria}" data-id="${id}" data-post-id="${artigo.postId}">Editar</button>
+    <div id="content-body" contenteditable="false" data-placeholder="Digite ou cole o conteúdo aqui">${artigo.conteudo}</div>
+  `;
 
-  // Garante que os comandos atuem no editor
-  body.focus()
+  enableImageSplash(container);
 
-  switch (command) {
-    case 'insertImage': {
-	  const input = document.createElement('input');
-	  input.type = 'file';
-	  input.accept = 'image/*';
-	  input.style.display = 'none';
-	
-	  input.addEventListener('change', async () => {
-	    const file = input.files[0];
-	    if (!file) return;
-	
-	    try {
-	      const publicUrl = await uploadToSupabase(file);
-	      if (publicUrl) {
-	        const img = document.createElement('img');
-	        img.src = publicUrl;
-	        img.style.maxWidth = '100%';
-	        insertNodeAtCursor(img);
-	      }
-	    } catch (err) {
-	      console.error('Erro ao enviar imagem:', err);
-	      const msg = createMissingImageMessage();
-	      insertNodeAtCursor(msg);
-	    }
-	  });
-	
-	  document.body.appendChild(input);
-	  input.click();
-	  document.body.removeChild(input);
-	  break;
-	}
-    case 'createLink': {
-      const url = prompt('URL do link:')
-      if (url) document.execCommand('createLink', false, url)
-      break
+  currentCategoria = categoria;
+  currentId = id;
+  currentPostId = artigo.postId || null;
+
+  const editLink = document.getElementById('edit-article-link');
+  if (editLink) {
+    editLink.addEventListener('click', (e) => {
+      e.preventDefault();
+      renderEditorUI({
+        mode: 'edit',
+        titulo: artigo.titulo,
+        conteudo: artigo.conteudo,
+        categoria: artigo.categoria
+      });
+    });
+  }
+   closeSidebarIfMobile();
+}
+
+/* ============================
+   Editor unificado (Adicionar / Editar)
+   ============================ */
+function renderEditorUI({ mode = "add", titulo = "", conteudo = "", categoria = "" }) {
+  const container = document.getElementById("article-content");
+  if (!container) return;
+
+  container.innerHTML = `
+
+    <button id="close-edit-btn" title="Fechar">×</button>
+    
+    <div id="category-wrapper">
+      <label for="category-select">Categoria:</label>
+      <select id="category-select"><option value="">-- Nova Categoria --</option></select>
+      <input type="text" id="new-category" placeholder="Nova categoria" style="display:none;"/>
+    </div>
+
+    <input type="text" id="title-input" placeholder="Título do conteúdo" />
+
+    <div id="content-body" contenteditable="true" data-placeholder="Digite ou cole o conteúdo aqui"></div>
+
+    <div class="editor-toolbar-fixed">
+      <button class="cmd-btn" data-cmd="bold" title="Negrito"><b>B</b></button>
+      <button class="cmd-btn" data-cmd="italic" title="Itálico"><i>I</i></button>
+      <button class="cmd-btn" data-cmd="underline" title="Sublinhado"><u>U</u></button>
+      <button class="cmd-btn" data-cmd="strikeThrough" title="Tachado"><s>S</s></button>
+      <span class="sep"></span>
+      <button class="cmd-btn" data-cmd="justifyLeft" title="Esquerda">⯇</button>
+      <button class="cmd-btn" data-cmd="justifyCenter" title="Centro">≡</button>
+      <button class="cmd-btn" data-cmd="justifyRight" title="Direita">⯈</button>
+      <span class="sep"></span>
+      <button class="cmd-btn" data-cmd="insertOrderedList" title="Lista numerada">1.</button>
+      <button class="cmd-btn" data-cmd="insertUnorderedList" title="Lista">•</button>
+      <button class="cmd-btn" data-cmd="formatBlock" data-value="h2" title="Título H2">H2</button>
+      <button class="cmd-btn" data-cmd="removeFormat" title="Limpar">⨉</button>
+      <span class="sep"></span>
+      <button class="cmd-btn" data-cmd="createLink" title="Link">🔗</button>
+      <button class="cmd-btn" data-cmd="insertImage" title="Imagem">🖼️</button>
+      <span class="sep"></span>
+      <button class="save-button">${mode === "edit" ? "Salvar" : "Adicionar"}</button>
+    </div>
+  `;
+
+  // Referências
+  const titleInput = document.getElementById("title-input");
+  const contentBody = document.getElementById("content-body");
+  const select = document.getElementById("category-select");
+  const newCat = document.getElementById("new-category");
+
+  // Preencher campos
+  if (titleInput) titleInput.value = titulo || "";
+  if (contentBody) contentBody.innerHTML = conteudo || "";
+
+  // Preencher categorias existentes
+  if (select) {
+    // limpa e adiciona opção padrão
+    select.innerHTML = '<option value="">-- Nova Categoria --</option>';
+    for (const c in contentData) {
+      const opt = document.createElement("option");
+      opt.value = c;
+      opt.textContent = c;
+      select.appendChild(opt);
     }
-    case 'formatBlock': {
-      // Alguns browsers exigem passar value explicitamente
-      if (value) {
-        document.execCommand('formatBlock', false, value)
+
+    // Se vier uma categoria (modo edit), seleciona-a; caso contrário, em modo add mostramos newCat
+    if (categoria) {
+      const hasOption = Array.from(select.options).some(opt => opt.value === categoria);
+      if (hasOption) {
+        select.value = categoria;
+        newCat.style.display = "none";
+        newCat.value = "";
+      } else {
+        // categoria passada que não existe: preenche newCat e mostra
+        select.value = "";
+        newCat.style.display = "block";
+        newCat.value = categoria;
       }
-      break
-    }
-    case 'openDebug': {
-      // Comando especial para o botão {"</>"}
-      openDebugPopup()
-      break
-    }
-    default: {
-      // Comandos padrão (bold, italic, underline, etc.)
-      document.execCommand(command, false, value)
-      break
-    }
-  }
-}
-
-// Popup de debug lado a lado — não altera o content-body até Aplicar
-function openDebugPopup() {
-  const body = document.getElementById('content-body');
-  const popup = document.getElementById('debug-popup');
-  const textarea = document.getElementById('debug-code');
-  const previewFrame = document.getElementById('debug-preview-frame');
-  if (!body || !popup || !textarea || !previewFrame) return;
-
-  // Carrega HTML atual do editor
-  const isDebugEscaped = body.getAttribute('data-debug-mode') === '1';
-  const htmlSource = isDebugEscaped
-    ? (body.getAttribute('data-html-original') || '')
-    : body.innerHTML;
-
-  textarea.value = htmlSource;
-  previewFrame.srcdoc = htmlSource;
-
-  // Evita múltiplos listeners ao abrir várias vezes
-  textarea.oninput = function () {
-    previewFrame.srcdoc = textarea.value;
-  };
-
-  popup.style.display = 'flex';
-}
-
-function closeDebugPopup() {
-  const popup = document.getElementById('debug-popup');
-  if (popup) popup.style.display = 'none';
-}
-
-function applyDebugChanges() {
-  const body = document.getElementById('content-body');
-  const textarea = document.getElementById('debug-code');
-  if (!body || !textarea) return;
-
-  // Aplica o HTML editado ao editor
-  body.innerHTML = textarea.value;
-
-  // Limpa qualquer estado de debug antigo
-  body.removeAttribute('data-debug-mode');
-  body.removeAttribute('data-html-original');
-  window.__debugMode = false;
-
-  closeDebugPopup();
-}
-
-function toggleDebugMode(force) {
-  try {
-    const body = document.getElementById('content-body');
-    if (!body) return false;
-
-    const enable = (typeof force === 'boolean') ? force : !window.__debugMode;
-
-    if (enable) {
-      const originalHTML = body.innerHTML;
-      body.setAttribute('data-html-original', originalHTML);
-
-      const escaped = originalHTML
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;');
-
-      body.setAttribute('data-debug-mode', '1');
-      body.innerHTML = `<pre style="white-space:pre-wrap;word-break:break-word;margin:0;padding:8px;background:#0f172024;border-radius:4px;">${escaped}</pre>`;
-      window.__debugMode = true;
     } else {
-      const saved = body.getAttribute('data-html-original');
-      if (typeof saved === 'string') body.innerHTML = saved;
-
-      body.removeAttribute('data-debug-mode');
-      body.removeAttribute('data-html-original');
-      window.__debugMode = false;
+      // sem categoria passada: se estamos em modo add, mostramos newCat por padrão
+      if (mode === "add") {
+        select.value = "";            // garante que a opção Nova Categoria esteja selecionada
+        newCat.style.display = "block";
+        newCat.value = "";
+      } else {
+        // modo edit sem categoria: mantém nova categoria visível para o usuário decidir
+        select.value = "";
+        newCat.style.display = "block";
+        newCat.value = "";
+      }
     }
 
-    const btn = document.getElementById('debug-toggle-btn');
-    if (btn) {
-      btn.classList.toggle('active', !!window.__debugMode);
-      btn.textContent = window.__debugMode ? 'Exibição' : 'HTML';
+    // Listener de mudança: mostra/oculta newCat conforme seleção
+    select.addEventListener("change", () => {
+      const isNova = select.value === "";
+      newCat.style.display = isNova ? "block" : "none";
+      if (!isNova) newCat.value = "";
+      // foco no campo apropriado para melhor UX
+      if (isNova) newCat.focus();
+      else titleInput && titleInput.focus();
+    });
+  }
+
+  // Foco inicial: se newCat visível, foca nele; senão foca no título
+  if (newCat && newCat.style.display !== "none") {
+    newCat.focus();
+  } else if (titleInput) {
+    titleInput.focus();
+  }
+
+  // Toolbar handlers
+  container.querySelectorAll(".cmd-btn").forEach(btn => {
+    btn.addEventListener("click", () => execCmd(btn.dataset.cmd, btn.dataset.value || null));
+  });
+
+  // Salvar
+  const saveBtn = container.querySelector(".save-button");
+  if (saveBtn) {
+    saveBtn.addEventListener("click", () => {
+      if (mode === "edit") saveContentInline();
+      else saveNewContent();
+    });
+  }
+
+  // Fechar
+  const closeBtn = document.getElementById("close-edit-btn");
+  if (closeBtn) {
+    closeBtn.addEventListener("click", () => {
+      if (mode === "edit") exitEditingInline();
+      else cancelAddingContent();
+    });
+  }
+
+  // Paste & drag&drop
+  document.removeEventListener("paste", handlePaste);
+  document.addEventListener("paste", handlePaste);
+  attachDragDropHandlers();
+}
+
+/* ============================
+   Salvar novo / salvar edição
+   ============================ */
+async function saveNewContent() {
+  try {
+    const titleInput = document.getElementById('title-input');
+    const body = document.getElementById('content-body');
+    const select = document.getElementById('category-select');
+    const newCat = document.getElementById('new-category');
+
+    const titulo = sanitizePlainText(titleInput.value, TITLE_MAX);
+    const categoria = sanitizePlainText(select.value || newCat.value, CATEGORY_MAX);
+
+    if (!titulo || !categoria) {
+      alert('Título e categoria são obrigatórios.');
+      return;
     }
 
-    return !!window.__debugMode;
+    const conteudoLimpo = sanitizeHtml(body.innerHTML);
+    const payload = { title: titulo, content: conteudoLimpo, categoria };
+
+    if (!window.supabase) {
+      // fallback local
+      const key = `post-${Date.now()}`;
+      if (!contentData[categoria]) contentData[categoria] = {};
+      contentData[categoria][key] = { postId: Date.now(), titulo, conteudo: conteudoLimpo, categoria };
+    } else {
+      const resp = await insertPost(payload);
+      if (!resp) {
+        alert('Erro ao adicionar conteúdo.');
+        return;
+      }
+      currentPostId = resp.id;
+    }
+
+    await carregarPostsDoBanco();
+
+    const catKey = categoria;
+    const newKey = Object.keys(contentData[catKey]).find(
+      k => contentData[catKey][k].postId === currentPostId
+    ) || Object.keys(contentData[catKey]).pop();
+
+    loadArticle(catKey, newKey);
+    alert('Conteúdo adicionado com sucesso!');
   } catch (e) {
-    console.warn('toggleDebugMode erro', e);
-    return false;
+    console.error('Erro ao adicionar:', e);
+    alert('Erro ao adicionar conteúdo.');
   }
 }
 
+async function saveContentInline() {
+  try {
+    const titleInput = document.getElementById('title-input');
+    const body = document.getElementById('content-body');
+    const select = document.getElementById('category-select');
+    const newCat = document.getElementById('new-category');
 
-// Instala listener seguro no botão (se existir) — opcional, pode ficar dentro do DOMContentLoaded
-(function attachDebugToggleBtn() {
-  const btn = document.getElementById('debug-toggle-btn');
-  if (!btn) return;
-  btn.removeAttribute('onclick');
-  const newBtn = btn.cloneNode(true);
-  btn.parentNode.replaceChild(newBtn, btn);
-  newBtn.addEventListener('click', () => toggleDebugMode());
-  newBtn.textContent = window.__debugMode ? 'Exibição' : 'HTML';
-})();
+    const titulo = sanitizePlainText(titleInput.value, TITLE_MAX);
+    const categoria = sanitizePlainText(select.value || newCat.value, CATEGORY_MAX);
 
+    if (!titulo || !categoria) {
+      alert('Título e categoria são obrigatórios.');
+      return;
+    }
 
-// ------------------------ Init ------------------------
+    const conteudoLimpo = sanitizeHtml(body.innerHTML);
+    const payload = { title: titulo, content: conteudoLimpo, categoria };
+
+    if (!window.supabase) {
+      // fallback local
+      const key = currentId || `post-${Date.now()}`;
+      if (!contentData[categoria]) contentData[categoria] = {};
+      contentData[categoria][key] = {
+        postId: contentData[currentCategoria]?.[currentId]?.postId || Date.now(),
+        titulo, conteudo: conteudoLimpo, categoria
+      };
+      if (currentCategoria && currentCategoria !== categoria && currentId) {
+        delete contentData[currentCategoria][currentId];
+      }
+    } else {
+      if (currentPostId) {
+        const resp = await updatePost(currentPostId, payload);
+        if (resp === null) {
+          alert('Erro ao salvar conteúdo.');
+          return;
+        }
+      } else {
+        const resp = await insertPost(payload);
+        if (!resp) {
+          alert('Erro ao salvar conteúdo.');
+          return;
+        }
+        currentPostId = resp.id;
+      }
+    }
+
+    await carregarPostsDoBanco();
+
+    const catKey = categoria;
+    const savedKey = Object.keys(contentData[catKey]).find(
+      k => contentData[catKey][k].postId === currentPostId
+    ) || Object.keys(contentData[catKey]).pop();
+
+    loadArticle(catKey, savedKey);
+    alert('Conteúdo salvo com sucesso!');
+  } catch (e) {
+    console.error('Erro ao salvar:', e);
+    alert('Erro ao salvar conteúdo.');
+  }
+}
+
+function exitEditingInline() {
+  if (currentCategoria && currentId) loadArticle(currentCategoria, currentId);
+  else renderWelcome();
+}
+
+function cancelAddingContent() {
+  renderWelcome();
+}
+
+/* ============================
+   Inicialização do app
+   ============================ */
 window.addEventListener('DOMContentLoaded', async () => {
   const loadingEl = document.getElementById('initial-loading');
-  const containerEl = document.querySelector('.container');
 
   try {
+    // Inicializa supabase e carrega dados
+    await initializeSupabase();
     await carregarPostsDoBanco();
   } catch (e) {
-    console.error('Erro ao carregar do Supabase, usando fallback local:', e);
-    if (typeof window.dataPT !== 'undefined') {
-      try {
-        contentData = JSON.parse(JSON.stringify(window.dataPT));
-      } catch (err) {
-        contentData = window.dataPT || {};
-      }
-    }
-    renderMenu();
-    renderWelcome();
+    console.error('Erro na inicialização:', e);
+    // tenta carregar dados locais/fallback mesmo em erro
+    await carregarPostsDoBanco();
   } finally {
-    // Esconde loading e mostra conteúdo
+    // Esconde o loading uma única vez
     if (loadingEl) loadingEl.style.display = 'none';
-    if (containerEl) containerEl.style.display = 'flex';
   }
 
-  initButtons();
+  // Configura o sidebar/hamburger (registra listeners uma vez)
+  setupSidebarAutoClose();
+
+  // Botão adicionar (registrado uma vez)
+  const addBtn = document.getElementById('add-content-btn');
+  if (addBtn) addBtn.addEventListener('click', () => renderEditorUI({ mode: 'add' }));
 });
