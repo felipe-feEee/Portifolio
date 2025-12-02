@@ -164,7 +164,7 @@ async function carregarPostsDoBanco() {
           contentData = {};
           window.dataPT.forEach(post => {
             const categoria = post.categoria || 'geral';
-            const key = `post-${post.id || Date.now()}`;
+            const key = `${post.id || Date.now()}`;
             if (!contentData[categoria]) contentData[categoria] = {};
             contentData[categoria][key] = {
               postId: post.id || Date.now(),
@@ -209,7 +209,7 @@ async function carregarPostsDoBanco() {
     contentData = {};
     (data || []).forEach(post => {
       const categoria = post.categoria || post.category || 'geral';
-      const key = `post-${post.id}`;
+      const key = `${post.id}`;
       if (!contentData[categoria]) contentData[categoria] = {};
       contentData[categoria][key] = {
         postId: post.id,
@@ -812,10 +812,12 @@ function renderMenu() {
       link.textContent = artigo.titulo;
       link.dataset.categoria = categoria;
       link.dataset.id = id;
-      link.onclick = (e) => {
+      link.addEventListener('click', function (e) {
         e.preventDefault();
-        loadArticle(categoria, id);
-      };
+        const cat = this.dataset.categoria;
+        const key = this.dataset.id;
+        loadArticle(cat, key);
+      });
       liTitulo.appendChild(link);
       ulTitulos.appendChild(liTitulo);
     }
@@ -881,39 +883,72 @@ function setActiveArticle(idOrSelector) {
     a.removeAttribute('aria-current');
   });
 
-  // tenta localizar por data-attribute primeiro (recomendado)
-  let target = null;
-  if (idOrSelector) {
-    // se id fornecido, procura por links com data-article-id
-    target = menu.querySelector(`a[data-article-id="${CSS.escape(idOrSelector)}"]`);
-    if (!target) {
-      // tenta localizar por href que contenha o id (ex: ?id=123 ou #123)
-      target = Array.from(menu.querySelectorAll('a')).find(a => {
-        const href = a.getAttribute('href') || '';
-        return href.includes(idOrSelector) || a.dataset.articleId === idOrSelector;
-      });
+  if (!idOrSelector) {
+    // não faz fallback automático quando id inválido
+    return;
+  }
+
+  // normaliza para string
+  const needle = String(idOrSelector);
+
+  // helpers
+  const tryQuery = (sel) => {
+    try { return menu.querySelector(sel); } catch (e) { return null; }
+  };
+
+  // 1) procura por atributos de dataset comuns (data-id, data-article-id, data-post-id)
+  let target = Array.from(menu.querySelectorAll('a')).find(a => {
+    const ds = a.dataset || {};
+    return ds.id === needle || ds.articleId === needle || ds.postId === needle || ds['article-id'] === needle;
+  });
+
+  // 2) se não encontrou, tenta data-article-id com escape (caso o id contenha caracteres especiais)
+  if (!target) {
+    try {
+      target = tryQuery(`a[data-article-id="${CSS.escape(needle)}"]`);
+    } catch (e) { /* ignore */ }
+  }
+
+  // 3) tenta localizar por href que contenha o id (apenas se o href for usado no seu app)
+  if (!target) {
+    target = Array.from(menu.querySelectorAll('a')).find(a => {
+      const href = a.getAttribute('href') || '';
+      return href.includes(needle);
+    });
+  }
+
+  // 4) tenta encontrar por postId armazenado em data attributes com variações
+  if (!target) {
+    target = Array.from(menu.querySelectorAll('a')).find(a => {
+      const ds = a.dataset || {};
+      return Object.values(ds).some(v => String(v) === needle);
+    });
+  }
+
+  // 5) se ainda não encontrou, tenta interpretar idOrSelector como seletor CSS (ex: '#foo' ou '.bar')
+  if (!target) {
+    target = tryQuery(needle);
+  }
+
+  // se não encontrou nada, não faz fallback para o primeiro link
+  if (!target) {
+    // opcional: log temporário para depuração
+    if (window && window.console && window.console.debug) {
+      console.debug('setActiveArticle: target not found for', idOrSelector);
     }
+    return;
   }
 
-  // se não encontrou e idOrSelector parece ser um seletor CSS, tenta querySelector
-  if (!target && idOrSelector) {
-    try { target = menu.querySelector(idOrSelector); } catch (e) { /* ignore */ }
-  }
+  // marca o target
+  target.classList.add('active');
+  target.setAttribute('aria-current', 'true');
 
-  // se ainda não encontrou, tenta marcar o primeiro link do menu (fallback)
-  if (!target) target = menu.querySelector('a');
-
-  if (target) {
-    target.classList.add('active');
-    target.setAttribute('aria-current', 'true');
-    // opcional: rolar o menu para mostrar o item ativo
-    if (typeof target.scrollIntoView === 'function') {
-      // rola suavemente apenas se estiver fora da viewport do menu
-      const menuRect = menu.getBoundingClientRect();
-      const itemRect = target.getBoundingClientRect();
-      if (itemRect.top < menuRect.top || itemRect.bottom > menuRect.bottom) {
-        target.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
-      }
+  // rola suavemente apenas se estiver fora da viewport do menu
+  if (typeof target.scrollIntoView === 'function') {
+    const menuRect = menu.getBoundingClientRect();
+    const itemRect = target.getBoundingClientRect();
+    if (itemRect.top < menuRect.top || itemRect.bottom > menuRect.bottom) {
+      target.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
     }
   }
 }
@@ -923,6 +958,9 @@ function loadArticle(categoria, id) {
   const artigo = contentData[categoria][id];
   const container = document.getElementById('article-content');
   if (!container) return;
+
+  // após renderizar:
+  setActiveArticle(id);
 
   container.innerHTML = `
     <h1 id="article-title">${artigo.titulo}</h1>
@@ -949,8 +987,6 @@ function loadArticle(categoria, id) {
     });
   }
   closeSidebarIfMobile();
-  // após renderizar:
-  setActiveArticle(id);
 }
 
 /* ============================
@@ -1114,7 +1150,7 @@ async function saveNewContent() {
 
     if (!window.supabase) {
       // fallback local
-      const key = `post-${Date.now()}`;
+      const key = `${Date.now()}`;
       if (!contentData[categoria]) contentData[categoria] = {};
       contentData[categoria][key] = { postId: Date.now(), titulo, conteudo: conteudoLimpo, categoria };
     } else {
@@ -1161,7 +1197,7 @@ async function saveContentInline() {
 
     if (!window.supabase) {
       // fallback local
-      const key = currentId || `post-${Date.now()}`;
+      const key = currentId || `${Date.now()}`;
       if (!contentData[categoria]) contentData[categoria] = {};
       contentData[categoria][key] = {
         postId: contentData[currentCategoria]?.[currentId]?.postId || Date.now(),
@@ -1173,17 +1209,32 @@ async function saveContentInline() {
     } else {
       if (currentPostId) {
         const resp = await updatePost(currentPostId, payload);
-        if (resp === null) {
-          alert('Erro ao salvar conteúdo.');
-          return;
+        if (!resp || resp.error) {
+          console.warn('DBG updatePost returned error or falsy', resp);
+          if (typeof carregarPostsDoBanco === 'function') await carregarPostsDoBanco();
+          const existsAfter = contentData?.[categoria] && Object.values(contentData[categoria] || {}).some(x => x.postId === currentPostId);
+          if (!existsAfter) {
+            alert('Erro ao salvar conteúdo.');
+            return;
+          }
+        } else {
+          currentPostId = resp.id || (resp.data && (resp.data.id || resp.data.postId)) || currentPostId;
         }
       } else {
         const resp = await insertPost(payload);
-        if (!resp) {
-          alert('Erro ao salvar conteúdo.');
-          return;
+        if (!resp || resp.error) {
+          console.warn('DBG insertPost returned error or falsy', resp);
+          if (typeof carregarPostsDoBanco === 'function') await carregarPostsDoBanco();
+          const maybeId = resp && (resp.id || (resp.data && (resp.data.id || resp.data.postId)));
+          if (maybeId) {
+            currentPostId = maybeId;
+          } else {
+            alert('Erro ao salvar conteúdo.');
+            return;
+          }
+        } else {
+          currentPostId = resp.id || (resp.data && (resp.data.id || resp.data.postId)) || currentPostId;
         }
-        currentPostId = resp.id;
       }
     }
 
@@ -1198,6 +1249,8 @@ async function saveContentInline() {
     alert('Conteúdo salvo com sucesso!');
   } catch (e) {
     console.error('Erro ao salvar:', e);
+    // tenta revalidar antes de notificar o usuário
+    try { if (typeof carregarPostsDoBanco === 'function') await carregarPostsDoBanco(); } catch(e2){ console.warn('revalidação falhou', e2); }
     alert('Erro ao salvar conteúdo.');
   }
 }
