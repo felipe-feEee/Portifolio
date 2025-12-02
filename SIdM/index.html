@@ -26,77 +26,51 @@
     </div>
   </div>
 
-  <!-- Sidebar -->
-  <aside class="sidebar">
-    <button id="add-content-btn">+ Adicionar Conteúdo</button>
-    <button id="export-json-btn">Exportar Dados</button>
-    <nav id="menu"></nav>
-  </aside>
-
-  <!-- Cabeçalho de busca -->
-  <div class="search-header">
-    <input
-      type="text"
-      id="search-input"
-      class="search-bar"
-      placeholder="Buscar conteúdo..."
-    />
+  <!-- Cabeçalho fixo -->
+  <header class="main-header">
+    <input type="text" id="search-input" class="search-bar" placeholder="Buscar conteúdo..." />
     <button class="hamburger" id="hamburger-btn">
-      <span></span>
-      <span></span>
-      <span></span>
+      <span></span><span></span><span></span>
     </button>
-  </div>
+    <ul id="search-suggestions" class="search-suggestions"></ul>
+  </header>
 
-  <!-- Sugestões de busca -->
-  <ul id="search-suggestions" class="search-suggestions"></ul>
+  <!-- Layout principal -->
+  <div class="layout">
+    <!-- Sidebar com scroll próprio -->
+    <aside class="sidebar">
+      <button id="add-content-btn">+ Adicionar Conteúdo</button>
+      <button id="export-json-btn">Exportar Dados</button>
+      <nav id="menu"></nav>
+    </aside>
 
-  <!-- Conteúdo principal -->
-  <div class="container">
+    <!-- Área de conteúdo com scroll independente -->
     <main class="content">
       <article id="article-content">
-        <h1>Bem-vindo</h1>
-        <a
-          id="edit-article-link"
-          href="#"
-          data-categoria=""
-          data-id=""
-          style="display: none;"
-        >Editar</a>
-        <p>Selecione um item no menu para ver o conteúdo.</p>
-      </article>
-
-      <!-- Overlay -->
-      <div id="overlay"></div>
-
-      <!-- Painel de novo conteúdo -->
-      <section id="new-content-panel" style="display: none;">
-        <div id="local-image-fix-panel"></div>
-        <button id="close-panel-btn" title="Fechar">×</button>
-        <h2>Adicionar Conteúdo</h2>
-
-        <label for="category-select">Categoria existente:</label>
-        <select id="category-select">
-          <option value="">-- Nova Categoria --</option>
-        </select>
-
-        <div id="new-category-wrapper">
-          <label for="new-category">Ou nova categoria:</label>
-          <input type="text" id="new-category" placeholder="Nova categoria" />
+        <!-- Categoria -->
+        <div id="category-wrapper" style="display: none;">
+          <label for="category-select">Categoria:</label>
+          <select id="category-select">
+            <option value="">-- Nova Categoria --</option>
+          </select>
+          <input type="text" id="new-category" placeholder="Nova categoria" style="display: none;" />
         </div>
 
-        <label for="content-title">Título:</label>
-        <input type="text" id="content-title" placeholder="Título do conteúdo" />
+        <!-- Título -->
+        <h1 id="article-title">Bem-vindo</h1>
+        <input type="text" id="title-input" placeholder="Título do conteúdo" style="display: none;" />
 
-        <label for="content-body">Conteúdo:</label>
-        <div
-          id="content-body"
-          contenteditable="true"
-          data-placeholder="Digite ou cole o conteúdo aqui"
-        ></div>
+        <!-- Botões -->
+        <a id="edit-article-link" href="#" data-categoria="" data-id="">Editar</a>
+        <button id="close-edit-btn" title="Fechar" style="display: none;">×</button>
+
+        <!-- Corpo do conteúdo -->
+        <div id="content-body" contenteditable="false" data-placeholder="Digite ou cole o conteúdo aqui">
+          <p>Selecione um item no menu para ver o conteúdo.</p>
+        </div>
 
         <!-- Toolbar do editor -->
-        <div class="editor-toolbar-fixed">
+        <div class="editor-toolbar-fixed" style="display: none;">
           <button class="cmd-btn" data-cmd="bold" title="Negrito"><b>B</b></button>
           <button class="cmd-btn" data-cmd="italic" title="Itálico"><i>I</i></button>
           <button class="cmd-btn" data-cmd="underline" title="Sublinhado"><u>U</u></button>
@@ -117,7 +91,7 @@
           <button class="cmd-btn" data-cmd="openDebug" title="HTML">{"</>"}</button>
           <button class="save-button">Salvar</button>
         </div>
-      </section>
+      </article>
     </main>
   </div>
 
