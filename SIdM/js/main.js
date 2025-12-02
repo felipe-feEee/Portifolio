@@ -385,26 +385,6 @@ function sanitizeFilename(name) {
   return name;
 }
 
-/* ============================
-   Inserção de nodes no editor
-   ============================ */
-function insertNodeAtCursor(node) {
-  const editor = document.getElementById('content-body');
-  if (!editor) return;
-  const sel = window.getSelection();
-  if (!sel || sel.rangeCount === 0) {
-    editor.appendChild(node);
-    return;
-  }
-  const range = sel.getRangeAt(0);
-  range.deleteContents();
-  range.insertNode(node);
-  range.setStartAfter(node);
-  range.collapse(true);
-  sel.removeAllRanges();
-  sel.addRange(range);
-}
-
 function insertHtmlAtCaret(html) {
   const cb = document.getElementById('content-body');
   const sel = window.getSelection();
@@ -425,26 +405,146 @@ function insertHtmlAtCaret(html) {
   sel.addRange(newRange);
 }
 
-/* ============================
-   Paste / Drag & Drop (imagens e HTML)
-   ============================ */
+/* ---------- Helpers de imagem e paste (importados do MonaNote) ---------- */
+
+function dataURLtoFile(dataurl, filename) {
+  const arr = dataurl.split(',');
+  const mime = arr[0].match(/:(.*?);/)[1];
+  const bstr = atob(arr[1]);
+  let n = bstr.length;
+  const u8arr = new Uint8Array(n);
+  while (n--) u8arr[n] = bstr.charCodeAt(n);
+  return new File([u8arr], filename, { type: mime });
+}
+
+function insertNodeAtCursor(node) {
+  const editor = document.getElementById('content-body');
+  if (!editor) {
+    console.warn('Editor não encontrado: #content-body');
+    return;
+  }
+  const sel = window.getSelection();
+  if (!sel || sel.rangeCount === 0) {
+    editor.appendChild(node);
+    return;
+  }
+  const range = sel.getRangeAt(0);
+  range.deleteContents();
+  range.insertNode(node);
+  range.setStartAfter(node);
+  range.collapse(true);
+  sel.removeAllRanges();
+  sel.addRange(range);
+}
+
+function hexToBlob(hex, mime = 'image/png') {
+  const bytes = new Uint8Array(hex.length / 2);
+  for (let i = 0; i < bytes.length; i++) bytes[i] = parseInt(hex.substr(i * 2, 2), 16);
+  return new Blob([bytes], { type: mime });
+}
+
+function extractImagesFromRtf(rtfText) {
+  if (!rtfText) return [];
+  const results = [];
+  const pictRegex = /\\pict[^\n]*?((?:[0-9A-Fa-f\r\n ]{20,})+?)\\par/gm;
+  let m;
+  while ((m = pictRegex.exec(rtfText)) !== null) {
+    const hex = m[1].replace(/[\s\r\n]/g, '');
+    const contextStart = Math.max(0, m.index - 80);
+    const context = rtfText.slice(contextStart, m.index + 20).toLowerCase();
+    let mime = 'image/png';
+    if (context.includes('\\jpegblip')) mime = 'image/jpeg';
+    if (hex.length > 20) {
+      const blob = hexToBlob(hex, mime);
+      const ext = mime === 'image/jpeg' ? 'jpg' : 'png';
+      results.push(new File([blob], `rtf-extract-${Date.now()}.${ext}`, { type: mime }));
+    }
+  }
+  return results;
+}
+
+async function tryClipboardReadForImages() {
+  try {
+    if (!navigator.clipboard || !navigator.clipboard.read) return [];
+    const items = await navigator.clipboard.read();
+    const files = [];
+    for (const item of items) {
+      for (const type of item.types) {
+        if (type.startsWith('image/')) {
+          const blob = await item.getType(type);
+          const ext = type.split('/')[1] || 'png';
+          files.push(new File([blob], `clipboard-${Date.now()}.${ext}`, { type }));
+        }
+      }
+    }
+    return files;
+  } catch (err) {
+    console.warn('clipboard.read() indisponível ou sem permissão:', err);
+    return [];
+  }
+}
+
+function extractDataUrlsFromHtml(html) {
+  const dataFiles = [];
+  const dataRegex = /src=["'](data:[^"']+)["']/ig;
+  let m;
+  while ((m = dataRegex.exec(html)) !== null) {
+    const dataurl = m[1];
+    try {
+      const arr = dataurl.split(',');
+      const mime = arr[0].match(/:(.*?);/)[1];
+      const bstr = atob(arr[1]);
+      let n = bstr.length;
+      const u8arr = new Uint8Array(n);
+      while (n--) u8arr[n] = bstr.charCodeAt(n);
+      const ext = mime.split('/')[1] || 'png';
+      const file = new File([u8arr], `inline-${Date.now()}.${ext}`, { type: mime });
+      dataFiles.push({ file, dataurl });
+    } catch (err) {
+      console.warn('Falha ao converter data: url', err);
+    }
+  }
+  return dataFiles;
+}
+
+function createMissingImageMessage() {
+  const msg = document.createElement('div');
+  msg.className = 'missing-image-message';
+  msg.textContent = 'Imagem não foi colada. Cole apenas a imagem (sem texto) para inseri-la automaticamente.';
+  msg.style.color = '#666';
+  msg.style.fontStyle = 'italic';
+  msg.style.padding = '0.25rem 0';
+  return msg;
+}
+
+/* Handler de paste (integra com uploadToSupabase e insertNodeAtCursor) */
 async function handlePaste(e) {
   try {
-    const editor = document.getElementById('content-body');
-    if (!editor) return;
-
+    // permite fallback se não houver clipboardData
+    const clipboard = e.clipboardData || window.clipboardData;
+    if (!clipboard) return;
+    const contentBody = document.getElementById('content-body');
     const target = e.target || document.activeElement;
-    const inEditor = editor && (target === editor || editor.contains(target));
+    const isEditor = contentBody && (target === contentBody || contentBody.contains(target));
 
-    // Se não for no editor, deixa o comportamento padrão para inputs/textarea
-    if (!inEditor) return;
+    // se não for no editor, insere texto simples em inputs/textareas
+    if (!isEditor) {
+      if (target && (target.tagName === 'TEXTAREA' || target.tagName === 'INPUT')) {
+        const plain = clipboard.getData('text/plain') || '';
+        const el = target;
+        const start = typeof el.selectionStart === 'number' ? el.selectionStart : el.value.length;
+        const end = typeof el.selectionEnd === 'number' ? el.selectionEnd : el.value.length;
+        el.value = el.value.slice(0, start) + plain + el.value.slice(end);
+        el.selectionStart = el.selectionEnd = start + plain.length;
+        el.dispatchEvent(new Event('input', { bubbles: true }));
+      }
+      return;
+    }
 
     e.preventDefault();
 
-    const items = Array.from(e.clipboardData?.items || []);
-    const types = Array.from(e.clipboardData?.types || []);
-
-    // Imagens diretas
+    // 1) imagens diretas
+    const items = Array.from(clipboard.items || []);
     const imageItems = items.filter(i => i.type && i.type.startsWith('image/'));
     if (imageItems.length > 0) {
       for (const it of imageItems) {
@@ -456,43 +556,76 @@ async function handlePaste(e) {
           img.src = publicUrl;
           img.style.maxWidth = '100%';
           insertNodeAtCursor(img);
-        } else {
-          const hint = document.createElement('div');
-          hint.textContent = 'Falha ao enviar imagem.';
-          hint.style.color = '#b33';
-          insertNodeAtCursor(hint);
         }
       }
       return;
     }
 
-    // HTML colado
-    if (types.includes('text/html')) {
-      const rawHtml = e.clipboardData.getData('text/html');
-      const clean = sanitizeHtml(rawHtml);
-      insertHtmlAtCaret(clean);
-      return;
+    // 2) HTML colado (procura data: urls)
+    if ((clipboard.types || []).includes('text/html')) {
+      const html = clipboard.getData('text/html');
+      // extrai data urls e faz upload
+      const dataFiles = extractDataUrlsFromHtml(html);
+      if (dataFiles.length > 0) {
+        for (const { file, dataurl } of dataFiles) {
+          const publicUrl = await uploadToSupabase(file);
+          if (publicUrl) {
+            const img = document.createElement('img');
+            img.src = publicUrl;
+            img.style.maxWidth = '100%';
+            insertNodeAtCursor(img);
+          }
+        }
+        return;
+      }
+      // fallback: sanitiza e insere HTML (se tiver função cleanWordHtmlAndInsert)
+      if (typeof cleanWordHtmlAndInsert === 'function') {
+        cleanWordHtmlAndInsert(html);
+        return;
+      }
     }
 
-    // Texto simples
-    const plain = e.clipboardData.getData('text/plain');
+    // 3) Texto simples
+    const plain = clipboard.getData('text/plain');
     if (plain) {
       const p = document.createElement('p');
       p.textContent = plain;
       insertNodeAtCursor(p);
+      return;
     }
+
+    // 4) se nada foi inserido, mostra mensagem amigável
+    const msg = createMissingImageMessage();
+    insertNodeAtCursor(msg);
   } catch (err) {
     console.error('Erro no handlePaste:', err);
   }
 }
 
-function attachDragDrop() {
+/* Instala listeners de paste/drag apenas uma vez */
+document.removeEventListener('paste', handlePaste);
+document.addEventListener('paste', handlePaste);
+
+// Chame attachDragDropHandlers() sempre que o editor for renderizado (ex: no final de renderEditorUI)
+function attachDragDropHandlers() {
   const editor = document.getElementById('content-body');
   if (!editor) return;
-  editor.addEventListener('dragover', e => e.preventDefault());
-  editor.addEventListener('drop', async e => {
+
+  // remove listeners antigos (mesma referência de função)
+  editor.removeEventListener('dragover', onEditorDragOver);
+  editor.removeEventListener('drop', onEditorDrop);
+
+  editor.addEventListener('dragover', onEditorDragOver);
+  editor.addEventListener('drop', onEditorDrop);
+
+  async function onEditorDrop(e) {
     e.preventDefault();
-    const files = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/'));
+    const files = Array.from(e.dataTransfer.files || []).filter(f => f.type.startsWith('image/'));
+    if (files.length === 0) {
+      const msg = createMissingImageMessage();
+      insertNodeAtCursor(msg);
+      return;
+    }
     for (const file of files) {
       try {
         const publicUrl = await uploadToSupabase(file);
@@ -501,17 +634,16 @@ function attachDragDrop() {
           img.src = publicUrl;
           img.style.maxWidth = '100%';
           insertNodeAtCursor(img);
-        } else {
-          const hint = document.createElement('div');
-          hint.textContent = 'Falha ao enviar imagem via drag&drop.';
-          hint.style.color = '#b33';
-          insertNodeAtCursor(hint);
         }
       } catch (err) {
         console.error('Erro ao enviar imagem via drag&drop:', err);
+        const msg = createMissingImageMessage();
+        insertNodeAtCursor(msg);
       }
     }
-  });
+  }
+
+  function onEditorDragOver(e) { e.preventDefault(); }
 }
 
 /* ============================
@@ -854,7 +986,7 @@ function renderEditorUI({ mode = "add", titulo = "", conteudo = "", categoria = 
   // Paste & drag&drop
   document.removeEventListener("paste", handlePaste);
   document.addEventListener("paste", handlePaste);
-  attachDragDrop();
+  attachDragDropHandlers();
 }
 
 /* ============================
