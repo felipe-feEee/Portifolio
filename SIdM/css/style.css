@@ -83,26 +83,25 @@ body{
 }
 
 /* hamburger: fixo ao lado esquerdo da search */
-.hamburger{
-  display:none;
-  align-items:center;
-  justify-content:center;
-  width:44px;
-  height:44px;
-  background:var(--color-primary);
-  border-radius:10px;
-  border:none;
-  cursor:pointer;
-  flex:0 0 44px;
-  box-shadow:var(--shadow-sm);
+.hamburger {
+  display: none;               /* escondido no desktop */
+  appearance: none;
+  border: none;
+  background: transparent;
+  padding: 0;
+  margin: 0;
+  cursor: pointer;
 }
-.hamburger span{
-  display:block;
-  width:18px;
-  height:2px;
-  background:#fff;
-  margin:3px 0;
-  border-radius:2px;
+
+/* traços */
+.hamburger span {
+  display: block;
+  width: 18px;
+  height: 2px;
+  background: #fff;
+  border-radius: 2px;
+  transition: transform 220ms ease, opacity 220ms ease;
+  transform-origin: center;
 }
 
 /* search container central */
@@ -399,8 +398,8 @@ body{
   .main-header{padding:8px 12px}
   .main-header .header-inner{gap:0.5rem}
   .hamburger {
-    display: flex !important;
-    flex-direction: column;     /* empilha os spans verticalmente */
+    display: inline-flex !important;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
     width: 44px;
@@ -409,14 +408,19 @@ body{
     background: var(--color-primary);
     border-radius: 8px;
     box-shadow: var(--shadow-sm);
-    cursor: pointer;
     z-index: 1200;
   }
-
-  /* Espaçamento entre os traços */
-  .hamburger span {
-    margin: 2px 0;              /* separa os traços verticalmente */
-  }
+   .hamburger span { margin: 2px 0; }
+   .hamburger.open span:nth-child(1) {
+     transform: translateY(6px) rotate(45deg);
+   }
+   .hamburger.open span:nth-child(2) {
+     opacity: 0;
+     transform: scaleX(0.6);
+   }
+   .hamburger.open span:nth-child(3) {
+     transform: translateY(-6px) rotate(-45deg);
+   }
   .search-header{justify-content:flex-start}
   .search-bar{max-width:none}
   .header-actions{display:none}
