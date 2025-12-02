@@ -958,6 +958,5 @@ window.addEventListener('DOMContentLoaded', async () => {
   setupSidebarAutoClose();
 
   // Se você tem um elemento de loading, esconda-o aqui quando tudo estiver pronto:
-  const loadingEl = document.getElementById('initial-loading');
   if (loadingEl) loadingEl.style.display = 'none';
 });
