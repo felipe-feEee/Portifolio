@@ -1,5 +1,62 @@
 // main.js — versão unificada e compatível com tabela "posts" e bucket "images"
 
+// ---------- Sidebar / Hamburger (inicialização única) ----------
+let _sidebarAutoCloseInitialized = false;
+
+function closeSidebarIfMobile() {
+  const sidebar = document.querySelector('.sidebar');
+  if (!sidebar) return;
+  if (window.innerWidth <= 768 && sidebar.classList.contains('open')) {
+    sidebar.classList.remove('open');
+    document.body.classList.remove('sidebar-open');
+  }
+}
+
+function setupSidebarAutoClose() {
+  if (_sidebarAutoCloseInitialized) return;
+  _sidebarAutoCloseInitialized = true;
+
+  const sidebar = document.querySelector('.sidebar');
+  const hamburger = document.getElementById('hamburger-btn') || document.querySelector('.hamburger');
+
+  if (!sidebar || !hamburger) return;
+
+  // evita que cliques dentro da sidebar fechem ela
+  sidebar.addEventListener('click', (e) => e.stopPropagation());
+
+  // hamburger abre/fecha (apenas um listener)
+  hamburger.addEventListener('click', (e) => {
+    e.stopPropagation();
+    sidebar.classList.toggle('open');
+    if (sidebar.classList.contains('open')) document.body.classList.add('sidebar-open');
+    else document.body.classList.remove('sidebar-open');
+  });
+
+  // clique fora fecha
+  document.addEventListener('click', (e) => {
+    const target = e.target;
+    if (hamburger && (hamburger === target || hamburger.contains(target))) return;
+    if (sidebar.contains(target)) return;
+    if (sidebar.classList.contains('open')) {
+      sidebar.classList.remove('open');
+      document.body.classList.remove('sidebar-open');
+    }
+  });
+
+  // fecha ao redimensionar para desktop
+  window.addEventListener('resize', () => {
+    if (window.innerWidth > 768 && sidebar.classList.contains('open')) {
+      sidebar.classList.remove('open');
+      document.body.classList.remove('sidebar-open');
+    }
+  });
+}
+
+// Chame setupSidebarAutoClose() uma vez na inicialização do app
+window.addEventListener('DOMContentLoaded', () => {
+  setupSidebarAutoClose();
+});
+
 /* ============================
    Configurações e estado
    ============================ */
@@ -651,68 +708,6 @@ function loadArticle(categoria, id) {
   }
    closeSidebarIfMobile();
 }
-
-// flag para garantir inicialização única
-let _sidebarAutoCloseInitialized = false;
-
-function closeSidebarIfMobile() {
-  const sidebar = document.querySelector('.sidebar');
-  if (!sidebar) return;
-  if (window.innerWidth <= 768 && sidebar.classList.contains('open')) {
-    sidebar.classList.remove('open');
-    document.body.classList.remove('sidebar-open');
-  }
-}
-
-function setupSidebarAutoClose() {
-  if (_sidebarAutoCloseInitialized) return; // já inicializado
-  _sidebarAutoCloseInitialized = true;
-
-  const sidebar = document.querySelector('.sidebar');
-  const hamburger = document.getElementById('hamburger-btn') || document.querySelector('.hamburger');
-
-  if (!sidebar) return;
-
-  // evita que cliques dentro da sidebar fechem ela
-  sidebar.addEventListener('click', (e) => {
-    e.stopPropagation();
-  });
-
-  // hamburger abre/fecha (apenas um listener)
-  if (hamburger) {
-    hamburger.addEventListener('click', (e) => {
-      e.stopPropagation();
-      sidebar.classList.toggle('open');
-      // opcional: bloqueia scroll do body quando aberto
-      if (sidebar.classList.contains('open')) document.body.classList.add('sidebar-open');
-      else document.body.classList.remove('sidebar-open');
-    });
-  }
-
-  // clique fora fecha a sidebar (apenas um listener no documento)
-  document.addEventListener('click', (e) => {
-    const target = e.target;
-    if (hamburger && (hamburger === target || hamburger.contains(target))) return;
-    if (sidebar.contains(target)) return;
-    if (sidebar.classList.contains('open')) {
-      sidebar.classList.remove('open');
-      document.body.classList.remove('sidebar-open');
-    }
-  });
-
-  // fecha ao redimensionar para desktop (opcional)
-  window.addEventListener('resize', () => {
-    if (window.innerWidth > 768 && sidebar.classList.contains('open')) {
-      sidebar.classList.remove('open');
-      document.body.classList.remove('sidebar-open');
-    }
-  });
-}
-
-// Chame setupSidebarAutoClose() uma vez na inicialização do app
-window.addEventListener('DOMContentLoaded', () => {
-  setupSidebarAutoClose();
-});
 
 /* ============================
    Editor unificado (Adicionar / Editar)
