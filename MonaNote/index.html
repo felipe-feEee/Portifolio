@@ -2,111 +2,124 @@
 <html lang="pt">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <link rel="icon" type="image/x-icon" href="favicon.ico">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="icon" type="image/x-icon" href="favicon.ico" />
   <title>Mona Note</title>
-  <link rel="stylesheet" href="css/style.css">
-  <script src="js/lib/jszip.min.js"></script>
-  <script src="js/lib/FileSaver.min.js"></script>
+
+  <!-- Estilos -->
+  <link rel="stylesheet" href="css/style.css" />
+
+  <!-- Dados e lógica -->
   <script src="js/data_pt.js"></script>
-  <script type="module" src="./js/main.js"></script>
+  <script type="module" src="js/main.js"></script>
 </head>
 <body>
   <!-- Tela de carregamento inicial -->
-  <div id="initial-loading">
+  <div id="initial-loading" class="center">
     <div class="loading-box">
       <div class="spinner"></div>
       <p>Iniciando sistema...</p>
     </div>
   </div>
 
-  <!-- resto do layout -->
-  <div class="container" style="display:none;">
-    <aside class="sidebar">
-	  <button id="add-content-btn">+ Adicionar Conteúdo</button>
-	  <button id="export-json-btn" style="display: none">Exportar Dados</button>
-      <nav id="menu"></nav>
+  <!-- Cabeçalho fixo -->
+  <header class="main-header" role="banner">
+    <div class="header-inner">
+      <button id="hamburger-btn" class="hamburger" aria-label="Abrir menu">
+        <span></span><span></span><span></span>
+      </button>
 
+      <div class="search-header" role="search">
+        <input id="search-input" class="search-bar" placeholder="Buscar conteúdo..." aria-label="Buscar conteúdo" />
+        <ul id="search-suggestions" class="search-suggestions" role="listbox" aria-label="Sugestões de busca"></ul>
+      </div>
+
+      <div class="header-actions" aria-hidden="true">
+        <!-- botões extras (opcional) -->
+      </div>
+    </div>
+  </header>
+
+  <!-- Layout principal -->
+  <div class="app-layout">
+    <!-- Sidebar com scroll próprio -->
+    <aside class="sidebar" role="navigation" aria-label="Menu lateral">
+      <button id="add-content-btn" type="button">+ Adicionar Conteúdo</button>
+      <nav id="menu" aria-label="Lista de artigos"></nav>
     </aside>
-	<main class="content">
-	  <div class="search-bar-container">
-		<input type="text" id="search-input" class="search-bar" placeholder="Buscar conteúdo...">
-		<ul id="search-suggestions" class="search-suggestions" style="display: none;"></ul>
-	  </div>
 
-	  <article id="article-content">
-		<h1>Bem-vindo</h1>
-		<a id="edit-article-link" href="#" style="display:none;" data-categoria="" data-id="">Editar</a>
-		<p>Selecione um item no menu para ver o conteúdo.</p>
-	  </article>
+    <!-- Área de conteúdo com scroll independente -->
+    <main class="content" id="content" role="main">
+      <article id="article-content" aria-live="polite">
+        <!-- Categoria (visível apenas no editor) -->
+        <div id="category-wrapper" style="display: none;">
+          <label for="category-select">Categoria:</label>
+          <select id="category-select">
+            <option value="">-- Nova Categoria --</option>
+          </select>
+          <input type="text" id="new-category" placeholder="Nova categoria" style="display: none;" />
+        </div>
 
-	  <!-- Overlay deve vir antes do painel -->
-	  <div id="overlay"></div>
+        <!-- Título -->
+        <h1 id="article-title">Bem-vindo</h1>
+        <input type="text" id="title-input" placeholder="Título do conteúdo" style="display: none;" />
 
-	  <section id="new-content-panel" style="display: none;">
-		<div id="local-image-fix-panel"></div>
-		<button id="close-panel-btn" title="Fechar">×</button>
-		<h2>Adicionar Conteúdo</h2>
+        <!-- Botões -->
+        <button id="edit-article-link" data-categoria="" data-id="" type="button">Editar</button>
+        <button id="close-edit-btn" title="Fechar" style="display: none;" type="button">×</button>
 
-		<label for="category-select">Categoria existente:</label>
-		<select id="category-select">
-		  <option value="">-- Nova Categoria --</option>
-		</select>
+        <!-- Corpo do conteúdo -->
+        <div id="content-body" contenteditable="false" data-placeholder="Digite ou cole o conteúdo aqui">
+          <p>Selecione um item no menu para ver o conteúdo.</p>
+        </div>
 
-		<div id="new-category-wrapper">
-		  <label for="new-category">Ou nova categoria:</label>
-		  <input type="text" id="new-category" placeholder="Nova categoria" />
-		</div>
-
-		<label for="content-title">Título:</label>
-		<input type="text" id="content-title" placeholder="Título do conteúdo" />
-
-
-		<label for="content-body">Conteúdo:</label>
-		<div id="content-body" contenteditable="true" data-placeholder="Digite ou cole o conteúdo aqui"></div>
-		<div class="editor-toolbar-fixed">
-		  	<button class="cmd-btn" data-cmd="bold" title="Negrito"><b>B</b></button>
-			<button class="cmd-btn" data-cmd="italic" title="Itálico"><i>I</i></button>
-			<button class="cmd-btn" data-cmd="underline" title="Sublinhado"><u>U</u></button>
-			<button class="cmd-btn" data-cmd="strikeThrough" title="Tachado"><s>S</s></button>
-		  <span class="sep"></span>
-		  	<button class="cmd-btn" data-cmd="justifyLeft" title="Esquerda">⯇</button>
-			<button class="cmd-btn" data-cmd="justifyCenter" title="Centro">≡</button>
-			<button class="cmd-btn" data-cmd="justifyRight" title="Direita">⯈</button>
-		  <span class="sep"></span>
-		  	<button class="cmd-btn" data-cmd="insertOrderedList" title="Lista numerada">1.</button>
-			<button class="cmd-btn" data-cmd="insertUnorderedList" title="Lista">•</button>
-			<button class="cmd-btn" data-cmd="formatBlock" data-value="h2" title="Título H2">H2</button>
-			<button class="cmd-btn" data-cmd="removeFormat" title="Limpar">⨉</button>
-		  <span class="sep"></span>
-			<button class="cmd-btn" data-cmd="createLink" title="Link">🔗</button>
-			<button class="cmd-btn" data-cmd="insertImage" title="Imagem">🖼️</button>
-		  <span class="sep"></span>
-		  <button class="cmd-btn" data-cmd="openDebug" title="HTML">{"</>"}</button>
-		  <button class="save-button">Salvar</button>
-		</div>
-	  </section>
-		
-	</main>
+        <!-- Toolbar do editor -->
+        <div class="editor-toolbar-fixed" style="display: none;">
+          <button class="cmd-btn" data-cmd="bold" title="Negrito" type="button"><b>B</b></button>
+          <button class="cmd-btn" data-cmd="italic" title="Itálico" type="button"><i>I</i></button>
+          <button class="cmd-btn" data-cmd="underline" title="Sublinhado" type="button"><u>U</u></button>
+          <button class="cmd-btn" data-cmd="strikeThrough" title="Tachado" type="button"><s>S</s></button>
+          <span class="sep" aria-hidden="true"></span>
+          <button class="cmd-btn" data-cmd="justifyLeft" title="Esquerda" type="button">⯇</button>
+          <button class="cmd-btn" data-cmd="justifyCenter" title="Centro" type="button">≡</button>
+          <button class="cmd-btn" data-cmd="justifyRight" title="Direita" type="button">⯈</button>
+          <span class="sep" aria-hidden="true"></span>
+          <button class="cmd-btn" data-cmd="insertOrderedList" title="Lista numerada" type="button">1.</button>
+          <button class="cmd-btn" data-cmd="insertUnorderedList" title="Lista" type="button">•</button>
+          <button class="cmd-btn" data-cmd="formatBlock" data-value="h2" title="Título H2" type="button">H2</button>
+          <button class="cmd-btn" data-cmd="removeFormat" title="Limpar" type="button">⨉</button>
+          <span class="sep" aria-hidden="true"></span>
+          <button class="cmd-btn" data-cmd="createLink" title="Link" type="button">🔗</button>
+          <button class="cmd-btn" data-cmd="insertImage" title="Imagem" type="button">🖼️</button>
+          <span class="sep" aria-hidden="true"></span>
+          <button class="cmd-btn" data-cmd="openDebug" title="HTML" type="button">&lt;/&gt;</button>
+          <button class="save-button" type="button">Salvar</button>
+        </div>
+      </article>
+    </main>
   </div>
-  <div id="image-splash" style="display:none;">
-    <img id="splash-img" src="" alt="Imagem ampliada">
+
+  <!-- Imagem ampliada -->
+  <div id="image-splash" style="display: none;">
+    <img id="splash-img" src="" alt="Imagem ampliada" />
   </div>
-  <div id="debug-popup" class="debug-popup" style="display:none;">
-	  <div class="debug-popup-content">
-		<button class="close-debug-btn">×</button>
-		<div class="debug-columns">
-		  <div class="debug-editor">
-			<h3>HTML</h3>
-			<textarea id="debug-code"></textarea>
-		  </div>
-		  <div class="debug-preview">
-			<h3>Visualização</h3>
-			<iframe id="debug-preview-frame"></iframe>
-		  </div>
-		</div>
-		<button class="apply-debug">Aplicar</button>
-	  </div>
-	</div>
+
+  <!-- Painel de debug -->
+  <div id="debug-popup" class="debug-popup" style="display: none;">
+    <div class="debug-popup-content">
+      <button class="close-debug-btn" type="button">×</button>
+      <div class="debug-columns">
+        <div class="debug-editor">
+          <h3>HTML</h3>
+          <textarea id="debug-code"></textarea>
+        </div>
+        <div class="debug-preview">
+          <h3>Visualização</h3>
+          <iframe id="debug-preview-frame" title="Preview"></iframe>
+        </div>
+      </div>
+      <button class="apply-debug" type="button">Aplicar</button>
+    </div>
+  </div>
 </body>
 </html>
