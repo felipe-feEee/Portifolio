@@ -583,7 +583,7 @@ body.sidebar-open{overflow:hidden}
 /* estilo do item de menu ativo */
 #menu a.active,
 #menu > ul > li > ul > li > a.active {
-  background-color: #f0f6ff; /* fundo leve */
+  background-color: transparent;/* fundo leve */
   color: #0b63d6;            /* cor do texto ativo */
   font-weight: 600;
   border-left: 3px solid #0b63d6;
