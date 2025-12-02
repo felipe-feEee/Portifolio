@@ -256,11 +256,19 @@ body {
   width: 100%;
   display: flex;
   justify-content: center;
-  position: absolute;
-  top: 10px;
-  left: 0;
+  position: relative; /* era absolute */
   z-index: 10;
   padding: 0;
+  margin-bottom: 1rem; /* separa da borda do conteúdo */
+}
+
+@media (min-width: 769px) {
+  .search-bar-container {
+    position: absolute;
+    top: 10px;
+    left: 0;
+    margin-bottom: 0;
+  }
 }
 
 .search-bar {
