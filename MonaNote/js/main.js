@@ -548,10 +548,10 @@ async function addNewContent() {
   let error;
 
   if (isEditing) {
-    const resp = await window.supabase.from('monanote').update(payload).eq('id', window.editingPostId);
+    const resp = await window.supabase.from('posts').update(payload).eq('id', window.editingPostId);
     error = resp.error;
   } else {
-    const resp = await window.supabase.from('monanote').insert(payload);
+    const resp = await window.supabase.from('posts').insert(payload);
     error = resp.error;
   }
 
@@ -739,7 +739,7 @@ function renderWelcome() {
 
 async function carregarPostsDoBanco() {
   const { data, error } = await window.supabase
-    .from('monanote')
+    .from('posts')
     .select('*')
     .order('created_at', { ascending: false })
 
