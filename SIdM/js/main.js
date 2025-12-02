@@ -823,18 +823,29 @@ function initButtons() {
     newBtn.addEventListener('click', () => closeNewContentPanel());
   }
 	
-  // botão hamburguer para abrir/fechar sidebar
+	// botão hamburguer para abrir/fechar sidebar
 	const hamburgerBtn = document.getElementById('hamburger-btn');
 	if (hamburgerBtn) {
 	  hamburgerBtn.removeAttribute('onclick');
 	  const newHamburger = hamburgerBtn.cloneNode(true);
 	  hamburgerBtn.parentNode.replaceChild(newHamburger, hamburgerBtn);
+	
 	  newHamburger.addEventListener('click', () => {
 	    const sidebar = document.querySelector('.sidebar');
 	    if (sidebar) {
 	      sidebar.classList.toggle('open');
 	    }
 	  });
+	
+	  // fecha o menu quando um link de artigo é clicado
+	  const sidebar = document.querySelector('.sidebar');
+	  if (sidebar) {
+	    sidebar.querySelectorAll('a').forEach(link => {
+	      link.addEventListener('click', () => {
+	        sidebar.classList.remove('open');
+	      });
+	    });
+	  }
 	}
 }
 
