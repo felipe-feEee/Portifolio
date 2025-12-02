@@ -727,6 +727,9 @@ function renderEditorUI({ mode = "add", titulo = "", conteudo = "", categoria = 
   if (!container) return;
 
   container.innerHTML = `
+
+    <button id="close-edit-btn" title="Fechar">×</button>
+    
     <div id="category-wrapper">
       <label for="category-select">Categoria:</label>
       <select id="category-select"><option value="">-- Nova Categoria --</option></select>
@@ -734,8 +737,6 @@ function renderEditorUI({ mode = "add", titulo = "", conteudo = "", categoria = 
     </div>
 
     <input type="text" id="title-input" placeholder="Título do conteúdo" />
-
-    <button id="close-edit-btn" title="Fechar">×</button>
 
     <div id="content-body" contenteditable="true" data-placeholder="Digite ou cole o conteúdo aqui"></div>
 
@@ -761,14 +762,19 @@ function renderEditorUI({ mode = "add", titulo = "", conteudo = "", categoria = 
     </div>
   `;
 
-  // Preencher campos
-  document.getElementById("title-input").value = titulo || "";
-  document.getElementById("content-body").innerHTML = conteudo || "";
-
-  // Preencher categorias existentes
+  // Referências
+  const titleInput = document.getElementById("title-input");
+  const contentBody = document.getElementById("content-body");
   const select = document.getElementById("category-select");
   const newCat = document.getElementById("new-category");
+
+  // Preencher campos
+  if (titleInput) titleInput.value = titulo || "";
+  if (contentBody) contentBody.innerHTML = conteudo || "";
+
+  // Preencher categorias existentes
   if (select) {
+    // limpa e adiciona opção padrão
     select.innerHTML = '<option value="">-- Nova Categoria --</option>';
     for (const c in contentData) {
       const opt = document.createElement("option");
@@ -776,22 +782,55 @@ function renderEditorUI({ mode = "add", titulo = "", conteudo = "", categoria = 
       opt.textContent = c;
       select.appendChild(opt);
     }
+
+    // Se vier uma categoria (modo edit), seleciona-a; caso contrário, em modo add mostramos newCat
     if (categoria) {
       const hasOption = Array.from(select.options).some(opt => opt.value === categoria);
-      select.value = hasOption ? categoria : "";
-      newCat.style.display = hasOption ? "none" : "block";
-      if (!hasOption) newCat.value = categoria;
+      if (hasOption) {
+        select.value = categoria;
+        newCat.style.display = "none";
+        newCat.value = "";
+      } else {
+        // categoria passada que não existe: preenche newCat e mostra
+        select.value = "";
+        newCat.style.display = "block";
+        newCat.value = categoria;
+      }
+    } else {
+      // sem categoria passada: se estamos em modo add, mostramos newCat por padrão
+      if (mode === "add") {
+        select.value = "";            // garante que a opção Nova Categoria esteja selecionada
+        newCat.style.display = "block";
+        newCat.value = "";
+      } else {
+        // modo edit sem categoria: mantém nova categoria visível para o usuário decidir
+        select.value = "";
+        newCat.style.display = "block";
+        newCat.value = "";
+      }
     }
-    select.addEventListener('change', () => {
-      const isNova = select.value === '';
-      newCat.style.display = isNova ? 'block' : 'none';
-      if (!isNova) newCat.value = '';
+
+    // Listener de mudança: mostra/oculta newCat conforme seleção
+    select.addEventListener("change", () => {
+      const isNova = select.value === "";
+      newCat.style.display = isNova ? "block" : "none";
+      if (!isNova) newCat.value = "";
+      // foco no campo apropriado para melhor UX
+      if (isNova) newCat.focus();
+      else titleInput && titleInput.focus();
     });
+  }
+
+  // Foco inicial: se newCat visível, foca nele; senão foca no título
+  if (newCat && newCat.style.display !== "none") {
+    newCat.focus();
+  } else if (titleInput) {
+    titleInput.focus();
   }
 
   // Toolbar handlers
   container.querySelectorAll(".cmd-btn").forEach(btn => {
-    btn.addEventListener('click', () => execCmd(btn.dataset.cmd, btn.dataset.value || null));
+    btn.addEventListener("click", () => execCmd(btn.dataset.cmd, btn.dataset.value || null));
   });
 
   // Salvar
@@ -813,8 +852,8 @@ function renderEditorUI({ mode = "add", titulo = "", conteudo = "", categoria = 
   }
 
   // Paste & drag&drop
-  document.removeEventListener('paste', handlePaste);
-  document.addEventListener('paste', handlePaste);
+  document.removeEventListener("paste", handlePaste);
+  document.addEventListener("paste", handlePaste);
   attachDragDrop();
 }
 
