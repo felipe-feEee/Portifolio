@@ -536,6 +536,12 @@ function createMissingImageMessage() {
   msg.style.color = '#666';
   msg.style.fontStyle = 'italic';
   msg.style.padding = '0.25rem 0';
+
+  // Torna o bloco atômico dentro do contenteditable
+  msg.setAttribute('contenteditable', 'false');
+  // Permite foco por teclado (opcional, melhora acessibilidade)
+  msg.setAttribute('tabindex', '0');
+
   return msg;
 }
 
