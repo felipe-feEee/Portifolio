@@ -294,10 +294,11 @@ body {
   width: 100%;
   display: flex;
   justify-content: center;
-  position: relative; /* era absolute */
+  position: absolute; /* ou fixed se quiser que fique sempre visível */
+  top: 10px;
+  left: 0;
   z-index: 10;
-  padding: 0;
-  margin-bottom: 1rem; /* separa da borda do conteúdo */
+  padding: 0; /* remove padding para não aumentar a distância */
 }
 
 @media (min-width: 769px) {
