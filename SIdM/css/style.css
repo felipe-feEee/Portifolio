@@ -33,6 +33,12 @@ body {
   overflow: hidden;
 }
 
+/* 1) Remove margem/padding extra no topo do main/content */
+#content, .content {
+  margin-top: 0 !important;
+  padding-top: 0 !important;
+}
+
 /* Scrollbar WebKit (mantido do antigo) */
 ::-webkit-scrollbar { width: 8px; height: 8px; }
 ::-webkit-scrollbar-track { background: var(--color-light); border-radius: 4px; }
@@ -131,8 +137,9 @@ body {
   justify-content: space-between;
   align-items: center;
   padding: 0.8rem 1rem;
-  background: #fff;
-  border-bottom: 1px solid #ddd;
+  background: var(--color-dark);
+  color: #fff;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
   position: sticky;
   top: 0;
   z-index: 1000;
@@ -140,7 +147,8 @@ body {
 
 .search-bar {
   flex: 1;
-  max-width: 600px;
+  max-width: 100%;
+  min-width: 769px
   padding: 0.6rem 1rem;
   border: 1px solid #ccc;
   border-radius: var(--radius);
@@ -151,7 +159,7 @@ body {
   background: none;
   border: none;
   cursor: pointer;
-  display: flex;
+  display: none;
   flex-direction: column;
   justify-content: center;
   align-items: center;
@@ -168,7 +176,8 @@ body {
   position: absolute;
   top: calc(100% + 4px);
   left: 1rem;
-  width: 600px;
+  max-width: 100%;
+  min-width: 769px;
   background: #fff;
   border: 1px solid #ccc;
   border-radius: var(--radius);
@@ -290,7 +299,10 @@ body {
   padding: 2rem 1rem;
   background: transparent;
   box-shadow: none; /* remove cartão */
+  padding-top: 0.25rem !important; /* mínimo visível */
+  margin-top: 0 !important;
 }
+
 #article-title {
   font-size: 2rem;
   margin-bottom: 1rem;
@@ -511,17 +523,17 @@ body {
   .sidebar.open { transform: translateX(0); }
 
   .hamburger {
-    display: flex;
-    position: fixed;
-    top: 12px;
-    right: 12px;
+    display: flex !important;
+    position: fixed !important;
+    top: 12px !important;
+    right: 12px !important;
     background: var(--color-primary);
     color: #fff;
     border: none;
     padding: 10px 12px;
     border-radius: 6px;
     cursor: pointer;
-    z-index: 10001;
+    z-index: 11000 !important;
     box-shadow: var(--shadow);
     flex-direction: column;
     justify-content: center;
