@@ -164,7 +164,7 @@ async function carregarPostsDoBanco() {
           contentData = {};
           window.dataPT.forEach(post => {
             const categoria = post.categoria || 'geral';
-            const key = `post-${post.id || Date.now()}`;
+            const key = `${post.id || Date.now()}`;
             if (!contentData[categoria]) contentData[categoria] = {};
             contentData[categoria][key] = {
               postId: post.id || Date.now(),
@@ -209,7 +209,7 @@ async function carregarPostsDoBanco() {
     contentData = {};
     (data || []).forEach(post => {
       const categoria = post.categoria || post.category || 'geral';
-      const key = `post-${post.id}`;
+      const key = `${post.id}`;
       if (!contentData[categoria]) contentData[categoria] = {};
       contentData[categoria][key] = {
         postId: post.id,
@@ -1114,7 +1114,7 @@ async function saveNewContent() {
 
     if (!window.supabase) {
       // fallback local
-      const key = `post-${Date.now()}`;
+      const key = `${Date.now()}`;
       if (!contentData[categoria]) contentData[categoria] = {};
       contentData[categoria][key] = { postId: Date.now(), titulo, conteudo: conteudoLimpo, categoria };
     } else {
@@ -1161,7 +1161,7 @@ async function saveContentInline() {
 
     if (!window.supabase) {
       // fallback local
-      const key = currentId || `post-${Date.now()}`;
+      const key = currentId || `${Date.now()}`;
       if (!contentData[categoria]) contentData[categoria] = {};
       contentData[categoria][key] = {
         postId: contentData[currentCategoria]?.[currentId]?.postId || Date.now(),
