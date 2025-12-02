@@ -534,7 +534,7 @@ function renderWelcome() {
   if (!article) return;
   article.innerHTML = `
     <h1 id="article-title">Bem-vindo</h1>
-    <a id="edit-article-link" href="#" style="display:none;">Editar</a>
+    <button id="edit-article-link" style="display:none;">Editar</button>
     <div id="content-body" contenteditable="false" data-placeholder="Digite ou cole o conteúdo aqui">
       <p>Selecione um item no menu para ver o conteúdo.</p>
     </div>
@@ -627,7 +627,7 @@ function loadArticle(categoria, id) {
 
   container.innerHTML = `
     <h1 id="article-title">${artigo.titulo}</h1>
-    <a id="edit-article-link" href="#" data-categoria="${categoria}" data-id="${id}" data-post-id="${artigo.postId}">Editar</a>
+    <button id="edit-article-link" data-categoria="${categoria}" data-id="${id}" data-post-id="${artigo.postId}">Editar</button>
     <div id="content-body" contenteditable="false" data-placeholder="Digite ou cole o conteúdo aqui">${artigo.conteudo}</div>
   `;
 
