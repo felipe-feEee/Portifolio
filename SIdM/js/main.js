@@ -1,31 +1,256 @@
-// main.js — edição inline estilo Wikipédia, com sanitização, colagem/drag&drop, upload de imagens e busca
+// main.js — versão unificada e compatível com tabela "posts" e bucket "images"
 
-// Supabase: inicializa se não estiver pronto
-(async function initSupabase() {
-  try {
-    if (!window.supabase) {
-      // Se já possuir suas credenciais globais, use-as aqui:
-      const supabaseUrl = window.supabaseUrl || 'https://pwshckrmqaqymngbosgo.supabase.co';
-      const supabaseKey = window.supabaseKey || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB3c2hja3JtcWFxeW1uZ2Jvc2dvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQzNjAwOTEsImV4cCI6MjA3OTkzNjA5MX0.f8iX0RoqrdxJmq-EgSyn_YWPgCHMoARQTT4ygtbcoLg';
-      const { createClient } = await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm');
-      window.supabase = createClient(supabaseUrl, supabaseKey);
-    }
-  } catch (e) {
-    console.warn('Supabase não inicializado via CDN. Certifique-se de carregar o cliente antes do main.js.');
-  }
-})();
-
-// Limites
+/* ============================
+   Configurações e estado
+   ============================ */
 const TITLE_MAX = 120;
 const CATEGORY_MAX = 64;
 
-// Estado global
-let contentData = {};
+let contentData = {};        // estrutura: { categoria: { key: { postId, titulo, conteudo, categoria } } }
 let currentCategoria = null;
 let currentId = null;
 let currentPostId = null;
 
-// ========== Sanitização ==========
+/* ============================
+  Configurador dinâmico do Supabase
+  Permite alterar: supabaseUrl, supabaseKey, tableName, bucketName
+  Uso:
+    setSupabaseConfig({
+      supabaseUrl: 'https://...supabase.co',
+      supabaseKey: 'public-or-service-key',
+      tableName: 'posts',
+      bucketName: 'images'
+    });
+    await initializeSupabase();
+  Ou em runtime:
+    window.configureSupabase({ ... });
+  ============================ */
+
+const SupabaseConfig = {
+  supabaseUrl: 'https://pwshckrmqaqymngbosgo.supabase.co',
+  supabaseKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB3c2hja3JtcWFxeW1uZ2Jvc2dvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQzNjAwOTEsImV4cCI6MjA3OTkzNjA5MX0.f8iX0RoqrdxJmq-EgSyn_YWPgCHMoARQTT4ygtbcoLg',
+  tableName: 'posts',   // padrão: posts
+  bucketName: 'images'  // padrão: images
+};
+
+// Função pública para configurar em runtime
+function setSupabaseConfig({ supabaseUrl, supabaseKey, tableName, bucketName } = {}) {
+  if (supabaseUrl) SupabaseConfig.supabaseUrl = supabaseUrl;
+  if (supabaseKey) SupabaseConfig.supabaseKey = supabaseKey;
+  if (tableName) SupabaseConfig.tableName = tableName;
+  if (bucketName) SupabaseConfig.bucketName = bucketName;
+  // expõe globalmente para conveniência (opcional)
+  window.SupabaseConfig = SupabaseConfig;
+}
+window.configureSupabase = setSupabaseConfig;
+
+// Inicializa o cliente Supabase usando a configuração atual
+async function initializeSupabase() {
+  // Se já existir window.supabase, respeita (não re-cria)
+  if (window.supabase) {
+    console.info('Supabase já inicializado (window.supabase).');
+    return;
+  }
+
+  // Se não houver URL/KEY na config, tenta variáveis globais antigas (compatibilidade)
+  const url = SupabaseConfig.supabaseUrl || window.supabaseUrl || window.SUPABASE_URL || null;
+  const key = SupabaseConfig.supabaseKey || window.supabaseKey || window.SUPABASE_KEY || null;
+
+  if (!url || !key) {
+    console.warn('Supabase: credenciais não configuradas. Use setSupabaseConfig(...) antes de inicializar.');
+    return;
+  }
+
+  try {
+    // Import dinâmico do cliente (ESM CDN)
+    const mod = await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm');
+    const { createClient } = mod;
+    window.supabase = createClient(url, key);
+    console.info('Supabase inicializado com sucesso.');
+  } catch (err) {
+    console.error('Falha ao importar/inicializar Supabase:', err);
+  }
+}
+
+/* ============================
+  Funções utilitárias que usam a configuração
+  - carregarPostsDoBanco
+  - uploadToSupabase
+  - insertPost
+  - updatePost
+  Observação: todas usam SupabaseConfig.tableName / bucketName
+  ============================ */
+
+async function carregarPostsDoBanco() {
+  // tenta inicializar se necessário
+  if (!window.supabase) {
+    console.warn('Supabase indisponível. Tentando inicializar automaticamente...');
+    await initializeSupabase();
+  }
+
+  // fallback local se supabase não estiver disponível
+  if (!window.supabase) {
+    console.warn('Supabase indisponível. Carregando dados locais se houver.');
+    if (typeof window.dataPT !== 'undefined') {
+      try {
+        if (Array.isArray(window.dataPT)) {
+          contentData = {};
+          window.dataPT.forEach(post => {
+            const categoria = post.categoria || 'geral';
+            const key = `post-${post.id || Date.now()}`;
+            if (!contentData[categoria]) contentData[categoria] = {};
+            contentData[categoria][key] = {
+              postId: post.id || Date.now(),
+              titulo: post.title || post.titulo || '(Sem título)',
+              conteudo: post.content || post.conteudo || '',
+              categoria
+            };
+          });
+        } else {
+          contentData = JSON.parse(JSON.stringify(window.dataPT));
+        }
+      } catch (err) {
+        console.error('Erro ao usar dataPT como fallback:', err);
+        contentData = {};
+      }
+    } else {
+      contentData = {};
+    }
+    renderMenu();
+    renderWelcome();
+    return;
+  }
+
+  // usa a tabela configurada
+  const table = SupabaseConfig.tableName || 'posts';
+
+  try {
+    const { data, error } = await window.supabase
+      .from(table)
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error(`Erro ao buscar dados da tabela "${table}":`, error);
+      contentData = {};
+      renderMenu();
+      renderWelcome();
+      return;
+    }
+
+    // normaliza para contentData
+    contentData = {};
+    (data || []).forEach(post => {
+      const categoria = post.categoria || post.category || 'geral';
+      const key = `post-${post.id}`;
+      if (!contentData[categoria]) contentData[categoria] = {};
+      contentData[categoria][key] = {
+        postId: post.id,
+        // tenta mapear campos comuns (title / titulo), ajuste se necessário
+        titulo: post.title || post.titulo || '(Sem título)',
+        conteudo: post.content || post.conteudo || '',
+        categoria,
+        image_url: post.image_url || post.image || null,
+        created_at: post.created_at || null
+      };
+    });
+
+    renderMenu();
+    renderWelcome();
+  } catch (err) {
+    console.error('Erro inesperado ao carregar posts:', err);
+    contentData = {};
+    renderMenu();
+    renderWelcome();
+  }
+}
+
+async function uploadToSupabase(file) {
+  if (!file) return '';
+  if (!window.supabase) {
+    console.warn('uploadToSupabase: Supabase não inicializado.');
+    return '';
+  }
+
+  const bucket = SupabaseConfig.bucketName || 'images';
+  const safeName = sanitizeFilename(file.name || `file-${Date.now()}`);
+  const filePath = `${safeName.startsWith('/') ? safeName.slice(1) : safeName}`;
+
+  try {
+    // Faz upload para o bucket configurado
+    const { data, error } = await window.supabase.storage.from(bucket).upload(filePath, file, {
+      cacheControl: '3600',
+      upsert: false
+    });
+    if (error) {
+      console.error(`Erro no upload para bucket "${bucket}":`, error);
+      return '';
+    }
+    const { data: urlData } = window.supabase.storage.from(bucket).getPublicUrl(filePath);
+    return urlData?.publicUrl || '';
+  } catch (err) {
+    console.error('uploadToSupabase erro inesperado:', err);
+    return '';
+  }
+}
+
+async function insertPost(payload) {
+  if (!window.supabase) {
+    console.warn('insertPost: Supabase não inicializado. Fallback local.');
+    return null;
+  }
+  const table = SupabaseConfig.tableName || 'posts';
+  try {
+    const resp = await window.supabase.from(table).insert(payload).select().single();
+    if (resp.error) {
+      console.error(`Erro ao inserir na tabela "${table}":`, resp.error);
+      return null;
+    }
+    return resp.data;
+  } catch (err) {
+    console.error('insertPost erro inesperado:', err);
+    return null;
+  }
+}
+
+async function updatePost(postId, payload) {
+  if (!window.supabase) {
+    console.warn('updatePost: Supabase não inicializado. Fallback local.');
+    return null;
+  }
+  const table = SupabaseConfig.tableName || 'posts';
+  try {
+    const resp = await window.supabase.from(table).update(payload).eq('id', postId);
+    if (resp.error) {
+      console.error(`Erro ao atualizar na tabela "${table}":`, resp.error);
+      return null;
+    }
+    return resp.data;
+  } catch (err) {
+    console.error('updatePost erro inesperado:', err);
+    return null;
+  }
+}
+
+/* ============================
+  Exemplo rápido de uso (opcional)
+  Você pode chamar isso antes do DOMContentLoaded:
+    setSupabaseConfig({ supabaseUrl: 'https://...', supabaseKey: '...', tableName: 'posts', bucketName: 'images' });
+    await initializeSupabase();
+  Ou em runtime no console:
+    window.configureSupabase({ supabaseUrl: '...', supabaseKey: '...', tableName: 'posts', bucketName: 'images' });
+  ============================ */
+
+// expõe utilitários para debug/uso externo
+window.setSupabaseConfig = setSupabaseConfig;
+window.initializeSupabase = initializeSupabase;
+window.insertPost = insertPost;
+window.updatePost = updatePost;
+window.uploadToSupabase = uploadToSupabase;
+
+/* ============================
+   Sanitização
+   ============================ */
 function sanitizePlainText(input, maxLen) {
   let s = String(input || '').replace(/\u00A0/g, ' ');
   s = s.replace(/<[^>]*>/g, '');
@@ -82,7 +307,9 @@ function sanitizeHtml(html) {
   return doc.body.innerHTML.trim();
 }
 
-// ========== Upload/Imagens ==========
+/* ============================
+   Utilitários de arquivo / nome
+   ============================ */
 function sanitizeFilename(name) {
   if (!name) name = `file-${Date.now()}`;
   name = String(name).split('/').pop().split('\\').pop();
@@ -91,18 +318,9 @@ function sanitizeFilename(name) {
   return name;
 }
 
-async function uploadToSupabase(file) {
-  if (!window.supabase) return '';
-  const fileName = `paste-${Date.now()}-${sanitizeFilename(file.name)}`;
-  const { data, error } = await window.supabase.storage.from('images').upload(fileName, file);
-  if (error) {
-    console.error('Erro ao enviar para Supabase Storage:', error);
-    return '';
-  }
-  const { data: urlData } = window.supabase.storage.from('images').getPublicUrl(fileName);
-  return urlData?.publicUrl || '';
-}
-
+/* ============================
+   Inserção de nodes no editor
+   ============================ */
 function insertNodeAtCursor(node) {
   const editor = document.getElementById('content-body');
   if (!editor) return;
@@ -134,48 +352,27 @@ function insertHtmlAtCaret(html) {
   sel.removeAllRanges();
   const newRange = document.createRange();
   const last = frag.lastChild;
-  if (last) {
-    newRange.setStartAfter(last);
-  } else {
-    newRange.selectNodeContents(cb);
-    newRange.collapse(false);
-  }
+  if (last) newRange.setStartAfter(last);
+  else { newRange.selectNodeContents(cb); newRange.collapse(false); }
   newRange.collapse(true);
   sel.addRange(newRange);
 }
 
-function createImagePasteHint(message = 'Imagem não foi inserida.') {
-  const msg = document.createElement('div');
-  msg.style.color = '#666';
-  msg.style.fontStyle = 'italic';
-  msg.style.padding = '0.25rem 0';
-  msg.textContent = message;
-  return msg;
-}
-
-// ========== Eventos de colagem e drag&drop ==========
+/* ============================
+   Paste / Drag & Drop (imagens e HTML)
+   ============================ */
 async function handlePaste(e) {
   try {
-    e.preventDefault();
     const editor = document.getElementById('content-body');
     if (!editor) return;
 
     const target = e.target || document.activeElement;
     const inEditor = editor && (target === editor || editor.contains(target));
 
-    // Fora do editor: cola como texto em inputs/textarea
-    if (!inEditor) {
-      if (target && (target.tagName === 'TEXTAREA' || target.tagName === 'INPUT')) {
-        const plain = e.clipboardData.getData('text/plain') || '';
-        const el = target;
-        const start = typeof el.selectionStart === 'number' ? el.selectionStart : el.value.length;
-        const end = typeof el.selectionEnd === 'number' ? el.selectionEnd : el.value.length;
-        el.value = el.value.slice(0, start) + plain + el.value.slice(end);
-        el.selectionStart = el.selectionEnd = start + plain.length;
-        el.dispatchEvent(new Event('input', { bubbles: true }));
-      }
-      return;
-    }
+    // Se não for no editor, deixa o comportamento padrão para inputs/textarea
+    if (!inEditor) return;
+
+    e.preventDefault();
 
     const items = Array.from(e.clipboardData?.items || []);
     const types = Array.from(e.clipboardData?.types || []);
@@ -193,7 +390,10 @@ async function handlePaste(e) {
           img.style.maxWidth = '100%';
           insertNodeAtCursor(img);
         } else {
-          insertNodeAtCursor(createImagePasteHint('Falha ao enviar imagem.'));
+          const hint = document.createElement('div');
+          hint.textContent = 'Falha ao enviar imagem.';
+          hint.style.color = '#b33';
+          insertNodeAtCursor(hint);
         }
       }
       return;
@@ -235,17 +435,21 @@ function attachDragDrop() {
           img.style.maxWidth = '100%';
           insertNodeAtCursor(img);
         } else {
-          insertNodeAtCursor(createImagePasteHint('Falha ao enviar imagem via drag&drop.'));
+          const hint = document.createElement('div');
+          hint.textContent = 'Falha ao enviar imagem via drag&drop.';
+          hint.style.color = '#b33';
+          insertNodeAtCursor(hint);
         }
       } catch (err) {
         console.error('Erro ao enviar imagem via drag&drop:', err);
-        insertNodeAtCursor(createImagePasteHint('Erro no upload de imagem.'));
       }
     }
   });
 }
 
-// ========== Toolbar ==========
+/* ============================
+   Toolbar (execCommand + insertImage)
+   ============================ */
 function execCmd(command, value = null) {
   const body = document.getElementById('content-body');
   if (!body) return;
@@ -266,7 +470,10 @@ function execCmd(command, value = null) {
           img.style.maxWidth = '100%';
           insertNodeAtCursor(img);
         } else {
-          insertNodeAtCursor(createImagePasteHint('Falha ao enviar imagem.'));
+          const hint = document.createElement('div');
+          hint.textContent = 'Falha ao enviar imagem.';
+          hint.style.color = '#b33';
+          insertNodeAtCursor(hint);
         }
       });
       document.body.appendChild(input);
@@ -290,7 +497,9 @@ function execCmd(command, value = null) {
   }
 }
 
-// ========== Splash de imagens ==========
+/* ============================
+   Splash de imagem (ampliar)
+   ============================ */
 function enableImageSplash(containerEl) {
   const container = containerEl || document.getElementById('article-content');
   if (!container) return;
@@ -317,62 +526,22 @@ function enableImageSplash(containerEl) {
   });
 }
 
-// ========== Menu, busca e render ==========
+/* ============================
+   Render / Menu / Busca / Artigo
+   ============================ */
 function renderWelcome() {
   const article = document.getElementById('article-content');
   if (!article) return;
   article.innerHTML = `
     <h1 id="article-title">Bem-vindo</h1>
-    <button id="edit-article-link" style="display:none;">Editar</button>
+    <a id="edit-article-link" href="#" style="display:none;">Editar</a>
     <div id="content-body" contenteditable="false" data-placeholder="Digite ou cole o conteúdo aqui">
       <p>Selecione um item no menu para ver o conteúdo.</p>
     </div>
   `;
 }
 
-async function carregarPostsDoBanco() {
-  if (!window.supabase) {
-    console.warn('Supabase indisponível. Carregando dados locais se houver.');
-    if (typeof window.dataPT !== 'undefined') {
-      try { contentData = JSON.parse(JSON.stringify(window.dataPT)); }
-      catch (err) { contentData = window.dataPT || {}; }
-    }
-    renderMenu();
-    renderWelcome();
-    return;
-  }
-
-  const { data, error } = await window.supabase
-    .from('posts')
-    .select('*')
-    .order('created_at', { ascending: false });
-
-  if (error) {
-    console.error('Erro ao carregar posts:', error);
-    if (typeof window.dataPT !== 'undefined') {
-      try { contentData = JSON.parse(JSON.stringify(window.dataPT)); }
-      catch (err) { contentData = window.dataPT || {}; }
-    }
-  } else {
-    contentData = {};
-    (data || []).forEach(post => {
-      const categoria = post.categoria || 'geral';
-      const key = `post-${post.id}`;
-      if (!contentData[categoria]) contentData[categoria] = {};
-      contentData[categoria][key] = {
-        postId: post.id,
-        titulo: post.title || '(Sem título)',
-        conteudo: post.content || '',
-        categoria
-      };
-    });
-  }
-
-  renderMenu();
-  renderWelcome();
-}
-
-function renderMenu(openCategories = []) {
+function renderMenu() {
   const menu = document.getElementById('menu');
   if (!menu) return;
   menu.innerHTML = '';
@@ -382,7 +551,7 @@ function renderMenu(openCategories = []) {
     const liCategoria = document.createElement('li');
     const span = document.createElement('span');
     span.textContent = categoria;
-    if (openCategories.includes(categoria)) liCategoria.classList.add('active');
+    span.style.cursor = 'pointer';
     span.onclick = () => liCategoria.classList.toggle('active');
     liCategoria.appendChild(span);
 
@@ -458,7 +627,7 @@ function loadArticle(categoria, id) {
 
   container.innerHTML = `
     <h1 id="article-title">${artigo.titulo}</h1>
-    <button id="edit-article-link" data-categoria="${categoria}" data-id="${id}" data-post-id="${artigo.postId}">Editar</button>
+    <a id="edit-article-link" href="#" data-categoria="${categoria}" data-id="${id}" data-post-id="${artigo.postId}">Editar</a>
     <div id="content-body" contenteditable="false" data-placeholder="Digite ou cole o conteúdo aqui">${artigo.conteudo}</div>
   `;
 
@@ -482,7 +651,9 @@ function loadArticle(categoria, id) {
   }
 }
 
-// ========== Editor unificado (Adicionar/Editar) ==========
+/* ============================
+   Editor unificado (Adicionar / Editar)
+   ============================ */
 function renderEditorUI({ mode = "add", titulo = "", conteudo = "", categoria = "" }) {
   const container = document.getElementById("article-content");
   if (!container) return;
@@ -526,7 +697,7 @@ function renderEditorUI({ mode = "add", titulo = "", conteudo = "", categoria = 
   document.getElementById("title-input").value = titulo || "";
   document.getElementById("content-body").innerHTML = conteudo || "";
 
-  // Preencher categorias
+  // Preencher categorias existentes
   const select = document.getElementById("category-select");
   const newCat = document.getElementById("new-category");
   if (select) {
@@ -550,9 +721,9 @@ function renderEditorUI({ mode = "add", titulo = "", conteudo = "", categoria = 
     });
   }
 
-  // Toolbar
+  // Toolbar handlers
   container.querySelectorAll(".cmd-btn").forEach(btn => {
-    btn.addEventListener("click", () => execCmd(btn.dataset.cmd, btn.dataset.value || null));
+    btn.addEventListener('click', () => execCmd(btn.dataset.cmd, btn.dataset.value || null));
   });
 
   // Salvar
@@ -573,13 +744,15 @@ function renderEditorUI({ mode = "add", titulo = "", conteudo = "", categoria = 
     });
   }
 
-  // Colagem e drag&drop
-  document.removeEventListener("paste", handlePaste);
-  document.addEventListener("paste", handlePaste);
+  // Paste & drag&drop
+  document.removeEventListener('paste', handlePaste);
+  document.addEventListener('paste', handlePaste);
   attachDragDrop();
 }
 
-// ========== Salvar (Adicionar/Editar) ==========
+/* ============================
+   Salvar novo / salvar edição
+   ============================ */
 async function saveNewContent() {
   try {
     const titleInput = document.getElementById('title-input');
@@ -596,21 +769,20 @@ async function saveNewContent() {
     }
 
     const conteudoLimpo = sanitizeHtml(body.innerHTML);
-
     const payload = { title: titulo, content: conteudoLimpo, categoria };
+
     if (!window.supabase) {
-      // Fallback local (sem Supabase): atualiza contentData
+      // fallback local
       const key = `post-${Date.now()}`;
       if (!contentData[categoria]) contentData[categoria] = {};
       contentData[categoria][key] = { postId: Date.now(), titulo, conteudo: conteudoLimpo, categoria };
     } else {
-      const resp = await window.supabase.from('posts').insert(payload).select().single();
-      if (resp.error) {
-        console.error('Erro ao adicionar conteúdo:', resp.error);
+      const resp = await insertPost(payload);
+      if (!resp) {
         alert('Erro ao adicionar conteúdo.');
         return;
       }
-      currentPostId = resp.data.id;
+      currentPostId = resp.id;
     }
 
     await carregarPostsDoBanco();
@@ -647,38 +819,35 @@ async function saveContentInline() {
     const payload = { title: titulo, content: conteudoLimpo, categoria };
 
     if (!window.supabase) {
-      // Fallback local
-      const key = currentId;
+      // fallback local
+      const key = currentId || `post-${Date.now()}`;
       if (!contentData[categoria]) contentData[categoria] = {};
       contentData[categoria][key] = {
-        postId: contentData[currentCategoria][currentId].postId || Date.now(),
+        postId: contentData[currentCategoria]?.[currentId]?.postId || Date.now(),
         titulo, conteudo: conteudoLimpo, categoria
       };
-      if (currentCategoria !== categoria) {
+      if (currentCategoria && currentCategoria !== categoria && currentId) {
         delete contentData[currentCategoria][currentId];
       }
     } else {
       if (currentPostId) {
-        const resp = await window.supabase.from('posts').update(payload).eq('id', currentPostId);
-        if (resp.error) {
-          console.error('Erro ao salvar no Supabase:', resp.error);
+        const resp = await updatePost(currentPostId, payload);
+        if (resp === null) {
           alert('Erro ao salvar conteúdo.');
           return;
         }
       } else {
-        const resp = await window.supabase.from('posts').insert(payload).select().single();
-        if (resp.error) {
-          console.error('Erro ao criar novo post:', resp.error);
+        const resp = await insertPost(payload);
+        if (!resp) {
           alert('Erro ao salvar conteúdo.');
           return;
         }
-        currentPostId = resp.data.id;
+        currentPostId = resp.id;
       }
     }
 
     await carregarPostsDoBanco();
 
-    // Localiza o item após salvar
     const catKey = categoria;
     const savedKey = Object.keys(contentData[catKey]).find(
       k => contentData[catKey][k].postId === currentPostId
@@ -693,44 +862,37 @@ async function saveContentInline() {
 }
 
 function exitEditingInline() {
-  // Volta para o artigo atual
-  if (currentCategoria && currentId) {
-    loadArticle(currentCategoria, currentId);
-  } else {
-    renderWelcome();
-  }
+  if (currentCategoria && currentId) loadArticle(currentCategoria, currentId);
+  else renderWelcome();
 }
 
 function cancelAddingContent() {
   renderWelcome();
 }
 
-// ========== Inicialização ==========
+/* ============================
+   Inicialização do app
+   ============================ */
 window.addEventListener('DOMContentLoaded', async () => {
   const loadingEl = document.getElementById('initial-loading');
   try {
+    await initializeSupabase();
     await carregarPostsDoBanco();
   } catch (e) {
-    console.error('Erro ao carregar posts:', e);
-    renderWelcome();
+    console.error('Erro na inicialização:', e);
+    await carregarPostsDoBanco();
   } finally {
     if (loadingEl) loadingEl.style.display = 'none';
   }
 
-  // Hamburguer: abre/fecha sidebar
+  // Hamburguer
   const hamburgerBtn = document.getElementById('hamburger-btn');
-  if (hamburgerBtn) {
-    hamburgerBtn.addEventListener('click', () => {
-      const sidebar = document.querySelector('.sidebar');
-      if (sidebar) sidebar.classList.toggle('open');
-    });
-  }
+  if (hamburgerBtn) hamburgerBtn.addEventListener('click', () => {
+    const sidebar = document.querySelector('.sidebar');
+    if (sidebar) sidebar.classList.toggle('open');
+  });
 
-  // Botão de adicionar conteúdo (sidebar)
+  // Botão adicionar
   const addBtn = document.getElementById('add-content-btn');
-  if (addBtn) {
-    addBtn.addEventListener('click', () => {
-      renderEditorUI({ mode: 'add' });
-    });
-  }
+  if (addBtn) addBtn.addEventListener('click', () => renderEditorUI({ mode: 'add' }));
 });
