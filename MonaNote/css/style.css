@@ -9,8 +9,8 @@
 
 /* ========== Variáveis ========== */
 :root{
-  --color-primary: #3399ff;
-  --color-primary-dark: #2673cc;
+  --color-primary: #ff6666;
+  --color-primary-dark: #e65c5c;
   --color-dark: #0b1a2b;
   --color-dark-2: #14273d;
   --color-light: #f7fbff;
@@ -578,4 +578,19 @@ body.sidebar-open{overflow:hidden}
 #menu > ul > li > ul > li > a {
   font-size: 0.7em;
   line-height: 1.2; /* mantém legibilidade */
+}
+
+/* estilo do item de menu ativo */
+#menu a.active,
+#menu > ul > li > ul > li > a.active {
+  background-color: transparent;/* fundo leve */
+  color: #0b63d6;            /* cor do texto ativo */
+  font-weight: 600;
+  border-left: 3px solid #0b63d6;
+  padding-left: calc(1rem - 3px); /* compensa a borda */
+}
+
+/* alternativa para destaque mais sutil */
+#menu a.active {
+  box-shadow: inset 0 0 0 1px rgba(11,99,214,0.06);
 }
