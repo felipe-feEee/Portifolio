@@ -84,7 +84,7 @@ body{
 
 /* hamburger: fixo ao lado esquerdo da search */
 .hamburger{
-  display:flex;
+  display:none;
   align-items:center;
   justify-content:center;
   width:44px;
