@@ -812,10 +812,12 @@ function renderMenu() {
       link.textContent = artigo.titulo;
       link.dataset.categoria = categoria;
       link.dataset.id = id;
-      link.onclick = (e) => {
+      link.addEventListener('click', function (e) {
         e.preventDefault();
-        loadArticle(categoria, id);
-      };
+        const cat = this.dataset.categoria;
+        const key = this.dataset.id;
+        loadArticle(cat, key);
+      });
       liTitulo.appendChild(link);
       ulTitulos.appendChild(liTitulo);
     }
