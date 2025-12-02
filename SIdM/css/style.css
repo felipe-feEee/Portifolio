@@ -111,45 +111,7 @@ body {
   overflow: hidden; /* impede scroll no container */
 }
 
-.top-bar-wrapper {
-  display: none; /* escondido por padrão */
-  width: 100%;
-  padding: 0.5rem 1rem;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.5rem;
-  z-index: 10001;
-}
-
-@media (max-width: 768px) {
-  .top-bar-wrapper {
-    display: flex;
-    position: relative;
-    background-color: var(--color-light);
-  }
-
-  .search-bar-container {
-    flex: 1;
-    margin-bottom: 0;
-    position: relative;
-  }
-
-  .search-bar {
-    width: 100%;
-    padding: 0.5rem 0.8rem;
-    font-size: 1rem;
-  }
-
-  .hamburger {
-    position: relative;
-    top: auto;
-    right: auto;
-    margin-right: 0.5rem;
-  }
-}
-
-
-/* Sidebar (desktop) */
+/* Sidebar */
 .sidebar {
   width: 15%;
   background-color: var(--color-dark);
@@ -256,12 +218,12 @@ body {
 #export-json-btn:hover { background-color: #a30000; }
 #export-json-btn.visible { display: inline-block; }
 
-/* Hamburguer (mobile) */
+/* Hamburguer */
 .hamburger {
   display: none;
   position: fixed;
   top: 12px;
-  right: 12px; /* antes era left, agora right */
+  right: 12px;
   background: var(--color-primary);
   color: #fff;
   border: none;
@@ -270,12 +232,17 @@ body {
   cursor: pointer;
   z-index: 10001;
   box-shadow: var(--shadow);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
 }
 .hamburger span {
   display: block;
-  width: 22px; height: 2px;
+  width: 22px;
+  height: 2px;
   background: #fff;
-  margin: 4px 0;
+  margin: 3px 0;
 }
 
 /* Conteúdo principal */
@@ -284,33 +251,24 @@ body {
   padding: 55px;
   position: relative;
   background-color: #e6edf4;
-  overflow: hidden; /* impede scroll no content */
+  overflow: hidden;
   display: flex;
   flex-direction: column;
 }
 
 /* Barra de busca */
-.search-bar-container {
-  width: 100%;
+.search-header {
   display: flex;
-  justify-content: center;
-  position: absolute; /* ou fixed se quiser que fique sempre visível */
-  top: 10px;
-  left: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  background-color: var(--color-light);
   z-index: 10;
-  padding: 0; /* remove padding para não aumentar a distância */
-}
-
-@media (min-width: 769px) {
-  .search-bar-container {
-    position: absolute;
-    top: 10px;
-    left: 0;
-    margin-bottom: 0;
-  }
 }
 
 .search-bar {
+  flex: 1;
   width: 60%;
   max-width: 500px;
   padding: 0.6rem 1rem;
@@ -321,7 +279,9 @@ body {
   outline: none;
   transition: box-shadow 0.25s ease;
 }
-.search-bar:focus { box-shadow: 0 0 8px rgba(0,123,255,0.5); }
+.search-bar:focus {
+  box-shadow: 0 0 8px rgba(0, 123, 255, 0.5);
+}
 
 .search-suggestions {
   position: absolute;
@@ -346,7 +306,25 @@ body {
   border-bottom: 1px solid #eee;
   list-style: none;
 }
-.search-suggestions li:hover { background-color: var(--color-light); }
+.search-suggestions li:hover {
+  background-color: var(--color-light);
+}
+
+/* Responsivo */
+@media (max-width: 768px) {
+  .search-bar {
+    width: 100%;
+    padding: 0.5rem 0.8rem;
+    font-size: 1rem;
+  }
+
+  .hamburger {
+    position: relative;
+    top: auto;
+    right: auto;
+    margin-right: 0.5rem;
+  }
+}
 
 /* Artigo e editor */
 #article-content,
