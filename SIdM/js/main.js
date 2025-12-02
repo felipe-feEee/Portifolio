@@ -644,12 +644,25 @@ async function handlePaste(e) {
       }
     }
 
-    // 2) serializa o fragmento, sanitiza e insere no editor
-    const tmp = document.createElement('div');
-    tmp.appendChild(frag);
-    const sanitized = (typeof sanitizeHtml === 'function') ? sanitizeHtml(tmp.innerHTML || '') : tmp.innerHTML;
-    // append (preserva conteúdo existente)
+    // 2) serializa o fragmento, sanitiza
+const tmp = document.createElement('div');
+tmp.appendChild(frag);
+const sanitized = (typeof sanitizeHtml === 'function') ? sanitizeHtml(tmp.innerHTML || '') : tmp.innerHTML;
+
+  // insere no ponto atual da seleção/cursor
+  const sel = window.getSelection();
+  if (sel && sel.rangeCount > 0) {
+    const range = sel.getRangeAt(0);
+    // cria fragmento DOM a partir do HTML sanitizado
+    const fragToInsert = range.createContextualFragment(sanitized);
+    range.deleteContents(); // remove seleção atual
+    range.insertNode(fragToInsert);
+    // reposiciona o cursor após o conteúdo inserido
+    sel.collapse(range.endContainer, range.endOffset);
+  } else {
+    // fallback: se não houver seleção, insere no fim
     contentBody.insertAdjacentHTML('beforeend', sanitized);
+  }
   } catch (err) {
     console.error('Erro no handlePaste:', err);
   }
