@@ -5,10 +5,12 @@ let _sidebarAutoCloseInitialized = false;
 
 function closeSidebarIfMobile() {
   const sidebar = document.querySelector('.sidebar');
+  const hamburger = document.getElementById('hamburger-btn') || document.querySelector('.hamburger');
   if (!sidebar) return;
   if (window.innerWidth <= 768 && sidebar.classList.contains('open')) {
     sidebar.classList.remove('open');
     document.body.classList.remove('sidebar-open');
+    if (hamburger) hamburger.classList.remove('open');
   }
 }
 
@@ -27,9 +29,15 @@ function setupSidebarAutoClose() {
   // hamburger abre/fecha (apenas um listener)
   hamburger.addEventListener('click', (e) => {
     e.stopPropagation();
+    const opening = !sidebar.classList.contains('open');
     sidebar.classList.toggle('open');
-    if (sidebar.classList.contains('open')) document.body.classList.add('sidebar-open');
-    else document.body.classList.remove('sidebar-open');
+    if (opening) {
+      hamburger.classList.add('open');
+      document.body.classList.add('sidebar-open');
+    } else {
+      hamburger.classList.remove('open');
+      document.body.classList.remove('sidebar-open');
+    }
   });
 
   // clique fora fecha
@@ -40,6 +48,7 @@ function setupSidebarAutoClose() {
     if (sidebar.classList.contains('open')) {
       sidebar.classList.remove('open');
       document.body.classList.remove('sidebar-open');
+      if (hamburger) hamburger.classList.remove('open');
     }
   });
 
@@ -48,6 +57,7 @@ function setupSidebarAutoClose() {
     if (window.innerWidth > 768 && sidebar.classList.contains('open')) {
       sidebar.classList.remove('open');
       document.body.classList.remove('sidebar-open');
+      if (hamburger) hamburger.classList.remove('open');
     }
   });
 }
