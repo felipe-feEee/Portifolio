@@ -96,8 +96,8 @@ let currentPostId = null;
 const SupabaseConfig = {
   supabaseUrl: 'https://pwshckrmqaqymngbosgo.supabase.co',
   supabaseKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB3c2hja3JtcWFxeW1uZ2Jvc2dvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQzNjAwOTEsImV4cCI6MjA3OTkzNjA5MX0.f8iX0RoqrdxJmq-EgSyn_YWPgCHMoARQTT4ygtbcoLg',
-  tableName: 'monanote',   // padrão: posts
-  bucketName: 'monanoteimages'  // padrão: images
+  tableName: 'posts',   // padrão: posts
+  bucketName: 'images'  // padrão: images
 };
 
 // Função pública para configurar em runtime
@@ -867,6 +867,57 @@ function renderMenu() {
   });
 })();
 
+/**
+ * Marca o item do menu correspondente ao artigo como ativo.
+ * @param {string} idOrSelector - id do artigo, ou seletor/href parcial para localizar o link.
+ */
+function setActiveArticle(idOrSelector) {
+  const menu = document.getElementById('menu');
+  if (!menu) return;
+
+  // remove active de todos
+  menu.querySelectorAll('a.active').forEach(a => {
+    a.classList.remove('active');
+    a.removeAttribute('aria-current');
+  });
+
+  // tenta localizar por data-attribute primeiro (recomendado)
+  let target = null;
+  if (idOrSelector) {
+    // se id fornecido, procura por links com data-article-id
+    target = menu.querySelector(`a[data-article-id="${CSS.escape(idOrSelector)}"]`);
+    if (!target) {
+      // tenta localizar por href que contenha o id (ex: ?id=123 ou #123)
+      target = Array.from(menu.querySelectorAll('a')).find(a => {
+        const href = a.getAttribute('href') || '';
+        return href.includes(idOrSelector) || a.dataset.articleId === idOrSelector;
+      });
+    }
+  }
+
+  // se não encontrou e idOrSelector parece ser um seletor CSS, tenta querySelector
+  if (!target && idOrSelector) {
+    try { target = menu.querySelector(idOrSelector); } catch (e) { /* ignore */ }
+  }
+
+  // se ainda não encontrou, tenta marcar o primeiro link do menu (fallback)
+  if (!target) target = menu.querySelector('a');
+
+  if (target) {
+    target.classList.add('active');
+    target.setAttribute('aria-current', 'true');
+    // opcional: rolar o menu para mostrar o item ativo
+    if (typeof target.scrollIntoView === 'function') {
+      // rola suavemente apenas se estiver fora da viewport do menu
+      const menuRect = menu.getBoundingClientRect();
+      const itemRect = target.getBoundingClientRect();
+      if (itemRect.top < menuRect.top || itemRect.bottom > menuRect.bottom) {
+        target.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+      }
+    }
+  }
+}
+
 function loadArticle(categoria, id) {
   if (!contentData[categoria] || !contentData[categoria][id]) return;
   const artigo = contentData[categoria][id];
@@ -897,7 +948,9 @@ function loadArticle(categoria, id) {
       });
     });
   }
-   closeSidebarIfMobile();
+  closeSidebarIfMobile();
+  // após renderizar:
+  setActiveArticle(id);
 }
 
 /* ============================
