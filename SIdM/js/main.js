@@ -693,7 +693,7 @@ function attachDragDropHandlers() {
 
 /* Instala listeners de paste/drag apenas uma vez */
 document.removeEventListener('paste', handlePaste);
-document.addEventListener('paste', handlePaste);
+document.getElementById('content-body').addEventListener('paste', handlePaste);
 
 /* ============================
    Toolbar (execCommand + insertImage)
