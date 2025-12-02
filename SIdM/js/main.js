@@ -549,11 +549,17 @@ function createMissingImageMessage() {
 // Substitua a função handlePaste existente por esta
 async function handlePaste(e) {
   try {
+    // impede o navegador de colar automaticamente
+    e.preventDefault();
+
     const clipboard = e.clipboardData || window.clipboardData;
     if (!clipboard) return;
+
+    const titleInput = document.getElementById('title-input');
     const contentBody = document.getElementById('content-body');
     const target = e.target || document.activeElement;
     const isEditor = contentBody && (target === contentBody || contentBody.contains(target));
+
     if (!isEditor) {
       // fallback para inputs/textareas
       if (target && (target.tagName === 'TEXTAREA' || target.tagName === 'INPUT')) {
@@ -567,8 +573,6 @@ async function handlePaste(e) {
       }
       return;
     }
-
-    e.preventDefault();
 
     // pega HTML e plain
     const html = clipboard.getData('text/html') || '';
