@@ -520,15 +520,13 @@ function createMissingImageMessage() {
 /* Handler de paste (integra com uploadToSupabase e insertNodeAtCursor) */
 async function handlePaste(e) {
   try {
-    // permite fallback se não houver clipboardData
     const clipboard = e.clipboardData || window.clipboardData;
     if (!clipboard) return;
     const contentBody = document.getElementById('content-body');
     const target = e.target || document.activeElement;
     const isEditor = contentBody && (target === contentBody || contentBody.contains(target));
-
-    // se não for no editor, insere texto simples em inputs/textareas
     if (!isEditor) {
+      // fallback para inputs/textareas
       if (target && (target.tagName === 'TEXTAREA' || target.tagName === 'INPUT')) {
         const plain = clipboard.getData('text/plain') || '';
         const el = target;
@@ -543,60 +541,68 @@ async function handlePaste(e) {
 
     e.preventDefault();
 
-    // 1) imagens diretas
-    const items = Array.from(clipboard.items || []);
-    const imageItems = items.filter(i => i.type && i.type.startsWith('image/'));
-    if (imageItems.length > 0) {
-      for (const it of imageItems) {
-        const file = it.getAsFile();
-        if (!file) continue;
-        const publicUrl = await uploadToSupabase(file);
-        if (publicUrl) {
-          const img = document.createElement('img');
-          img.src = publicUrl;
-          img.style.maxWidth = '100%';
-          insertNodeAtCursor(img);
-        }
+    // pega HTML e plain
+    const html = clipboard.getData('text/html') || '';
+    const plain = clipboard.getData('text/plain') || '';
+
+    // se não houver HTML, insere texto simples
+    if (!html) {
+      if (plain) {
+        const p = document.createElement('p');
+        p.textContent = plain;
+        contentBody.appendChild(p);
       }
       return;
     }
 
-    // 2) HTML colado (procura data: urls)
-    if ((clipboard.types || []).includes('text/html')) {
-      const html = clipboard.getData('text/html');
-      // extrai data urls e faz upload
-      const dataFiles = extractDataUrlsFromHtml(html);
-      if (dataFiles.length > 0) {
-        for (const { file, dataurl } of dataFiles) {
-          const publicUrl = await uploadToSupabase(file);
-          if (publicUrl) {
-            const img = document.createElement('img');
-            img.src = publicUrl;
-            img.style.maxWidth = '100%';
-            insertNodeAtCursor(img);
+    // parse HTML em fragmento
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(html, 'text/html');
+    const frag = document.createDocumentFragment();
+    Array.from(doc.body.childNodes).forEach(n => frag.appendChild(n.cloneNode(true)));
+
+    // processa imagens no fragmento
+    const imgs = Array.from(frag.querySelectorAll('img'));
+    for (const img of imgs) {
+      const src = (img.getAttribute('src') || '').trim();
+      let replaced = false;
+
+      // 1) data: urls no HTML
+      if (src.startsWith('data:')) {
+        try {
+          const dataFiles = extractDataUrlsFromHtml(img.outerHTML || '');
+          if (dataFiles && dataFiles.length > 0) {
+            const file = dataFiles[0].file;
+            const publicUrl = await uploadToSupabase(file);
+            if (publicUrl) { img.setAttribute('src', publicUrl); replaced = true; }
           }
-        }
-        return;
+        } catch (err) { console.warn('data-url upload failed', err); }
       }
-      // fallback: sanitiza e insere HTML (se tiver função cleanWordHtmlAndInsert)
-      if (typeof cleanWordHtmlAndInsert === 'function') {
-        cleanWordHtmlAndInsert(html);
-        return;
+
+      // 2) blob: ou local src — tenta clipboard.read() ou fallback
+      if (!replaced && (src.startsWith('blob:') || src === '')) {
+        try {
+          const files = await tryClipboardReadForImages();
+          if (files && files.length > 0) {
+            const file = files.shift();
+            const publicUrl = await uploadToSupabase(file);
+            if (publicUrl) { img.setAttribute('src', publicUrl); replaced = true; }
+          }
+        } catch (err) { console.warn('clipboard.read fallback failed', err); }
+      }
+
+      // 3) se não substituiu, troca <img> por mensagem amigável
+      if (!replaced) {
+        const msg = (typeof createMissingImageMessage === 'function') ? createMissingImageMessage() : document.createElement('div');
+        img.replaceWith(msg);
       }
     }
 
-    // 3) Texto simples
-    const plain = clipboard.getData('text/plain');
-    if (plain) {
-      const p = document.createElement('p');
-      p.textContent = plain;
-      insertNodeAtCursor(p);
-      return;
-    }
-
-    // 4) se nada foi inserido, mostra mensagem amigável
-    const msg = createMissingImageMessage();
-    insertNodeAtCursor(msg);
+    // serializa, sanitiza e insere
+    const tmp = document.createElement('div');
+    tmp.appendChild(frag);
+    const sanitized = sanitizeHtml(tmp.innerHTML || '');
+    contentBody.innerHTML = sanitized;
   } catch (err) {
     console.error('Erro no handlePaste:', err);
   }
