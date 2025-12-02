@@ -575,7 +575,7 @@ body.sidebar-open{overflow:hidden}
   }
 }
 
-#menu > ul > li:nth-child(1) > ul > li > a {
-  font-size: 0.5em;
+#menu > ul > li > ul > li > a {
+  font-size: 0.7em;
   line-height: 1.2; /* mantém legibilidade */
 }
