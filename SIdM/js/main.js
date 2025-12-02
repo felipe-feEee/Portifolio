@@ -652,8 +652,22 @@ function loadArticle(categoria, id) {
    closeSidebarIfMobile();
 }
 
-// 2) Fecha o menu ao clicar fora (document click)
-(function enableSidebarAutoCloseOnOutsideClick() {
+// flag para garantir inicialização única
+let _sidebarAutoCloseInitialized = false;
+
+function closeSidebarIfMobile() {
+  const sidebar = document.querySelector('.sidebar');
+  if (!sidebar) return;
+  if (window.innerWidth <= 768 && sidebar.classList.contains('open')) {
+    sidebar.classList.remove('open');
+    document.body.classList.remove('sidebar-open');
+  }
+}
+
+function setupSidebarAutoClose() {
+  if (_sidebarAutoCloseInitialized) return; // já inicializado
+  _sidebarAutoCloseInitialized = true;
+
   const sidebar = document.querySelector('.sidebar');
   const hamburger = document.getElementById('hamburger-btn') || document.querySelector('.hamburger');
 
@@ -664,40 +678,41 @@ function loadArticle(categoria, id) {
     e.stopPropagation();
   });
 
-  // clique no hamburger abre/fecha (preserve sua lógica atual)
+  // hamburger abre/fecha (apenas um listener)
   if (hamburger) {
     hamburger.addEventListener('click', (e) => {
       e.stopPropagation();
       sidebar.classList.toggle('open');
+      // opcional: bloqueia scroll do body quando aberto
+      if (sidebar.classList.contains('open')) document.body.classList.add('sidebar-open');
+      else document.body.classList.remove('sidebar-open');
     });
   }
 
-  // clique fora fecha
+  // clique fora fecha a sidebar (apenas um listener no documento)
   document.addEventListener('click', (e) => {
     const target = e.target;
-    // se clicar no hamburger, ignora (já tratado)
     if (hamburger && (hamburger === target || hamburger.contains(target))) return;
-    // se clicar dentro da sidebar, ignora
     if (sidebar.contains(target)) return;
-    // caso contrário, fecha
-    if (sidebar.classList.contains('open')) sidebar.classList.remove('open');
+    if (sidebar.classList.contains('open')) {
+      sidebar.classList.remove('open');
+      document.body.classList.remove('sidebar-open');
+    }
   });
 
-  // também fecha ao redimensionar para desktop (opcional)
+  // fecha ao redimensionar para desktop (opcional)
   window.addEventListener('resize', () => {
     if (window.innerWidth > 768 && sidebar.classList.contains('open')) {
       sidebar.classList.remove('open');
+      document.body.classList.remove('sidebar-open');
     }
   });
-})();
+}
 
-// Fecha sidebar em mobile
-function closeSidebarIfMobile() {
-  const sidebar = document.querySelector('.sidebar');
-  if (!sidebar) return;
-  if (window.innerWidth <= 768 && sidebar.classList.contains('open')) {
-    sidebar.classList.remove('open');
-  }
+// Chame setupSidebarAutoClose() uma vez na inicialização do app
+window.addEventListener('DOMContentLoaded', () => {
+  setupSidebarAutoClose();
+});
 
 /* ============================
    Editor unificado (Adicionar / Editar)
