@@ -5,7 +5,7 @@
   --color-light: #f0f8ff;
   --color-text: #1a1a1a;
   --font-main: 'Segoe UI', Arial, sans-serif;
-  --font-size-base: 1.5rem;
+  --font-size-base: 1.0rem;
   --radius: 6px;
   --shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
 }
@@ -135,7 +135,7 @@ body {
   padding: 0.6rem 0.8rem;
   color: #fff;
   text-decoration: none;
-  font-size: 1.1rem;
+  font-size: 0.9rem;
   cursor: pointer;
   transition: background-color 0.25s ease;
 }
