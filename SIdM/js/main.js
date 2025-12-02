@@ -1263,7 +1263,7 @@ async function saveContentInline() {
     ) || Object.keys(contentData[catKey]).pop();
 
     loadArticle(catKey, savedKey);
-    alert('Conteúdo salvo com sucesso!');
+    //alert('Conteúdo salvo com sucesso!');
   } catch (e) {
     console.error('Erro ao salvar:', e);
     // tenta revalidar antes de notificar o usuário
