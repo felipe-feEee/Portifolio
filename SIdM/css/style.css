@@ -148,7 +148,7 @@ body {
 .search-bar {
   flex: 1;
   max-width: 100%;
-  min-width: 769px;
+  min-width: 50px;
   padding: 0.6rem 1rem;
   border: 1px solid #ccc;
   border-radius: var(--radius);
@@ -177,7 +177,7 @@ body {
   top: calc(100% + 4px);
   left: 1rem;
   max-width: 100%;
-  min-width: 769px;
+  min-width: 50;
   background: #fff;
   border: 1px solid #ccc;
   border-radius: var(--radius);
