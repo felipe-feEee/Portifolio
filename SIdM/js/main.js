@@ -933,30 +933,24 @@ function cancelAddingContent() {
    ============================ */
 window.addEventListener('DOMContentLoaded', async () => {
   const loadingEl = document.getElementById('initial-loading');
+
   try {
+    // Inicializa supabase e carrega dados
     await initializeSupabase();
     await carregarPostsDoBanco();
   } catch (e) {
     console.error('Erro na inicialização:', e);
+    // tenta carregar dados locais/fallback mesmo em erro
     await carregarPostsDoBanco();
   } finally {
+    // Esconde o loading uma única vez
     if (loadingEl) loadingEl.style.display = 'none';
   }
 
-  // Hamburguer
-  const hamburgerBtn = document.getElementById('hamburger-btn');
-  if (hamburgerBtn) hamburgerBtn.addEventListener('click', () => {
-    const sidebar = document.querySelector('.sidebar');
-    if (sidebar) sidebar.classList.toggle('open');
-  });
-
-  // Botão adicionar
-  const addBtn = document.getElementById('add-content-btn');
-  if (addBtn) addBtn.addEventListener('click', () => renderEditorUI({ mode: 'add' }));
-
-// garante que o sidebar/hamburger sejam configurados uma vez
+  // Configura o sidebar/hamburger (registra listeners uma vez)
   setupSidebarAutoClose();
 
-  // Se você tem um elemento de loading, esconda-o aqui quando tudo estiver pronto:
-  if (loadingEl) loadingEl.style.display = 'none';
+  // Botão adicionar (registrado uma vez)
+  const addBtn = document.getElementById('add-content-btn');
+  if (addBtn) addBtn.addEventListener('click', () => renderEditorUI({ mode: 'add' }));
 });
