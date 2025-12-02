@@ -1196,7 +1196,7 @@ async function saveNewContent() {
     ) || Object.keys(contentData[catKey]).pop();
 
     loadArticle(catKey, newKey);
-    alert('Conteúdo adicionado com sucesso!');
+    //alert('Conteúdo adicionado com sucesso!');
   } catch (e) {
     console.error('Erro ao adicionar:', e);
     alert('Erro ao adicionar conteúdo.');
