@@ -549,11 +549,17 @@ function createMissingImageMessage() {
 // Substitua a função handlePaste existente por esta
 async function handlePaste(e) {
   try {
+    // impede o navegador de colar automaticamente
+    e.preventDefault();
+
     const clipboard = e.clipboardData || window.clipboardData;
     if (!clipboard) return;
+
+    const titleInput = document.getElementById('title-input');
     const contentBody = document.getElementById('content-body');
     const target = e.target || document.activeElement;
     const isEditor = contentBody && (target === contentBody || contentBody.contains(target));
+
     if (!isEditor) {
       // fallback para inputs/textareas
       if (target && (target.tagName === 'TEXTAREA' || target.tagName === 'INPUT')) {
@@ -567,8 +573,6 @@ async function handlePaste(e) {
       }
       return;
     }
-
-    e.preventDefault();
 
     // pega HTML e plain
     const html = clipboard.getData('text/html') || '';
@@ -640,12 +644,25 @@ async function handlePaste(e) {
       }
     }
 
-    // 2) serializa o fragmento, sanitiza e insere no editor
-    const tmp = document.createElement('div');
-    tmp.appendChild(frag);
-    const sanitized = (typeof sanitizeHtml === 'function') ? sanitizeHtml(tmp.innerHTML || '') : tmp.innerHTML;
-    // append (preserva conteúdo existente)
+    // 2) serializa o fragmento, sanitiza
+const tmp = document.createElement('div');
+tmp.appendChild(frag);
+const sanitized = (typeof sanitizeHtml === 'function') ? sanitizeHtml(tmp.innerHTML || '') : tmp.innerHTML;
+
+  // insere no ponto atual da seleção/cursor
+  const sel = window.getSelection();
+  if (sel && sel.rangeCount > 0) {
+    const range = sel.getRangeAt(0);
+    // cria fragmento DOM a partir do HTML sanitizado
+    const fragToInsert = range.createContextualFragment(sanitized);
+    range.deleteContents(); // remove seleção atual
+    range.insertNode(fragToInsert);
+    // reposiciona o cursor após o conteúdo inserido
+    sel.collapse(range.endContainer, range.endOffset);
+  } else {
+    // fallback: se não houver seleção, insere no fim
     contentBody.insertAdjacentHTML('beforeend', sanitized);
+  }
   } catch (err) {
     console.error('Erro no handlePaste:', err);
   }
@@ -693,7 +710,7 @@ function attachDragDropHandlers() {
 
 /* Instala listeners de paste/drag apenas uma vez */
 document.removeEventListener('paste', handlePaste);
-document.addEventListener('paste', handlePaste);
+document.getElementById('content-body').addEventListener('paste', handlePaste);
 
 /* ============================
    Toolbar (execCommand + insertImage)
@@ -781,7 +798,7 @@ function renderWelcome() {
   const article = document.getElementById('article-content');
   if (!article) return;
   article.innerHTML = `
-    <h1 id="article-title">Bem-vinda minha Deusa-Rainha!</h1>
+    <h1 id="article-title">Bem-vindo</h1>
     <button id="edit-article-link" style="display:none;">Editar</button>
     <div id="content-body" contenteditable="false" data-placeholder="Digite ou cole o conteúdo aqui">
       <p>Selecione um item no menu para ver o conteúdo.</p>
@@ -1246,7 +1263,7 @@ async function saveContentInline() {
     ) || Object.keys(contentData[catKey]).pop();
 
     loadArticle(catKey, savedKey);
-    alert('Conteúdo salvo com sucesso!');
+    //alert('Conteúdo salvo com sucesso!');
   } catch (e) {
     console.error('Erro ao salvar:', e);
     // tenta revalidar antes de notificar o usuário
