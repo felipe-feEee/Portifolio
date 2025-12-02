@@ -532,7 +532,7 @@ async function tryClipboardReadForImages() {
 function createMissingImageMessage() {
   const msg = document.createElement('div');
   msg.className = 'missing-image-message';
-  msg.textContent = 'Imagem não foi colada. Cole apenas a imagem (sem texto) para inseri-la automaticamente.';
+  msg.textContent = '';
   msg.style.color = '#666';
   msg.style.fontStyle = 'italic';
   msg.style.padding = '0.25rem 0';
