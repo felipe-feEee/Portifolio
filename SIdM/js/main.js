@@ -649,7 +649,55 @@ function loadArticle(categoria, id) {
       });
     });
   }
+   closeSidebarIfMobile();
 }
+
+// 2) Fecha o menu ao clicar fora (document click)
+(function enableSidebarAutoCloseOnOutsideClick() {
+  const sidebar = document.querySelector('.sidebar');
+  const hamburger = document.getElementById('hamburger-btn') || document.querySelector('.hamburger');
+
+  if (!sidebar) return;
+
+  // evita que cliques dentro da sidebar fechem ela
+  sidebar.addEventListener('click', (e) => {
+    e.stopPropagation();
+  });
+
+  // clique no hamburger abre/fecha (preserve sua lógica atual)
+  if (hamburger) {
+    hamburger.addEventListener('click', (e) => {
+      e.stopPropagation();
+      sidebar.classList.toggle('open');
+    });
+  }
+
+  // clique fora fecha
+  document.addEventListener('click', (e) => {
+    const target = e.target;
+    // se clicar no hamburger, ignora (já tratado)
+    if (hamburger && (hamburger === target || hamburger.contains(target))) return;
+    // se clicar dentro da sidebar, ignora
+    if (sidebar.contains(target)) return;
+    // caso contrário, fecha
+    if (sidebar.classList.contains('open')) sidebar.classList.remove('open');
+  });
+
+  // também fecha ao redimensionar para desktop (opcional)
+  window.addEventListener('resize', () => {
+    if (window.innerWidth > 768 && sidebar.classList.contains('open')) {
+      sidebar.classList.remove('open');
+    }
+  });
+})();
+
+// Fecha sidebar em mobile
+function closeSidebarIfMobile() {
+  const sidebar = document.querySelector('.sidebar');
+  if (!sidebar) return;
+  if (window.innerWidth <= 768 && sidebar.classList.contains('open')) {
+    sidebar.classList.remove('open');
+  }
 
 /* ============================
    Editor unificado (Adicionar / Editar)
