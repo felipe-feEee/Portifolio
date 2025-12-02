@@ -111,6 +111,44 @@ body {
   overflow: hidden; /* impede scroll no container */
 }
 
+.top-bar-wrapper {
+  display: none; /* escondido por padrão */
+  width: 100%;
+  padding: 0.5rem 1rem;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  z-index: 10001;
+}
+
+@media (max-width: 768px) {
+  .top-bar-wrapper {
+    display: flex;
+    position: relative;
+    background-color: var(--color-light);
+  }
+
+  .search-bar-container {
+    flex: 1;
+    margin-bottom: 0;
+    position: relative;
+  }
+
+  .search-bar {
+    width: 100%;
+    padding: 0.5rem 0.8rem;
+    font-size: 1rem;
+  }
+
+  .hamburger {
+    position: relative;
+    top: auto;
+    right: auto;
+    margin-right: 0.5rem;
+  }
+}
+
+
 /* Sidebar (desktop) */
 .sidebar {
   width: 15%;
