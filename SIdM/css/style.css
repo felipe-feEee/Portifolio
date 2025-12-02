@@ -223,7 +223,7 @@ body {
   display: none;
   position: fixed;
   top: 12px;
-  left: 12px;
+  right: 12px; /* antes era left, agora right */
   background: var(--color-primary);
   color: #fff;
   border: none;
