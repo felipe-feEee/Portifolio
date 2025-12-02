@@ -326,22 +326,37 @@ function sanitizePlainText(input, maxLen) {
   return s;
 }
 
+// Atualize allowedTags para incluir 'div' (substitua a declaração existente)
 const allowedTags = [
-  'p','br','b','strong','i','em','u',
+  'div','p','br','b','strong','i','em','u',
   'ul','ol','li',
   'h1','h2','h3','h4','h5','h6',
   'table','thead','tbody','tfoot','tr','td','th',
   'a','img'
 ];
 
+// Substitua a função sanitizeAttributes existente por esta versão
 function sanitizeAttributes(el) {
   const tag = el.tagName.toLowerCase();
   [...el.attributes].forEach(attr => {
     const name = attr.name.toLowerCase();
+    // img: mantém apenas src, alt, width, height
     if (tag === 'img') {
-      if (name !== 'src') el.removeAttribute(attr.name);
-    } else if (tag === 'a') {
-      if (name !== 'href') el.removeAttribute(attr.name);
+      if (!['src','alt','width','height'].includes(name)) el.removeAttribute(attr.name);
+      continue;
+    }
+    // a: mantém href, target, rel e data-*/aria-*
+    if (tag === 'a') {
+      if (name === 'href' || name === 'target' || name === 'rel' || name.startsWith('data-') || name.startsWith('aria-')) {
+        // ok
+      } else {
+        el.removeAttribute(attr.name);
+      }
+      continue;
+    }
+    // para outras tags: permite class, data-*, aria-*
+    if (name === 'class' || name.startsWith('data-') || name.startsWith('aria-')) {
+      // preserva
     } else {
       el.removeAttribute(attr.name);
     }
@@ -518,6 +533,7 @@ function createMissingImageMessage() {
 }
 
 /* Handler de paste (integra com uploadToSupabase e insertNodeAtCursor) */
+// Substitua a função handlePaste existente por esta
 async function handlePaste(e) {
   try {
     const clipboard = e.clipboardData || window.clipboardData;
@@ -545,7 +561,7 @@ async function handlePaste(e) {
     const html = clipboard.getData('text/html') || '';
     const plain = clipboard.getData('text/plain') || '';
 
-    // se não houver HTML, insere texto simples
+    // se não houver HTML, insere texto simples e retorna
     if (!html) {
       if (plain) {
         const p = document.createElement('p');
@@ -555,54 +571,68 @@ async function handlePaste(e) {
       return;
     }
 
-    // parse HTML em fragmento
+    // parse HTML em fragmento (clona para não alterar original)
     const parser = new DOMParser();
     const doc = parser.parseFromString(html, 'text/html');
     const frag = document.createDocumentFragment();
     Array.from(doc.body.childNodes).forEach(n => frag.appendChild(n.cloneNode(true)));
 
-    // processa imagens no fragmento
+    // 1) processa imagens/data URLs no fragmento
     const imgs = Array.from(frag.querySelectorAll('img'));
     for (const img of imgs) {
       const src = (img.getAttribute('src') || '').trim();
       let replaced = false;
 
-      // 1) data: urls no HTML
+      // a) data: URLs embutidas
       if (src.startsWith('data:')) {
         try {
-          const dataFiles = extractDataUrlsFromHtml(img.outerHTML || '');
+          const dataFiles = typeof extractDataUrlsFromHtml === 'function' ? extractDataUrlsFromHtml(img.outerHTML || '') : [];
           if (dataFiles && dataFiles.length > 0) {
             const file = dataFiles[0].file;
-            const publicUrl = await uploadToSupabase(file);
+            let publicUrl = null;
+            if (typeof uploadToSupabase === 'function') {
+              try { publicUrl = await uploadToSupabase(file); } catch (err) { console.warn('upload failed', err); }
+            }
             if (publicUrl) { img.setAttribute('src', publicUrl); replaced = true; }
           }
         } catch (err) { console.warn('data-url upload failed', err); }
       }
 
-      // 2) blob: ou local src — tenta clipboard.read() ou fallback
-      if (!replaced && (src.startsWith('blob:') || src === '')) {
+      // b) blob: ou file:/// (imagens locais do Word) — tenta clipboard.read() fallback
+      if (!replaced && (src.startsWith('blob:') || src === '' || src.startsWith('file:'))) {
         try {
-          const files = await tryClipboardReadForImages();
-          if (files && files.length > 0) {
-            const file = files.shift();
-            const publicUrl = await uploadToSupabase(file);
-            if (publicUrl) { img.setAttribute('src', publicUrl); replaced = true; }
+          if (typeof tryClipboardReadForImages === 'function') {
+            const files = await tryClipboardReadForImages();
+            if (files && files.length > 0) {
+              const file = files.shift();
+              let publicUrl = null;
+              if (typeof uploadToSupabase === 'function') {
+                try { publicUrl = await uploadToSupabase(file); } catch (err) { console.warn('upload failed', err); }
+              }
+              if (publicUrl) { img.setAttribute('src', publicUrl); replaced = true; }
+            }
           }
         } catch (err) { console.warn('clipboard.read fallback failed', err); }
       }
 
-      // 3) se não substituiu, troca <img> por mensagem amigável
+      // c) se não substituiu, substitui o <img> por mensagem amigável (preserva texto ao redor)
       if (!replaced) {
-        const msg = (typeof createMissingImageMessage === 'function') ? createMissingImageMessage() : document.createElement('div');
+        const msg = (typeof createMissingImageMessage === 'function') ? createMissingImageMessage() : (() => {
+          const d = document.createElement('div');
+          d.className = 'missing-image-message';
+          d.textContent = 'Imagem não foi colada. Cole apenas a imagem (sem texto) para inseri-la automaticamente.';
+          return d;
+        })();
         img.replaceWith(msg);
       }
     }
 
-    // serializa, sanitiza e insere
+    // 2) serializa o fragmento, sanitiza e insere no editor
     const tmp = document.createElement('div');
     tmp.appendChild(frag);
-    const sanitized = sanitizeHtml(tmp.innerHTML || '');
-    contentBody.innerHTML = sanitized;
+    const sanitized = (typeof sanitizeHtml === 'function') ? sanitizeHtml(tmp.innerHTML || '') : tmp.innerHTML;
+    // append (preserva conteúdo existente)
+    contentBody.insertAdjacentHTML('beforeend', sanitized);
   } catch (err) {
     console.error('Erro no handlePaste:', err);
   }
