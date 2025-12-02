@@ -28,11 +28,16 @@
 
   <!-- Cabeçalho fixo -->
   <header class="main-header">
-    <input type="text" id="search-input" class="search-bar" placeholder="Buscar conteúdo..." />
-    <button class="hamburger" id="hamburger-btn">
-      <span></span><span></span><span></span>
-    </button>
-    <ul id="search-suggestions" class="search-suggestions"></ul>
+    <div class="header-inner">
+      <button id="hamburger-btn" class="hamburger"><span></span><span></span><span></span></button>
+      <div class="search-header">
+        <input id="search-input" class="search-bar" placeholder="Buscar conteúdo..." />
+        <ul id="search-suggestions" class="search-suggestions"></ul>
+      </div>
+      <div class="header-actions">
+        <!-- botões extras -->
+      </div>
+    </div>
   </header>
 
   <!-- Layout principal -->
