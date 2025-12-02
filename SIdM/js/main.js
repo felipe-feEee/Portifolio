@@ -578,15 +578,28 @@ async function handlePaste(e) {
     const html = clipboard.getData('text/html') || '';
     const plain = clipboard.getData('text/plain') || '';
 
-    // se não houver HTML, insere texto simples e retorna
+    // se não houver HTML, insere texto simples no ponto da seleção/cursor
     if (!html) {
       if (plain) {
-        const p = document.createElement('p');
-        p.textContent = plain;
-        contentBody.appendChild(p);
+        const sel = window.getSelection();
+        if (sel && sel.rangeCount > 0) {
+          const range = sel.getRangeAt(0);
+          // converte quebras de linha em <br> para preservar formato
+          const safeText = plain.replace(/\n/g, '<br>');
+          const fragToInsert = range.createContextualFragment(safeText);
+          range.deleteContents();
+          range.insertNode(fragToInsert);
+          sel.collapse(range.endContainer, range.endOffset);
+        } else {
+          // fallback: se não houver seleção, insere no fim
+          const p = document.createElement('p');
+          p.textContent = plain;
+          contentBody.appendChild(p);
+        }
       }
       return;
     }
+
 
     // parse HTML em fragmento (clona para não alterar original)
     const parser = new DOMParser();
