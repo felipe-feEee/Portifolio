@@ -1209,17 +1209,32 @@ async function saveContentInline() {
     } else {
       if (currentPostId) {
         const resp = await updatePost(currentPostId, payload);
-        if (resp === null) {
-          alert('Erro ao salvar conteúdo.');
-          return;
+        if (!resp || resp.error) {
+          console.warn('DBG updatePost returned error or falsy', resp);
+          if (typeof carregarPostsDoBanco === 'function') await carregarPostsDoBanco();
+          const existsAfter = contentData?.[categoria] && Object.values(contentData[categoria] || {}).some(x => x.postId === currentPostId);
+          if (!existsAfter) {
+            alert('Erro ao salvar conteúdo.');
+            return;
+          }
+        } else {
+          currentPostId = resp.id || (resp.data && (resp.data.id || resp.data.postId)) || currentPostId;
         }
       } else {
         const resp = await insertPost(payload);
-        if (!resp) {
-          alert('Erro ao salvar conteúdo.');
-          return;
+        if (!resp || resp.error) {
+          console.warn('DBG insertPost returned error or falsy', resp);
+          if (typeof carregarPostsDoBanco === 'function') await carregarPostsDoBanco();
+          const maybeId = resp && (resp.id || (resp.data && (resp.data.id || resp.data.postId)));
+          if (maybeId) {
+            currentPostId = maybeId;
+          } else {
+            alert('Erro ao salvar conteúdo.');
+            return;
+          }
+        } else {
+          currentPostId = resp.id || (resp.data && (resp.data.id || resp.data.postId)) || currentPostId;
         }
-        currentPostId = resp.id;
       }
     }
 
@@ -1234,6 +1249,8 @@ async function saveContentInline() {
     alert('Conteúdo salvo com sucesso!');
   } catch (e) {
     console.error('Erro ao salvar:', e);
+    // tenta revalidar antes de notificar o usuário
+    try { if (typeof carregarPostsDoBanco === 'function') await carregarPostsDoBanco(); } catch(e2){ console.warn('revalidação falhou', e2); }
     alert('Erro ao salvar conteúdo.');
   }
 }
