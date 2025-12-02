@@ -135,7 +135,7 @@ body {
   padding: 0.6rem 0.8rem;
   color: #fff;
   text-decoration: none;
-  font-size: 0.9rem;
+  font-size: 0.6rem;
   cursor: pointer;
   transition: background-color 0.25s ease;
 }
@@ -166,7 +166,7 @@ body {
 
 .sidebar li ul li a {
   padding: 0.6rem 0.8rem;
-  font-size: 0.95rem;
+  font-size: 0.6rem;
   color: #ccc;
   border-left: 1px solid #cc0000;
   transition: background-color 0.25s, border-color 0.25s;
