@@ -603,21 +603,25 @@ function generateUniqueImageName(file, prefix = 'paste') {
 // Substitua a função handlePaste existente por esta
 async function handlePaste(e) {
   try {
-    e.preventDefault();
     const clipboard = e.clipboardData || window.clipboardData;
     if (!clipboard) return;
 
     const contentBody = document.getElementById('content-body');
     const target = e.target || document.activeElement;
     const isEditor = contentBody && (target === contentBody || contentBody.contains(target));
+
+    // Se não for editor (ex: title-input), deixa o comportamento padrão
     if (!isEditor) return;
+
+    // Só bloqueia o comportamento nativo dentro do editor
+    e.preventDefault();
 
     const items = clipboard.items || [];
     const html = clipboard.getData('text/html') || '';
     const rtf = clipboard.getData('text/rtf') || '';
     const plain = clipboard.getData('text/plain') || '';
 
-    // 1) Imagem direta (printscreen, copiar arquivo)
+    // 1) Imagem direta
     if (items.length > 0 && items[0].type.startsWith('image/')) {
       const file = items[0].getAsFile();
       if (file) {
@@ -626,17 +630,13 @@ async function handlePaste(e) {
         if (publicUrl) {
           img.src = publicUrl;
           img.alt = file.name;
+          insertNodeAtCursor(img);
         } else {
-          img.src = '';
-          img.alt = 'Imagem não enviada';
           insertNodeAtCursor(createMissingImageMessage(`Falha ao enviar ${file.name}.`));
-          return;
         }
-        insertNodeAtCursor(img);
-        return;
       }
     }
-    // 2) HTML com data:image (Word/Outlook/Excel)
+    // 2) HTML com data:image
     else if (html.includes('data:image')) {
       const files = extractDataUrlsFromHtml(html);
       for (const { file } of files) {
@@ -649,10 +649,7 @@ async function handlePaste(e) {
           insertNodeAtCursor(createMissingImageMessage('Falha ao enviar imagem colada.'));
         }
       }
-      // também insere o texto simples junto
-      if (plain) {
-        insertPlainTextAtCursor(plain, contentBody);
-      }
+      if (plain) insertPlainTextAtCursor(plain, contentBody);
     }
     // 3) RTF com imagens
     else if (rtf) {
@@ -667,34 +664,14 @@ async function handlePaste(e) {
           insertNodeAtCursor(createMissingImageMessage('Falha ao enviar imagem colada.'));
         }
       }
-      // também insere o texto simples junto
-      if (plain) {
-        insertPlainTextAtCursor(plain, contentBody);
-      }
+      if (plain) insertPlainTextAtCursor(plain, contentBody);
     }
-    // 4) Texto simples (sem imagens)
+    // 4) Texto simples
     else if (plain) {
       insertPlainTextAtCursor(plain, contentBody);
     }
   } catch (err) {
     console.error('Erro no handlePaste:', err);
-  }
-}
-
-// Função auxiliar para inserir texto simples
-function insertPlainTextAtCursor(plain, contentBody) {
-  const sel = window.getSelection();
-  if (sel && sel.rangeCount > 0) {
-    const range = sel.getRangeAt(0);
-    const safeText = plain.replace(/\n/g, '<br>');
-    const fragToInsert = range.createContextualFragment(safeText);
-    range.deleteContents();
-    range.insertNode(fragToInsert);
-    sel.collapse(range.endContainer, range.endOffset);
-  } else {
-    const p = document.createElement('p');
-    p.textContent = plain;
-    contentBody.appendChild(p);
   }
 }
 
