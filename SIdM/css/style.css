@@ -169,8 +169,8 @@ body{
 
 /* Sidebar: desktop fixed, mobile off-canvas */
 .sidebar{
-  width:280px;
-  min-width:220px;
+  width:220px;
+  min-width:160px;
   background:linear-gradient(180deg,var(--color-dark),var(--color-dark-2));
   color:#fff;
   padding:1rem;
