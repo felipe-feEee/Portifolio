@@ -252,7 +252,7 @@ async function uploadToSupabase(file) {
   }
 
   const bucket = SupabaseConfig.bucketName || 'images';
-  const safeName = sanitizeFilename(file.name || `file-${Date.now()}`);
+  const safeName = sanitizeFilename(file);
   const filePath = `${safeName.startsWith('/') ? safeName.slice(1) : safeName}`;
 
   try {
