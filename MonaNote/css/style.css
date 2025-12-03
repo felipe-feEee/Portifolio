@@ -9,8 +9,8 @@
 
 /* ========== Variáveis ========== */
 :root{
-  --color-primary: #3399ff;
-  --color-primary-dark: #2673cc;
+  --color-primary: #ff6666;
+  --color-primary-dark: #e65c5c;
   --color-dark: #0b1a2b;
   --color-dark-2: #14273d;
   --color-light: #f7fbff;
@@ -169,8 +169,8 @@ body{
 
 /* Sidebar: desktop fixed, mobile off-canvas */
 .sidebar{
-  width:280px;
-  min-width:220px;
+  width:220px;
+  min-width:160px;
   background:linear-gradient(180deg,var(--color-dark),var(--color-dark-2));
   color:#fff;
   padding:1rem;
@@ -345,8 +345,16 @@ body{
 #article-content a,#content-body a{color:var(--color-primary);text-decoration:underline}
 
 /* imagens */
-#article-content img,#content-body img{
-  max-width:100%;height:auto;border-radius:8px;display:block;margin:1rem auto;cursor:zoom-in;box-shadow:var(--shadow-sm)
+#article-content img,
+#content-body img {
+  max-width: 100%;
+  max-height: 80vh; /* limita a altura a 80% da tela */
+  height: auto;
+  border-radius: 8px;
+  display: block;
+  margin: 1rem auto;
+  cursor: zoom-in;
+  box-shadow: var(--shadow-sm);
 }
 
 /* toolbar */
@@ -362,7 +370,7 @@ body{
 #image-splash{
   position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,0.85);z-index:1400;padding:20px
 }
-#image-splash img{max-width:92%;max-height:92%;border-radius:12px;box-shadow:0 12px 40px rgba(0,0,0,0.6)}
+#image-splash img{max-width:95%;max-height: 90vh;border-radius:12px;box-shadow:0 12px 40px rgba(0,0,0,0.6)}
 
 /* ========== Overlays: loading / error / debug ========== */
 
@@ -584,13 +592,8 @@ body.sidebar-open{overflow:hidden}
 #menu a.active,
 #menu > ul > li > ul > li > a.active {
   background-color: transparent;/* fundo leve */
-  color: #0b63d6;            /* cor do texto ativo */
+  color: var(--color-primary);            /* cor do texto ativo */
   font-weight: 600;
-  border-left: 3px solid #0b63d6;
+  border-left: 3px solid var(--color-primary);
   padding-left: calc(1rem - 3px); /* compensa a borda */
-}
-
-/* alternativa para destaque mais sutil */
-#menu a.active {
-  box-shadow: inset 0 0 0 1px rgba(11,99,214,0.06);
 }
