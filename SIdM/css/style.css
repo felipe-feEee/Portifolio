@@ -347,9 +347,10 @@ body{
 /* imagens */
 #article-content img,
 #content-body img {
-  width: 25vw;
-  height: 25vw;  
-  object-fit: contain;
+  max-width: 30vw;   /* nunca ultrapassa 90% da largura da tela */
+  max-height: 30vh;  /* nunca ultrapassa 60% da altura da tela */
+  width: auto;       /* mantém proporção */
+  height: auto;      /* mantém proporção */
   border-radius: 8px;
   display: block;
   margin: 1rem auto;
