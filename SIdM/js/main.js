@@ -833,7 +833,12 @@ function renderMenu() {
   menu.innerHTML = '';
   const ul = document.createElement('ul');
 
-  for (const categoria in contentData) {
+  // ordenar categorias alfabeticamente
+  const categoriasOrdenadas = Object.keys(contentData).sort((a, b) =>
+    a.localeCompare(b, 'pt', { sensitivity: 'base' })
+  );
+
+  for (const categoria of categoriasOrdenadas) {
     const liCategoria = document.createElement('li');
     const span = document.createElement('span');
     span.textContent = categoria;
@@ -842,8 +847,14 @@ function renderMenu() {
     liCategoria.appendChild(span);
 
     const ulTitulos = document.createElement('ul');
-    for (const id in contentData[categoria]) {
-      const artigo = contentData[categoria][id];
+
+    // ordenar títulos alfabeticamente dentro da categoria
+    const titulosOrdenados = Object.entries(contentData[categoria])
+      .sort(([, artigoA], [, artigoB]) =>
+        artigoA.titulo.localeCompare(artigoB.titulo, 'pt', { sensitivity: 'base' })
+      );
+
+    for (const [id, artigo] of titulosOrdenados) {
       const liTitulo = document.createElement('li');
       const link = document.createElement('a');
       link.href = '#';
@@ -859,6 +870,7 @@ function renderMenu() {
       liTitulo.appendChild(link);
       ulTitulos.appendChild(liTitulo);
     }
+
     liCategoria.appendChild(ulTitulos);
     ul.appendChild(liCategoria);
   }
