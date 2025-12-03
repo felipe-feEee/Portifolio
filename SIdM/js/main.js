@@ -698,23 +698,6 @@ function insertPlainTextAtCursor(plain, contentBody) {
   }
 }
 
-// Função auxiliar para inserir texto simples
-function insertPlainTextAtCursor(plain, contentBody) {
-  const sel = window.getSelection();
-  if (sel && sel.rangeCount > 0) {
-    const range = sel.getRangeAt(0);
-    const safeText = plain.replace(/\n/g, '<br>');
-    const fragToInsert = range.createContextualFragment(safeText);
-    range.deleteContents();
-    range.insertNode(fragToInsert);
-    sel.collapse(range.endContainer, range.endOffset);
-  } else {
-    const p = document.createElement('p');
-    p.textContent = plain;
-    contentBody.appendChild(p);
-  }
-}
-
 // Chame attachDragDropHandlers() sempre que o editor for renderizado (ex: no final de renderEditorUI)
 function attachDragDropHandlers() {
   const editor = document.getElementById('content-body');
