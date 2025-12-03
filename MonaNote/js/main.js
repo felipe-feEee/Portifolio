@@ -1,3 +1,4 @@
+
 // main.js — versão unificada e compatível com tabela "posts" e bucket "images"
 
 // ---------- Sidebar / Hamburger (inicialização única) ----------
@@ -1156,8 +1157,25 @@ function renderEditorUI({ mode = "add", titulo = "", conteudo = "", categoria = 
 /* ============================
    Salvar novo / salvar edição
    ============================ */
+function showLoadingMessage(msg) {
+  const loadingEl = document.getElementById('initial-loading');
+  if (loadingEl) {
+    const p = loadingEl.querySelector('p');
+    if (p) p.textContent = msg;
+    loadingEl.style.display = 'flex'; // ou 'block', conforme seu CSS
+  }
+}
+
+function hideLoadingMessage() {
+  const loadingEl = document.getElementById('initial-loading');
+  if (loadingEl) {
+    loadingEl.style.display = 'none';
+  }
+}
+
 async function saveNewContent() {
   try {
+    showLoadingMessage("Salvando alterações...");
     const titleInput = document.getElementById('title-input');
     const body = document.getElementById('content-body');
     const select = document.getElementById('category-select');
@@ -1201,10 +1219,12 @@ async function saveNewContent() {
     console.error('Erro ao adicionar:', e);
     alert('Erro ao adicionar conteúdo.');
   }
+  hideLoadingMessage();
 }
 
 async function saveContentInline() {
   try {
+    showLoadingMessage("Salvando alterações...");
     const titleInput = document.getElementById('title-input');
     const body = document.getElementById('content-body');
     const select = document.getElementById('category-select');
@@ -1279,6 +1299,7 @@ async function saveContentInline() {
     try { if (typeof carregarPostsDoBanco === 'function') await carregarPostsDoBanco(); } catch(e2){ console.warn('revalidação falhou', e2); }
     alert('Erro ao salvar conteúdo.');
   }
+  hideLoadingMessage();
 }
 
 function exitEditingInline() {
