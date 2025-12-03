@@ -345,8 +345,16 @@ body{
 #article-content a,#content-body a{color:var(--color-primary);text-decoration:underline}
 
 /* imagens */
-#article-content img,#content-body img{
-  max-width:100%;height:auto;border-radius:8px;display:block;margin:1rem auto;cursor:zoom-in;box-shadow:var(--shadow-sm)
+#article-content img,
+#content-body img {
+  max-width: 100%;
+  max-height: 80vh; /* limita a altura a 80% da tela */
+  height: auto;
+  border-radius: 8px;
+  display: block;
+  margin: 1rem auto;
+  cursor: zoom-in;
+  box-shadow: var(--shadow-sm);
 }
 
 /* toolbar */
@@ -362,7 +370,7 @@ body{
 #image-splash{
   position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,0.85);z-index:1400;padding:20px
 }
-#image-splash img{max-width:92%;max-height:92%;border-radius:12px;box-shadow:0 12px 40px rgba(0,0,0,0.6)}
+#image-splash img{max-width:95%;max-height: 90vh;border-radius:12px;box-shadow:0 12px 40px rgba(0,0,0,0.6)}
 
 /* ========== Overlays: loading / error / debug ========== */
 
