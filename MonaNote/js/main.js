@@ -988,6 +988,7 @@ function loadArticle(categoria, id) {
 
   // após renderizar:
   setActiveArticle(id);
+  window.scrollTo({ top: 0, behavior: 'smooth' });
 
   container.innerHTML = `
     <h1 id="article-title">${artigo.titulo}</h1>
