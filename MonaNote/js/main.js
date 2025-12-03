@@ -1,4 +1,3 @@
-
 // main.js — versão unificada e compatível com tabela "posts" e bucket "images"
 
 // ---------- Sidebar / Hamburger (inicialização única) ----------
@@ -109,8 +108,8 @@ let currentPostId = null;
 const SupabaseConfig = {
   supabaseUrl: 'https://pwshckrmqaqymngbosgo.supabase.co',
   supabaseKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB3c2hja3JtcWFxeW1uZ2Jvc2dvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQzNjAwOTEsImV4cCI6MjA3OTkzNjA5MX0.f8iX0RoqrdxJmq-EgSyn_YWPgCHMoARQTT4ygtbcoLg',
-  tableName: 'monanote',   // padrão: posts
-  bucketName: 'monanoteimages'  // padrão: images
+  tableName: 'posts',   // padrão: posts
+  bucketName: 'images'  // padrão: images
 };
 
 // Função pública para configurar em runtime
@@ -257,10 +256,9 @@ async function uploadToSupabase(file) {
   const filePath = `${safeName.startsWith('/') ? safeName.slice(1) : safeName}`;
 
   try {
-    // Faz upload para o bucket configurado
     const { data, error } = await window.supabase.storage.from(bucket).upload(filePath, file, {
       cacheControl: '3600',
-      upsert: false
+      upsert: true
     });
     if (error) {
       console.error(`Erro no upload para bucket "${bucket}":`, error);
@@ -477,10 +475,7 @@ function dataURLtoFile(dataurl, filename) {
 
 function insertNodeAtCursor(node) {
   const editor = document.getElementById('content-body');
-  if (!editor) {
-    console.warn('Editor não encontrado: #content-body');
-    return;
-  }
+  if (!editor) return;
   const sel = window.getSelection();
   if (!sel || sel.rangeCount === 0) {
     editor.appendChild(node);
@@ -562,129 +557,81 @@ function createMissingImageMessage() {
 // Substitua a função handlePaste existente por esta
 async function handlePaste(e) {
   try {
-    // impede o navegador de colar automaticamente
     e.preventDefault();
-
     const clipboard = e.clipboardData || window.clipboardData;
     if (!clipboard) return;
 
-    const titleInput = document.getElementById('title-input');
     const contentBody = document.getElementById('content-body');
     const target = e.target || document.activeElement;
     const isEditor = contentBody && (target === contentBody || contentBody.contains(target));
 
-    if (!isEditor) {
-      // fallback para inputs/textareas
-      if (target && (target.tagName === 'TEXTAREA' || target.tagName === 'INPUT')) {
-        const plain = clipboard.getData('text/plain') || '';
-        const el = target;
-        const start = typeof el.selectionStart === 'number' ? el.selectionStart : el.value.length;
-        const end = typeof el.selectionEnd === 'number' ? el.selectionEnd : el.value.length;
-        el.value = el.value.slice(0, start) + plain + el.value.slice(end);
-        el.selectionStart = el.selectionEnd = start + plain.length;
-        el.dispatchEvent(new Event('input', { bubbles: true }));
+    if (!isEditor) return;
+
+    // 1) Arquivos diretos (printscreen, copiar arquivo)
+    const items = clipboard.items || [];
+    for (const item of items) {
+      if (item.type.startsWith('image/')) {
+        const file = item.getAsFile();
+        if (file) {
+          const publicUrl = await uploadToSupabase(file);
+          if (publicUrl) {
+            const img = document.createElement('img');
+            img.src = publicUrl;
+            img.alt = file.name;
+            insertNodeAtCursor(img);
+            return;
+          }
+        }
       }
-      return;
     }
 
-    // pega HTML e plain
+    // 2) Data URLs (Word/Outlook/Excel colam base64)
     const html = clipboard.getData('text/html') || '';
-    const plain = clipboard.getData('text/plain') || '';
-
-    // se não houver HTML, insere texto simples no ponto da seleção/cursor
-    if (!html) {
-      if (plain) {
-        const sel = window.getSelection();
-        if (sel && sel.rangeCount > 0) {
-          const range = sel.getRangeAt(0);
-          // converte quebras de linha em <br> para preservar formato
-          const safeText = plain.replace(/\n/g, '<br>');
-          const fragToInsert = range.createContextualFragment(safeText);
-          range.deleteContents();
-          range.insertNode(fragToInsert);
-          sel.collapse(range.endContainer, range.endOffset);
-        } else {
-          // fallback: se não houver seleção, insere no fim
-          const p = document.createElement('p');
-          p.textContent = plain;
-          contentBody.appendChild(p);
+    if (html.includes('data:image')) {
+      const files = extractDataUrlsFromHtml(html);
+      for (const { file } of files) {
+        const publicUrl = await uploadToSupabase(file);
+        if (publicUrl) {
+          const img = document.createElement('img');
+          img.src = publicUrl;
+          insertNodeAtCursor(img);
         }
       }
       return;
     }
 
-
-    // parse HTML em fragmento (clona para não alterar original)
-    const parser = new DOMParser();
-    const doc = parser.parseFromString(html, 'text/html');
-    const frag = document.createDocumentFragment();
-    Array.from(doc.body.childNodes).forEach(n => frag.appendChild(n.cloneNode(true)));
-
-    // 1) processa imagens/data URLs no fragmento
-    const imgs = Array.from(frag.querySelectorAll('img'));
-    for (const img of imgs) {
-      const src = (img.getAttribute('src') || '').trim();
-      let replaced = false;
-
-      // a) data: URLs embutidas
-      if (src.startsWith('data:')) {
-        try {
-          const dataFiles = typeof extractDataUrlsFromHtml === 'function' ? extractDataUrlsFromHtml(img.outerHTML || '') : [];
-          if (dataFiles && dataFiles.length > 0) {
-            const file = dataFiles[0].file;
-            let publicUrl = null;
-            if (typeof uploadToSupabase === 'function') {
-              try { publicUrl = await uploadToSupabase(file); } catch (err) { console.warn('upload failed', err); }
-            }
-            if (publicUrl) { img.setAttribute('src', publicUrl); replaced = true; }
-          }
-        } catch (err) { console.warn('data-url upload failed', err); }
+    // 3) RTF (Word/Outlook)
+    const rtf = clipboard.getData('text/rtf');
+    if (rtf) {
+      const files = extractImagesFromRtf(rtf);
+      for (const file of files) {
+        const publicUrl = await uploadToSupabase(file);
+        if (publicUrl) {
+          const img = document.createElement('img');
+          img.src = publicUrl;
+          insertNodeAtCursor(img);
+        }
       }
-
-      // b) blob: ou file:/// (imagens locais do Word) — tenta clipboard.read() fallback
-      if (!replaced && (src.startsWith('blob:') || src === '' || src.startsWith('file:'))) {
-        try {
-          if (typeof tryClipboardReadForImages === 'function') {
-            const files = await tryClipboardReadForImages();
-            if (files && files.length > 0) {
-              const file = files.shift();
-              let publicUrl = null;
-              if (typeof uploadToSupabase === 'function') {
-                try { publicUrl = await uploadToSupabase(file); } catch (err) { console.warn('upload failed', err); }
-              }
-              if (publicUrl) { img.setAttribute('src', publicUrl); replaced = true; }
-            }
-          }
-        } catch (err) { console.warn('clipboard.read fallback failed', err); }
-      }
-
-      // c) se não substituiu, substitui o <img> por mensagem amigável (preserva texto ao redor)
-      if (!replaced) {
-        const msg = (typeof createMissingImageMessage === 'function') ? createMissingImageMessage() : (() => {
-          const d = document.createElement('div');
-          d.className = 'missing-image-message';
-          d.textContent = 'Imagem não foi colada. Cole apenas a imagem (sem texto) para inseri-la automaticamente.';
-          return d;
-        })();
-        img.replaceWith(msg);
-      }
+      return;
     }
 
-    // 2) serializa o fragmento, sanitiza
-    const tmp = document.createElement('div');
-    tmp.appendChild(frag);
-    const sanitized = (typeof sanitizeHtml === 'function') ? sanitizeHtml(tmp.innerHTML || '') : tmp.innerHTML;
-
-  // insere no ponto atual da seleção/cursor
-  const sel = window.getSelection();
-  if (sel && sel.rangeCount > 0) {
-    const range = sel.getRangeAt(0);
-    const fragToInsert = range.createContextualFragment(sanitized);
-    range.deleteContents(); // remove seleção atual (se houver)
-    range.insertNode(fragToInsert);
-    // reposiciona o cursor logo após o conteúdo inserido
-    sel.collapse(range.endContainer, range.endOffset);
-  }
+    // 4) Texto simples
+    const plain = clipboard.getData('text/plain') || '';
+    if (plain) {
+      const sel = window.getSelection();
+      if (sel && sel.rangeCount > 0) {
+        const range = sel.getRangeAt(0);
+        const safeText = plain.replace(/\n/g, '<br>');
+        const fragToInsert = range.createContextualFragment(safeText);
+        range.deleteContents();
+        range.insertNode(fragToInsert);
+        sel.collapse(range.endContainer, range.endOffset);
+      } else {
+        const p = document.createElement('p');
+        p.textContent = plain;
+        contentBody.appendChild(p);
+      }
+    }
   } catch (err) {
     console.error('Erro no handlePaste:', err);
   }
@@ -695,39 +642,45 @@ function attachDragDropHandlers() {
   const editor = document.getElementById('content-body');
   if (!editor) return;
 
-  // remove listeners antigos (mesma referência de função)
+  // remove listeners antigos
   editor.removeEventListener('dragover', onEditorDragOver);
   editor.removeEventListener('drop', onEditorDrop);
 
   editor.addEventListener('dragover', onEditorDragOver);
   editor.addEventListener('drop', onEditorDrop);
 
+  function onEditorDragOver(e) {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'copy'; // feedback visual
+  }
+
   async function onEditorDrop(e) {
     e.preventDefault();
     const files = Array.from(e.dataTransfer.files || []).filter(f => f.type.startsWith('image/'));
+
     if (files.length === 0) {
-      const msg = createMissingImageMessage();
-      insertNodeAtCursor(msg);
+      insertNodeAtCursor(createMissingImageMessage('Nenhuma imagem válida foi arrastada.'));
       return;
     }
+
     for (const file of files) {
       try {
         const publicUrl = await uploadToSupabase(file);
         if (publicUrl) {
           const img = document.createElement('img');
           img.src = publicUrl;
+          img.alt = file.name;
           img.style.maxWidth = '100%';
           insertNodeAtCursor(img);
+        } else {
+          insertNodeAtCursor(createMissingImageMessage(`Falha ao enviar ${file.name}.`));
         }
       } catch (err) {
         console.error('Erro ao enviar imagem via drag&drop:', err);
-        const msg = createMissingImageMessage();
-        insertNodeAtCursor(msg);
+        insertNodeAtCursor(createMissingImageMessage(`Erro inesperado ao enviar ${file.name}.`));
       }
     }
   }
-
-  function onEditorDragOver(e) { e.preventDefault(); }
 }
 
 /* Instala listeners de paste/drag apenas uma vez */
@@ -742,32 +695,38 @@ function execCmd(command, value = null) {
   if (!body) return;
   body.focus();
   switch (command) {
-    case 'insertImage': {
-      const input = document.createElement('input');
-      input.type = 'file';
-      input.accept = 'image/*';
-      input.style.display = 'none';
-      input.addEventListener('change', async () => {
-        const file = input.files[0];
-        if (!file) return;
+  case 'insertImage': {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.style.display = 'none';
+  
+    input.addEventListener('change', async () => {
+      const file = input.files[0];
+      if (!file) return;
+  
+      try {
         const publicUrl = await uploadToSupabase(file);
         if (publicUrl) {
           const img = document.createElement('img');
           img.src = publicUrl;
+          img.alt = file.name;
           img.style.maxWidth = '100%';
           insertNodeAtCursor(img);
         } else {
-          const hint = document.createElement('div');
-          hint.textContent = 'Falha ao enviar imagem.';
-          hint.style.color = '#b33';
-          insertNodeAtCursor(hint);
+          insertNodeAtCursor(createMissingImageMessage(`Falha ao enviar ${file.name}.`));
         }
-      });
-      document.body.appendChild(input);
-      input.click();
-      document.body.removeChild(input);
-      break;
-    }
+      } catch (err) {
+        console.error('Erro ao enviar imagem via botão:', err);
+        insertNodeAtCursor(createMissingImageMessage(`Erro inesperado ao enviar ${file.name}.`));
+      }
+    });
+  
+    document.body.appendChild(input);
+    input.click();
+    document.body.removeChild(input);
+    break;
+  }
     case 'createLink': {
       const url = prompt('URL do link:');
       if (url) document.execCommand('createLink', false, url);
@@ -1365,5 +1324,5 @@ window.addEventListener('DOMContentLoaded', async () => {
       renderEditorUI({ mode: 'add' });
       closeSidebarIfMobile(); // fecha a sidebar no mobile
     });
-  }  
+  }
 });
