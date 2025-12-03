@@ -67,6 +67,18 @@ window.addEventListener('DOMContentLoaded', () => {
   setupSidebarAutoClose();
 });
 
+function scrollContentToTop({ smooth = true } = {}) {
+  const content = document.getElementById('content') 
+                || document.querySelector('.content');
+  if (!content) return;
+
+  if (smooth && 'scrollTo' in content) {
+    content.scrollTo({ top: 0, behavior: 'smooth' });
+  } else {
+    content.scrollTop = 0;
+  }
+}
+
 /* ============================
    Configurações e estado
    ============================ */
@@ -1013,7 +1025,7 @@ function loadArticle(categoria, id) {
     });
   }
   closeSidebarIfMobile();
-  window.scrollTo({ top: 0, behavior: 'smooth' });
+  scrollContentToTop({ smooth: true });
 }
 
 /* ============================
