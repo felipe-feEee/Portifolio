@@ -1335,5 +1335,10 @@ window.addEventListener('DOMContentLoaded', async () => {
 
   // Botão adicionar (registrado uma vez)
   const addBtn = document.getElementById('add-content-btn');
-  if (addBtn) addBtn.addEventListener('click', () => renderEditorUI({ mode: 'add' }));
+  if (addBtn) {
+    addBtn.addEventListener('click', () => {
+      renderEditorUI({ mode: 'add' });
+      closeSidebarIfMobile(); // fecha a sidebar no mobile
+    });
+  }  
 });
