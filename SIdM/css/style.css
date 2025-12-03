@@ -347,8 +347,8 @@ body{
 /* imagens */
 #article-content img,
 #content-body img {
-  max-width: 31vw;   /* nunca ultrapassa 90% da largura da tela */
-  max-height: 31vh;  /* nunca ultrapassa 60% da altura da tela */
+  max-width: 30vw;   /* nunca ultrapassa 90% da largura da tela */
+  max-height: 30vh;  /* nunca ultrapassa 60% da altura da tela */
   width: auto;       /* mantém proporção */
   height: auto;      /* mantém proporção */
   border-radius: 8px;
@@ -371,7 +371,7 @@ body{
 #image-splash{
   position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,0.85);z-index:1400;padding:20px
 }
-#image-splash img{max-width:101%;max-height: 101vh;border-radius:12px;box-shadow:0 12px 40px rgba(0,0,0,0.6)}
+#image-splash img{max-width:100%;max-height: 100vh;border-radius:12px;box-shadow:0 12px 40px rgba(0,0,0,0.6)}
 
 /* ========== Overlays: loading / error / debug ========== */
 
