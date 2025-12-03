@@ -108,8 +108,8 @@ let currentPostId = null;
 const SupabaseConfig = {
   supabaseUrl: 'https://pwshckrmqaqymngbosgo.supabase.co',
   supabaseKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB3c2hja3JtcWFxeW1uZ2Jvc2dvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQzNjAwOTEsImV4cCI6MjA3OTkzNjA5MX0.f8iX0RoqrdxJmq-EgSyn_YWPgCHMoARQTT4ygtbcoLg',
-  tableName: 'posts',   // padrão: posts
-  bucketName: 'images'  // padrão: images
+  tableName: 'monanote',   // padrão: posts
+  bucketName: 'monanoteimages'  // padrão: images
 };
 
 // Função pública para configurar em runtime
@@ -252,7 +252,7 @@ async function uploadToSupabase(file) {
   }
 
   const bucket = SupabaseConfig.bucketName || 'images';
-  const safeName = sanitizeFilename(file.name || `file-${Date.now()}`);
+  const safeName = sanitizeFilename(file);
   const filePath = `${safeName.startsWith('/') ? safeName.slice(1) : safeName}`;
 
   try {
@@ -410,12 +410,31 @@ function sanitizeHtml(html) {
 /* ============================
    Utilitários de arquivo / nome
    ============================ */
-function sanitizeFilename(name) {
-  if (!name) name = `file-${Date.now()}`;
+function sanitizeFilename(file, prefix = 'paste') {
+  // Se vier só o nome, trata como string
+  let name = typeof file === 'string' ? file : (file?.name || 'image');
+
+  // Normaliza base name
   name = String(name).split('/').pop().split('\\').pop();
-  name = name.replace(/[^\w\-.]+/g, '_');
-  if (name.length > 120) name = name.slice(0, 120);
-  return name;
+  name = name.replace(/[^\w\-.]+/g, '_').toLowerCase();
+
+  // Garante extensão
+  let ext = 'png';
+  if (file?.type && file.type.startsWith('image/')) {
+    ext = file.type.split('/')[1];
+  } else if (name.includes('.')) {
+    ext = name.split('.').pop();
+    name = name.replace(/\.[^.]+$/, ''); // remove extensão antiga
+  }
+
+  // Timestamp único
+  const timestamp = Date.now();
+
+  // Limita tamanho
+  if (name.length > 80) name = name.slice(0, 80);
+
+  // Nome final
+  return `${prefix}-${timestamp}-${name}.${ext}`;
 }
 
 function insertHtmlAtCaret(html) {
@@ -551,6 +570,27 @@ function createMissingImageMessage() {
   msg.setAttribute('tabindex', '0');
 
   return msg;
+}
+
+function generateUniqueImageName(file, prefix = 'paste') {
+  // 1. Determina extensão
+  let ext = 'png';
+  if (file.type && file.type.startsWith('image/')) {
+    ext = file.type.split('/')[1];
+  } else if (file.name && file.name.includes('.')) {
+    ext = file.name.split('.').pop();
+  }
+
+  // 2. Base name normalizado
+  const base = (file.name ? file.name.split('.')[0] : 'image')
+    .replace(/[^a-zA-Z0-9_-]/g, '')
+    .toLowerCase();
+
+  // 3. Timestamp único
+  const timestamp = Date.now();
+
+  // 4. Nome final
+  return `${prefix}-${timestamp}-${base}.${ext}`;
 }
 
 /* Handler de paste (integra com uploadToSupabase e insertNodeAtCursor) */
