@@ -421,10 +421,12 @@ button:focus, a:focus, input:focus { outline: 3px solid rgba(255,255,255,0.06); 
     box-shadow: var(--shadow-sm);
   }
 
-  /* Pull-to-refresh overlay */
+/* Pull-to-refresh overlay */
 .pull-refresh {
   position: fixed;
-  top: 0; left: 0; right: 0;
+  top: 0;
+  left: 0;
+  right: 0;
   height: 70px;
   display: none;
   align-items: center;
@@ -433,21 +435,28 @@ button:focus, a:focus, input:focus { outline: 3px solid rgba(255,255,255,0.06); 
   color: #fff;
   font-weight: 600;
   z-index: 2000;
-  transition: opacity .3s var(--ease);
+  transition: opacity 0.3s var(--ease);
 }
 
-.pull-refresh.show { display: flex; }
+.pull-refresh.show {
+  display: flex;
+}
 
 .progress-circle {
   width: 32px;
   height: 32px;
   margin-right: 8px;
-  transform: rotate(-90deg); /* começa no topo */
+  transform: rotate(-90deg); /* inicia do topo */
+}
+
+/* animação aplicada ao SVG inteiro */
+.pull-refresh.complete .progress-circle {
+  animation: spin 1s linear infinite;
 }
 
 .circle-bg {
   fill: none;
-  stroke: rgba(255,255,255,0.3);
+  stroke: rgba(255, 255, 255, 0.3);
   stroke-width: 3;
 }
 
@@ -459,13 +468,10 @@ button:focus, a:focus, input:focus { outline: 3px solid rgba(255,255,255,0.06); 
   transition: stroke-dasharray 0.2s ease;
 }
 
-/* quando completo, gira */
-.pull-refresh.complete .circle {
-  animation: spin 1s linear infinite;
-}
-
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(270deg); /* gira 360° a partir de -90° */
+  }
 }
 
 /* small helpers your JS may toggle */
