@@ -610,10 +610,9 @@ async function handlePaste(e) {
     const target = e.target || document.activeElement;
     const isEditor = contentBody && (target === contentBody || contentBody.contains(target));
 
-    // Se não for editor (ex: title-input), deixa o comportamento padrão
+    // Se não for editor, deixa o comportamento padrão
     if (!isEditor) return;
 
-    // Só bloqueia o comportamento nativo dentro do editor
     e.preventDefault();
 
     const items = clipboard.items || [];
@@ -635,9 +634,17 @@ async function handlePaste(e) {
           insertNodeAtCursor(createMissingImageMessage(`Falha ao enviar ${file.name}.`));
         }
       }
+      return;
     }
-    // 2) HTML com data:image
-    else if (html.includes('data:image')) {
+
+    // 2) Se não houver imagem, mas houver texto → insere texto simples
+    if (plain) {
+      insertPlainTextAtCursor(plain, contentBody);
+      return;
+    }
+
+    // 3) Se houver HTML com data:image → trata imagens
+    if (html.includes('data:image')) {
       const files = extractDataUrlsFromHtml(html);
       for (const { file } of files) {
         const publicUrl = await uploadToSupabase(file);
@@ -649,10 +656,11 @@ async function handlePaste(e) {
           insertNodeAtCursor(createMissingImageMessage('Falha ao enviar imagem colada.'));
         }
       }
-      if (plain) insertPlainTextAtCursor(plain, contentBody);
+      return;
     }
-    // 3) RTF com imagens
-    else if (rtf) {
+
+    // 4) Se houver RTF com imagens → trata imagens
+    if (rtf) {
       const files = extractImagesFromRtf(rtf);
       for (const file of files) {
         const publicUrl = await uploadToSupabase(file);
@@ -664,11 +672,7 @@ async function handlePaste(e) {
           insertNodeAtCursor(createMissingImageMessage('Falha ao enviar imagem colada.'));
         }
       }
-      if (plain) insertPlainTextAtCursor(plain, contentBody);
-    }
-    // 4) Texto simples
-    else if (plain) {
-      insertPlainTextAtCursor(plain, contentBody);
+      return;
     }
   } catch (err) {
     console.error('Erro no handlePaste:', err);
