@@ -825,7 +825,19 @@ function renderMenu() {
     const span = document.createElement('span');
     span.textContent = categoria;
     span.style.cursor = 'pointer';
+    span.setAttribute('tabindex', '0'); // torna focável pelo teclado
+
+    // 👉 expandir/fechar com clique
     span.addEventListener('click', () => liCategoria.classList.toggle('active'));
+
+    // 👉 expandir/fechar também com Enter ou Espaço
+    span.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault(); // evita scroll da página com espaço
+        liCategoria.classList.toggle('active');
+      }
+    });
+
     liCategoria.appendChild(span);
 
     const ulTitulos = document.createElement('ul');
@@ -844,7 +856,7 @@ function renderMenu() {
       link.dataset.categoria = categoria;
       link.dataset.id = id;
 
-      // 👉 dispara loadArticle quando o link recebe foco
+      // 👉 carrega artigo quando o link recebe foco (clique ou Tab)
       link.addEventListener('focus', function () {
         const cat = this.dataset.categoria;
         const key = this.dataset.id;
