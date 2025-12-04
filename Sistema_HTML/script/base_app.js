@@ -943,7 +943,7 @@ window.onload = () => {
   if (typeof fileData_lastUpdate !== 'undefined') {
     const rawDate = parseJsonDate(fileData_lastUpdate);
     const formattedDate = rawDate ? formatDisplayDate(rawDate) : fileData_lastUpdate;
-    lastUpdateDiv.textContent = "Última atualização: " + formattedDate;
+    lastUpdateDiv.textContent = "Última atualização:\n" + formattedDate;
   }
 
   // Subpastas
@@ -989,4 +989,5 @@ window.onload = () => {
   });
 
 };
+
 
