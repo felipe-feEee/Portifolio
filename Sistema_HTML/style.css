@@ -223,7 +223,7 @@ ul#fileList li:hover {
 .status-flag::before {
   content: "";
   position: absolute;
-  right: 0;                  /* mastro encostado à direita */
+  right: 0;
   top: 0;
   width: 2px;
   height: 100%;
@@ -236,14 +236,19 @@ ul#fileList li:hover {
 .status-flag::after {
   content: "";
   position: absolute;
-  right: 4px;                /* distância do mastro para a esquerda */
+  right: 2px;                /* antes: 4px; diminuir para aproximar */
   top: 3px;
   width: 22px;
   height: 12px;
   border-radius: 2px;
   transform-origin: right center;
-  transform: skewX(8deg);    /* inclinação invertida para a direita */
+  transform: skewX(8deg);
   box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+}
+
+.status-flag.tight::after {
+  right: 1px;
+  width: 20px;
 }
 
 /* cores por status */
@@ -266,7 +271,8 @@ ul#fileList li:hover {
 /* ajustes mobile */
 @media (max-width: 480px) {
   .status-flag { top: 8px; right: 8px; height: 18px; }
-  .status-flag::after { width: 18px; height: 10px; right: 4px; top: 3px; }
+  .status-flag::after { right: 2px; width: 18px; height: 10px; top: 3px; }
+  .status-flag.tight::after { right: 1px; width: 16px; }
 }
 
 /* Conteúdo do card */
@@ -508,5 +514,6 @@ a, button { -webkit-tap-highlight-color: rgba(0,0,0,0); }
   #last-update { font-size: 12px; }
   #last-update .last-update-date { font-size: 12px; }
 }
+
 
 
