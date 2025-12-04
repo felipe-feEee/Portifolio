@@ -1,8 +1,8 @@
 /* ===========================
-   style.css — versão compatível
-   - Scroll ativado no .list-container (infinite scroll)
-   - Mantém IDs/classes originais (não renomeei nada)
-   - Inclui subpastas, status-dot, responsividade e polimentos visuais
+   style.css — compatível com seu JS
+   - Scroll ativado em .list-container (interno)
+   - Mantém todos os IDs/classes originais
+   - Subpastas, status-dot, ações, responsividade
    =========================== */
 
 /* Variáveis */
@@ -43,7 +43,7 @@ body {
   min-height: 100vh;
 }
 
-/* Utility */
+/* Utilities */
 .hidden { display:none !important; }
 .sr-only { position:absolute !important; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
 
@@ -51,7 +51,7 @@ body {
    Topbar
    =========================== */
 .topbar {
-  flex: 0 0 auto; /* não flexível: ocupa seu espaço e não interfere no scroll do container */
+  flex: 0 0 auto;
   width: 100%;
   max-width: var(--max-width);
   margin: 18px auto 0;
@@ -115,7 +115,7 @@ body {
   text-align:center;
 }
 
-/* Botões */
+/* Buttons */
 .control-row { display:flex; justify-content:center; }
 .btn-group { display:flex; gap:10px; flex-wrap:wrap; justify-content:center; }
 
@@ -139,14 +139,12 @@ button:hover { background:#e9eef6; transform: translateY(-1px); }
 #btnFilters.active-filter { box-shadow: 0 4px 14px rgba(0,120,212,0.14); }
 
 /* ===========================
-   List container (scroll interno aqui)
+   List container (SCROLL AQUI)
    =========================== */
-
-/* .list-container deve crescer e rolar internamente; seu JS deve escutar este container */
 .list-container {
-  flex: 1 1 auto;               /* ocupa o espaço restante entre topbar e footer (se houver) */
-  overflow: auto;               /* SCROLL INTERNO ativado aqui */
-  -webkit-overflow-scrolling: touch; /* smooth scrolling iOS */
+  flex: 1 1 auto;               /* ocupa o espaço restante */
+  overflow: auto;               /* SCROLL INTERNO — seu JS deve escutar este container */
+  -webkit-overflow-scrolling: touch;
   width: 100%;
   max-width: var(--max-width);
   margin: 18px auto;
@@ -155,7 +153,7 @@ button:hover { background:#e9eef6; transform: translateY(-1px); }
   box-sizing: border-box;
 }
 
-/* Personalização da scrollbar do container (opcional) */
+/* Scrollbar styling (opcional) */
 .list-container::-webkit-scrollbar { width: 10px; height: 10px; }
 .list-container::-webkit-scrollbar-track { background: transparent; }
 .list-container::-webkit-scrollbar-thumb {
@@ -196,7 +194,7 @@ ul#fileList li:hover {
   border-color: #dcdcdc;
 }
 
-/* Status dot persistente */
+/* Status dot persistente (se seu JS injetar) */
 .status-dot {
   position: absolute;
   top: 12px;
@@ -295,7 +293,7 @@ li.old-file .info-top, li.old-file .info-bottom { color:#777; }
 }
 
 /* ===========================
-   Filter panel & overlay (mantidos)
+   Filter panel & overlay
    =========================== */
 #overlay {
   position: fixed;
@@ -367,7 +365,7 @@ li.old-file .info-top, li.old-file .info-bottom { color:#777; }
   .topbar-row { flex-direction: column; align-items:flex-start; gap:8px; }
   .search-row { flex-direction: column; align-items:stretch; gap:8px; }
   #fileCounter { min-width: auto; align-self:flex-start; }
-  /* Em mobile o painel de filtros ocupa toda a tela e entra por baixo (JS deve alternar .hidden) */
+  /* Em mobile o painel de filtros ocupa toda a tela e entra por baixo (JS alterna .hidden) */
   #filterPanel { width: 100%; height: 100%; top: 0; right: 0; border-radius: 0; transform: translateY(100%); }
   #filterPanel:not(.hidden) { transform: translateY(0); }
 }
