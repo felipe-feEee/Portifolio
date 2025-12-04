@@ -29,10 +29,6 @@ document.addEventListener("touchend", (e) => {
   }
 });
 
-document.getElementById("menuOverlay").addEventListener("click", () => {
-  closeSidebarIfMobile();
-});
-
 function setupSidebarAutoClose() {
   if (_sidebarAutoCloseInitialized) return;
   _sidebarAutoCloseInitialized = true;
