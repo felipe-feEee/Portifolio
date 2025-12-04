@@ -384,7 +384,7 @@ button:focus, a:focus, input:focus{ outline:3px solid rgba(255,255,255,0.06); ou
 @media (max-width: var(--mobile-break)){
 
   /* header adjustments */
-  .main-header{ padding:8px 12px }
+  .main-header{ padding:8px 12px; z-index: 1100;}
   .main-header .header-inner{ gap:0.5rem }
 
   /* show hamburger */
@@ -420,7 +420,8 @@ button:focus, a:focus, input:focus{ outline:3px solid rgba(255,255,255,0.06); ou
     -webkit-backdrop-filter: blur(8px);
     backdrop-filter: blur(8px);
     border-right: 1px solid var(--border);
-  }
+    z-index: 1000;
+}
 
   /* alias if your JS toggles .menu-esq or .menu-esq.aberto */
   .menu-esq{ position: fixed; top: var(--header-height); left: 0; height: calc(100vh - var(--header-height)); transform: translateX(-110%); transition: transform .32s var(--ease), opacity .28s ease; width:80%; max-width:320px; padding:22px 18px; background: linear-gradient(180deg, var(--bg-alt), var(--card)); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); border-right:1px solid var(--border); opacity:0 }
@@ -429,16 +430,21 @@ button:focus, a:focus, input:focus{ outline:3px solid rgba(255,255,255,0.06); ou
   .sidebar.open, .menu-esq.aberto { transform: translateX(0); opacity:1 }
 
   /* overlay — element you can add right after <body> or inside body */
-  #menuOverlay, .menu-overlay {
-    position: fixed;
-    inset: 0;
-    background: rgba(0,0,0,0.45);
-    backdrop-filter: blur(2px);
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity .3s ease;
-    z-index: 999; /* below sidebar which is 1000 */
-  }
+ .menu-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0 0 0 / .45);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .25s ease;
+  z-index: 900; /* abaixo da sidebar e abaixo do header */
+}
+
+/* overlay ativo */
+.menu-overlay.active {
+  opacity: 1;
+  pointer-events: auto;
+}
 
   /* show overlay when sidebar open (JS should add .open to sidebar and body.sidebar-open optional) */
   .sidebar.open ~ #menuOverlay,
@@ -505,3 +511,4 @@ body.sidebar-open{ overflow:hidden } /* for mobile when menu open */
 .missing-image-message::before{ content:"⚠️"; display:inline-block; font-size:1.05rem; margin-left:0.1rem; opacity:0.95 }
 .missing-image-message.error{ background:#fff1f0; color:#8a1f1f; border-color: rgba(138,31,31,0.12) }
 @media (max-width:480px){ .missing-image-message{ display:block; width: calc(100% - 1rem); padding:0.5rem } }
+
