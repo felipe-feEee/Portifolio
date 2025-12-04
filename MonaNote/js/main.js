@@ -108,8 +108,8 @@ let currentPostId = null;
 const SupabaseConfig = {
   supabaseUrl: 'https://pwshckrmqaqymngbosgo.supabase.co',
   supabaseKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB3c2hja3JtcWFxeW1uZ2Jvc2dvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQzNjAwOTEsImV4cCI6MjA3OTkzNjA5MX0.f8iX0RoqrdxJmq-EgSyn_YWPgCHMoARQTT4ygtbcoLg',
-  tableName: 'posts',   // padrão: posts
-  bucketName: 'images'  // padrão: images
+  tableName: 'monanote',   // padrão: posts
+  bucketName: 'monanoteimages'  // padrão: images
 };
 
 // Função pública para configurar em runtime
@@ -825,7 +825,19 @@ function renderMenu() {
     const span = document.createElement('span');
     span.textContent = categoria;
     span.style.cursor = 'pointer';
+    span.setAttribute('tabindex', '0'); // torna focável pelo teclado
+
+    // 👉 expandir/fechar com clique
     span.addEventListener('click', () => liCategoria.classList.toggle('active'));
+
+    // 👉 expandir/fechar também com Enter ou Espaço
+    span.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault(); // evita scroll da página com espaço
+        liCategoria.classList.toggle('active');
+      }
+    });
+
     liCategoria.appendChild(span);
 
     const ulTitulos = document.createElement('ul');
@@ -844,7 +856,7 @@ function renderMenu() {
       link.dataset.categoria = categoria;
       link.dataset.id = id;
 
-      // 👉 dispara loadArticle quando o link recebe foco
+      // 👉 carrega artigo quando o link recebe foco (clique ou Tab)
       link.addEventListener('focus', function () {
         const cat = this.dataset.categoria;
         const key = this.dataset.id;
