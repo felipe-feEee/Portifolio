@@ -1,6 +1,10 @@
 /* ===========================
-   Reset e base
-   =========================== */
+  style.css consolidado (compatível com IDs/classes existentes)
+  - Mantém compatibilidade com seu JS (nenhum id/class alterado)
+  - Restaura subpastas e corrige scroll infinito
+  =========================== */
+
+/* Root / Variáveis */
 :root{
   --bg: #f4f6f9;
   --card: #ffffff;
@@ -17,21 +21,31 @@
   --ease: cubic-bezier(.2,.9,.25,1);
 }
 
+/* Reset / base (preserve comportamento de scroll da janela) */
 * { box-sizing: border-box; }
-html, body { height: 100%; margin: 0; padding: 0; font-family: 'Segoe UI', 'Inter', sans-serif; font-size: 15px; background-color: var(--bg); color: var(--text); }
-body { display:flex; flex-direction:column; align-items:center; }
+html, body {
+  height: auto;               /* permite scroll natural da janela (infinite scroll espera window) */
+  min-height: 100%;
+  margin: 0;
+  padding: 0;
+  font-family: 'Segoe UI', 'Inter', sans-serif;
+  font-size: 15px;
+  background-color: var(--bg);
+  color: var(--text);
+  -webkit-font-smoothing:antialiased;
+  -moz-osx-font-smoothing:grayscale;
+  /* NÃO usar display:center que impede scroll da página */
+}
 
 /* Utility */
 .hidden { display:none !important; }
 .sr-only { position:absolute !important; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
 
-/* ===========================
-   Topbar
-   =========================== */
+/* Topbar (mantido) */
 .topbar {
   width:100%;
   max-width: var(--max-width);
-  margin: 18px;
+  margin: 18px auto;
   background: var(--card);
   border-radius: 12px;
   padding: 18px;
@@ -50,7 +64,7 @@ body { display:flex; flex-direction:column; align-items:center; }
 .path-info h1 { font-size: 16px; margin: 0; font-weight: 700; color: var(--text); }
 .topbar-meta { font-size: 13px; color: var(--muted); }
 
-/* Controls area */
+/* Controls */
 .controls { display:flex; flex-direction:column; gap: 12px; }
 
 .search-row {
@@ -79,8 +93,8 @@ body { display:flex; flex-direction:column; align-items:center; }
   box-shadow: 0 6px 18px rgba(0,120,212,0.12);
 }
 
-/* File counter as badge */
-.file-counter {
+/* File counter badge */
+#fileCounter, .file-counter {
   font-size: 13px;
   color: var(--muted);
   background: rgba(0,0,0,0.03);
@@ -91,7 +105,7 @@ body { display:flex; flex-direction:column; align-items:center; }
   text-align:center;
 }
 
-/* Buttons group */
+/* Buttons */
 .control-row { display:flex; justify-content:center; }
 .btn-group { display:flex; gap:10px; flex-wrap:wrap; justify-content:center; }
 
@@ -112,22 +126,25 @@ button:hover { background:#e9eef6; transform: translateY(-1px); }
 #exportCsv, #btnFilters { background: var(--accent); color: #fff; border: none; }
 #exportCsv:hover, #btnFilters:hover { background: var(--accent-strong); }
 
-/* Active filter visual */
 #btnFilters.active-filter { box-shadow: 0 4px 14px rgba(0,120,212,0.14); }
 
 /* ===========================
-   List container and cards
+   Lista e cards (compatível com seu JS)
    =========================== */
+
+/* Container principal: não usar overflow interno que impeça scroll da janela.
+   Se seu JS depende de window.scroll, a página precisa rolar naturalmente. */
 .list-container {
   width:100%;
   max-width: var(--max-width);
-  margin: 18px;
+  margin: 18px auto;
   padding: 18px;
   background: transparent;
   display:block;
   flex:1 1 auto;
 }
 
+/* Grid responsivo de cards */
 ul#fileList {
   list-style:none;
   padding:0;
@@ -152,14 +169,14 @@ ul#fileList li {
   text-align:left;
 }
 
-/* Hover effect (subtle) */
+/* Hover */
 ul#fileList li:hover {
   transform: translateY(-6px);
   box-shadow: var(--shadow-md);
   border-color: #dcdcdc;
 }
 
-/* Status dot (persistente) */
+/* Status dot persistente */
 .status-dot {
   position: absolute;
   top: 12px;
@@ -172,17 +189,16 @@ ul#fileList li:hover {
   transition: transform .18s var(--ease), box-shadow .18s var(--ease);
 }
 
-/* Colors matching glow */
-.status-dot.cancelado     { background: #c0392b; } /* vermelho */
-.status-dot.evento        { background: #2471a3; } /* azul */
-.status-dot.inutilizado   { background: #d35400; } /* laranja */
-.status-dot.pendente      { background: #6b7280; } /* cinza */
-.status-dot.ok            { background: #16a34a; } /* verde */
+/* cores do dot (mesmas do glow) */
+.status-dot.cancelado     { background: #c0392b; }
+.status-dot.evento        { background: #2471a3; }
+.status-dot.inutilizado   { background: #d35400; }
+.status-dot.pendente      { background: #6b7280; }
+.status-dot.ok            { background: #16a34a; }
 
-/* Slight emphasis on hover */
 ul#fileList li:hover .status-dot { transform: scale(1.12); box-shadow: 0 6px 18px rgba(0,0,0,0.16); }
 
-/* Card content */
+/* Conteúdo do card */
 .info-top { font-size: 16px; font-weight:700; color: #2c3e50; margin:0; }
 .info-bottom { font-size: 13px; color: #4b5563; word-break: break-word; margin:0; }
 
@@ -210,7 +226,7 @@ ul#fileList li:hover .status-dot { transform: scale(1.12); box-shadow: 0 6px 18p
 
 .actions a:hover { background: var(--accent-strong); }
 
-/* On desktop keep actions visible on hover only, on mobile always visible */
+/* Desktop: ações aparecem no hover; Mobile: sempre visíveis */
 @media (min-width: 769px) {
   .actions { opacity: 0; transition: opacity .18s var(--ease); }
   ul#fileList li:hover .actions { opacity: 1; }
@@ -224,7 +240,42 @@ li.old-file { background:#fafafa; color:#999; border:1px solid #eee; box-shadow:
 li.old-file .info-top, li.old-file .info-bottom { color:#777; }
 
 /* ===========================
-   Filter panel & overlay
+   Subpastas selecionáveis (reintroduzidas)
+   =========================== */
+.subfolders {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.subfolders span {
+  background-color: #e9f2fb;
+  color: #005a9e;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 6px 12px;
+  border-radius: 6px;
+  border: 1px solid #cce0f5;
+  cursor: pointer;
+  transition: background-color 0.18s var(--ease), transform 0.12s var(--ease);
+  user-select: none;
+}
+
+.subfolders span:hover {
+  background-color: #d0e7fa;
+  transform: translateY(-2px);
+}
+
+.subfolders span.active {
+  background-color: #005a9e;
+  color: #fff;
+  border-color: #004a84;
+  box-shadow: 0 4px 12px rgba(0,74,132,0.12);
+}
+
+/* ===========================
+   Filter panel & overlay (mantidos com IDs originais)
    =========================== */
 #overlay {
   position: fixed;
@@ -236,7 +287,7 @@ li.old-file .info-top, li.old-file .info-bottom { color:#777; }
 
 #overlay.visible { display:block; }
 
-.filter-panel {
+#filterPanel, .filter-panel {
   position: fixed;
   top: 6%;
   right: 0;
@@ -256,19 +307,19 @@ li.old-file .info-top, li.old-file .info-bottom { color:#777; }
   overflow:auto;
 }
 
-.filter-panel:not(.hidden) { transform: translateX(0); }
+#filterPanel:not(.hidden), .filter-panel:not(.hidden) { transform: translateX(0); }
 
 .filter-header { display:flex; justify-content:space-between; align-items:center; gap:8px; }
 .filter-header h2 { margin:0; font-size:16px; font-weight:700; }
 .close-btn { background:transparent; border:none; font-size:18px; cursor:pointer; }
 
-/* Filter form basics */
+/* Filter form basics (mantém IDs/classes originais do seu form) */
 #filterForm { display:flex; flex-direction:column; gap:12px; padding-top:6px; }
 #filterForm label { font-size:13px; color:var(--text); font-weight:600; }
 #filterForm input, #filterForm select { padding:8px 10px; border-radius:8px; border:1px solid var(--border); }
 
 /* ===========================
-   Popup
+   Popup (mantido)
    =========================== */
 .popup {
   position: fixed;
@@ -283,7 +334,7 @@ li.old-file .info-top, li.old-file .info-bottom { color:#777; }
 .popup .popup-content { max-height: 80vh; overflow:auto; }
 
 /* ===========================
-   Responsive adjustments
+   Responsividade
    =========================== */
 @media (max-width: 1024px) {
   .topbar { margin: 12px; padding: 14px; }
@@ -295,10 +346,11 @@ li.old-file .info-top, li.old-file .info-bottom { color:#777; }
   ul#fileList { grid-template-columns: 1fr; gap: 12px; }
   .topbar-row { flex-direction: column; align-items:flex-start; gap:8px; }
   .search-row { flex-direction: column; align-items:stretch; gap:8px; }
-  .file-counter { min-width: auto; align-self:flex-start; }
-  .filter-panel { width: 100%; height: 100%; top: 0; right: 0; border-radius: 0; transform: translateY(100%); }
-  .filter-panel:not(.hidden) { transform: translateY(0); }
-  #overlay { display:none; } /* overlay handled by JS if needed */
+  #fileCounter { min-width: auto; align-self:flex-start; }
+  /* Em mobile o painel de filtros ocupa toda a tela e entra por baixo (JS deve alternar .hidden) */
+  #filterPanel { width: 100%; height: 100%; top: 0; right: 0; border-radius: 0; transform: translateY(100%); }
+  #filterPanel:not(.hidden) { transform: translateY(0); }
+  /* overlay pode ser controlado pelo JS */
 }
 
 /* Small polish */
