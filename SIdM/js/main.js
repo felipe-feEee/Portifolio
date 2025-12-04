@@ -1046,7 +1046,7 @@ function loadArticle(categoria, id) {
       });
     });
   }
-  closeSidebarIfMobile();
+  setupSidebarAutoClose();
   scrollContentToTop({ smooth: true });
 }
 
@@ -1396,7 +1396,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   if (addBtn) {
     addBtn.addEventListener('click', () => {
       renderEditorUI({ mode: 'add' });
-      closeSidebarIfMobile(); // fecha a sidebar no mobile
+      setupSidebarAutoClose(); // fecha a sidebar no mobile
     });
   }
 });
