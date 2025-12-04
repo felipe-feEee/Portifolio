@@ -647,31 +647,15 @@ async function handlePaste(e) {
 
 // Função auxiliar para inserir texto simples
 function insertPlainTextAtCursor(plain, contentBody) {
-  // Normaliza quebras de linha: dois \n viram parágrafo, um \n vira <br>
-  const paragraphs = plain.split(/\n{2,}/); // separa por duas ou mais quebras
-
   const sel = window.getSelection();
   if (sel && sel.rangeCount > 0) {
-    const range = sel.getRangeAt(0);
-
-    paragraphs.forEach((para, idx) => {
-      // dentro de cada parágrafo, troca \n simples por <br>
-      const safeText = para.replace(/\n/g, '<br>');
-      const fragToInsert = range.createContextualFragment(`<p>${safeText}</p>`);
-      range.insertNode(fragToInsert);
-
-      // move o cursor para depois do último parágrafo inserido
-      if (idx === paragraphs.length - 1) {
-        sel.collapse(range.endContainer, range.endOffset);
-      }
-    });
+    // Usa comando nativo para inserir texto cru → preserva undo/redo
+    document.execCommand('insertText', false, plain);
   } else {
-    // fallback: insere direto no contentBody
-    paragraphs.forEach(para => {
-      const p = document.createElement('p');
-      p.innerHTML = para.replace(/\n/g, '<br>');
-      contentBody.appendChild(p);
-    });
+    // fallback: adiciona como parágrafo no fim
+    const p = document.createElement('p');
+    p.textContent = plain;
+    contentBody.appendChild(p);
   }
 }
 
