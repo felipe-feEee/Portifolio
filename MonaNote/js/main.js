@@ -113,6 +113,12 @@ function setupPullToRefresh() {
   refreshOverlay.className = 'pull-refresh';
   refreshOverlay.innerHTML = `
     <svg class="progress-circle" viewBox="0 0 36 36">
+      <defs>
+        <linearGradient id="spinnerGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+          <stop offset="0%" stop-color="#ff6666" />
+          <stop offset="100%" stop-color="#ffcccc" />
+        </linearGradient>
+      </defs>
       <path class="circle-bg"
             d="M18 2.0845
                a 15.9155 15.9155 0 0 1 0 31.831
@@ -125,6 +131,7 @@ function setupPullToRefresh() {
     </svg>
     <span>Atualizando...</span>
   `;
+
   document.body.appendChild(refreshOverlay);
 
   let touchStartY = 0;
