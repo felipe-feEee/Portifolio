@@ -825,7 +825,7 @@ function renderMenu() {
     const span = document.createElement('span');
     span.textContent = categoria;
     span.style.cursor = 'pointer';
-    span.onclick = () => liCategoria.classList.toggle('active');
+    span.addEventListener('click', () => liCategoria.classList.toggle('active'));
     liCategoria.appendChild(span);
 
     const ulTitulos = document.createElement('ul');
@@ -843,12 +843,14 @@ function renderMenu() {
       link.textContent = artigo.titulo;
       link.dataset.categoria = categoria;
       link.dataset.id = id;
-      link.addEventListener('click', function (e) {
-        e.preventDefault();
+
+      // 👉 dispara loadArticle quando o link recebe foco
+      link.addEventListener('focus', function () {
         const cat = this.dataset.categoria;
         const key = this.dataset.id;
         loadArticle(cat, key);
       });
+
       liTitulo.appendChild(link);
       ulTitulos.appendChild(liTitulo);
     }
@@ -1345,30 +1347,6 @@ window.addEventListener('DOMContentLoaded', async () => {
     addBtn.addEventListener('click', () => {
       renderEditorUI({ mode: 'add' });
       closeSidebarIfMobile(); // fecha a sidebar no mobile
-    });
-  }
-
-  // 👉 Navegação por setas na sidebar
-  const sidebar = document.getElementById('sidebar');
-  if (sidebar) {
-    const links = sidebar.querySelectorAll('a');
-    sidebar.addEventListener('keydown', (e) => {
-      const current = document.activeElement;
-      const index = Array.from(links).indexOf(current);
-
-      if (index === -1) return; // não está em um link
-
-      if (e.key === 'ArrowDown') {
-        e.preventDefault();
-        const nextIndex = (index + 1) % links.length;
-        links[nextIndex].focus();
-      }
-
-      if (e.key === 'ArrowUp') {
-        e.preventDefault();
-        const prevIndex = (index - 1 + links.length) % links.length;
-        links[prevIndex].focus();
-      }
     });
   }
 });
