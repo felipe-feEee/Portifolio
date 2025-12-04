@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link rel="icon" type="image/x-icon" href="favicon.ico" />
-  <title>Mona Note</title>
+  <title>Sistema Integrado de Manuais</title>
 
   <!-- Estilos -->
   <link rel="stylesheet" href="css/style.css" />
@@ -14,6 +14,7 @@
   <script type="module" src="js/main.js"></script>
 </head>
 <body>
+
   <!-- Tela de carregamento inicial -->
   <div id="initial-loading" class="center">
     <div class="loading-box">
@@ -34,8 +35,12 @@
         <ul id="search-suggestions" class="search-suggestions" role="listbox" aria-label="Sugestões de busca"></ul>
       </div>
 
+      <!-- Theme switch (dark/light) - não interfere no JS existente -->
       <div class="header-actions" aria-hidden="true">
-        <!-- botões extras (opcional) -->
+        <label class="theme-switch" title="Alternar tema">
+          <input type="checkbox" id="themeToggle" aria-label="Alternar tema claro/escuro" />
+          <span class="slider" role="presentation"></span>
+        </label>
       </div>
     </div>
   </header>
@@ -61,7 +66,7 @@
         </div>
 
         <!-- Título -->
-        <h1 id="article-title">Bem-vinda minha Deusa-rainha</h1>
+        <h1 id="article-title">Bem-vindo</h1>
         <input type="text" id="title-input" placeholder="Título do conteúdo" style="display: none;" />
 
         <!-- Botões -->
@@ -121,5 +126,45 @@
       <button class="apply-debug" type="button">Aplicar</button>
     </div>
   </div>
+
+  <!-- Theme toggle script (isolado e seguro) -->
+  <script>
+    (function(){
+      const toggle = document.getElementById('themeToggle');
+      const stored = localStorage.getItem('sIdM_theme'); // "light" or "dark" or null
+      // prefer dark by default; if user set light before, restore
+      if(stored === 'light'){
+        document.body.setAttribute('data-theme','light');
+        if(toggle) toggle.checked = true;
+      } else {
+        document.body.removeAttribute('data-theme');
+        if(toggle) toggle.checked = false;
+      }
+
+      // respect user OS preference only if no saved pref
+      if(!stored){
+        try {
+          const prefersLight = window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches;
+          if(prefersLight){
+            document.body.setAttribute('data-theme','light');
+            if(toggle) toggle.checked = true;
+          }
+        } catch(e){}
+      }
+
+      if(toggle){
+        toggle.addEventListener('change', function(){
+          if(this.checked){
+            document.body.setAttribute('data-theme','light');
+            localStorage.setItem('sIdM_theme','light');
+          } else {
+            document.body.removeAttribute('data-theme');
+            localStorage.setItem('sIdM_theme','dark');
+          }
+        });
+      }
+    })();
+  </script>
+
 </body>
 </html>
