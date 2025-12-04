@@ -943,7 +943,14 @@ window.onload = () => {
   if (typeof fileData_lastUpdate !== 'undefined') {
     const rawDate = parseJsonDate(fileData_lastUpdate);
     const formattedDate = rawDate ? formatDisplayDate(rawDate) : fileData_lastUpdate;
-    lastUpdateDiv.innerHTML = "Última atualização:<br>" + formattedDate;
+    
+    lastUpdateDiv.textContent = "Última atualização:";
+    lastUpdateDiv.appendChild(document.createElement('br'));
+    
+    const dateSpan = document.createElement('span');
+    dateSpan.className = 'last-update-date';
+    dateSpan.textContent = formattedDate;
+    lastUpdateDiv.appendChild(dateSpan);
   }
 
   // Subpastas
@@ -989,6 +996,7 @@ window.onload = () => {
   });
 
 };
+
 
 
 
