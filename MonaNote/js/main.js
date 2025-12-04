@@ -613,15 +613,13 @@ async function handlePaste(e) {
     // Se não for editor (ex: title-input), deixa o comportamento padrão
     if (!isEditor) return;
 
-    // Só bloqueia o comportamento nativo dentro do editor
+    // Só bloqueia comportamento nativo dentro do editor
     e.preventDefault();
 
     const items = clipboard.items || [];
-    const html = clipboard.getData('text/html') || '';
-    const rtf = clipboard.getData('text/rtf') || '';
     const plain = clipboard.getData('text/plain') || '';
 
-    // 1) Imagem direta
+    // 1) Imagem direta (printscreen, copiar arquivo)
     if (items.length > 0 && items[0].type.startsWith('image/')) {
       const file = items[0].getAsFile();
       if (file) {
@@ -635,39 +633,11 @@ async function handlePaste(e) {
           insertNodeAtCursor(createMissingImageMessage(`Falha ao enviar ${file.name}.`));
         }
       }
+      return;
     }
-    // 2) HTML com data:image
-    else if (html.includes('data:image')) {
-      const files = extractDataUrlsFromHtml(html);
-      for (const { file } of files) {
-        const publicUrl = await uploadToSupabase(file);
-        if (publicUrl) {
-          const img = document.createElement('img');
-          img.src = publicUrl;
-          insertNodeAtCursor(img);
-        } else {
-          insertNodeAtCursor(createMissingImageMessage('Falha ao enviar imagem colada.'));
-        }
-      }
-      if (plain) insertPlainTextAtCursor(plain, contentBody);
-    }
-    // 3) RTF com imagens
-    else if (rtf) {
-      const files = extractImagesFromRtf(rtf);
-      for (const file of files) {
-        const publicUrl = await uploadToSupabase(file);
-        if (publicUrl) {
-          const img = document.createElement('img');
-          img.src = publicUrl;
-          insertNodeAtCursor(img);
-        } else {
-          insertNodeAtCursor(createMissingImageMessage('Falha ao enviar imagem colada.'));
-        }
-      }
-      if (plain) insertPlainTextAtCursor(plain, contentBody);
-    }
-    // 4) Texto simples
-    else if (plain) {
+
+    // 2) Texto simples (ignora HTML/RTF)
+    if (plain) {
       insertPlainTextAtCursor(plain, contentBody);
     }
   } catch (err) {
@@ -677,18 +647,31 @@ async function handlePaste(e) {
 
 // Função auxiliar para inserir texto simples
 function insertPlainTextAtCursor(plain, contentBody) {
+  // Normaliza quebras de linha: dois \n viram parágrafo, um \n vira <br>
+  const paragraphs = plain.split(/\n{2,}/); // separa por duas ou mais quebras
+
   const sel = window.getSelection();
   if (sel && sel.rangeCount > 0) {
     const range = sel.getRangeAt(0);
-    const safeText = plain.replace(/\n/g, '<br>');
-    const fragToInsert = range.createContextualFragment(safeText);
-    range.deleteContents();
-    range.insertNode(fragToInsert);
-    sel.collapse(range.endContainer, range.endOffset);
+
+    paragraphs.forEach((para, idx) => {
+      // dentro de cada parágrafo, troca \n simples por <br>
+      const safeText = para.replace(/\n/g, '<br>');
+      const fragToInsert = range.createContextualFragment(`<p>${safeText}</p>`);
+      range.insertNode(fragToInsert);
+
+      // move o cursor para depois do último parágrafo inserido
+      if (idx === paragraphs.length - 1) {
+        sel.collapse(range.endContainer, range.endOffset);
+      }
+    });
   } else {
-    const p = document.createElement('p');
-    p.textContent = plain;
-    contentBody.appendChild(p);
+    // fallback: insere direto no contentBody
+    paragraphs.forEach(para => {
+      const p = document.createElement('p');
+      p.innerHTML = para.replace(/\n/g, '<br>');
+      contentBody.appendChild(p);
+    });
   }
 }
 
