@@ -531,3 +531,21 @@ body.sidebar-open{ overflow:hidden } /* for mobile when menu open */
    private tab (we discussed cache clearing earlier).
 
 */
+
+/* Sidebar com fundo sólido no mobile (light + dark) */
+@media (max-width: 768px) {
+
+  /* Light Mode */
+  body[data-theme="light"] .sidebar {
+    background: var(--color-bg);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+
+  /* Dark Mode */
+  body:not([data-theme="light"]) .sidebar {
+    background: var(--color-bg);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+}
