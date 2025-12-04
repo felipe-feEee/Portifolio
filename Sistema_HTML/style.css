@@ -136,7 +136,21 @@ button:hover { background:#e9eef6; transform: translateY(-1px); }
 #exportCsv, #btnFilters { background: var(--accent); color: #fff; border: none; }
 #exportCsv:hover, #btnFilters:hover { background: var(--accent-strong); }
 
-#btnFilters.active-filter { box-shadow: 0 4px 14px rgba(0,120,212,0.14); }
+#btnFilters.active-filter {
+  background: linear-gradient(180deg, #006bb3, #005a9e);
+  color: #fff;
+  border: 1px solid rgba(0,0,0,0.08);
+  box-shadow: 0 6px 18px rgba(0,120,212,0.18);
+  transform: translateY(-1px);
+}
+
+/* Pequeno ajuste de foco/hover para consistência */
+#btnFilters.active-filter:hover,
+#btnFilters.active-filter:focus {
+  background: linear-gradient(180deg, #005a9e, #004a84);
+  box-shadow: 0 8px 22px rgba(0,74,132,0.20);
+  outline: none;
+}
 
 /* ===========================
    List container (SCROLL AQUI)
@@ -300,10 +314,15 @@ li.old-file .info-top, li.old-file .info-bottom { color:#777; }
   inset: 0;
   background: rgba(0,0,0,0.35);
   z-index: 998;
-  display:none;
+  display: none;               /* padrão escondido */
+  pointer-events: none;        /* evita capturar cliques quando escondido */
 }
 
-#overlay.visible { display:block; }
+/* Quando a classe hidden NÃO estiver presente, mostramos o overlay */
+#overlay:not(.hidden) {
+  display: block;
+  pointer-events: auto;        /* permite clicar no overlay para fechar */
+}
 
 #filterPanel, .filter-panel {
   position: fixed;
@@ -372,3 +391,4 @@ li.old-file .info-top, li.old-file .info-bottom { color:#777; }
 
 /* Small polish */
 a, button { -webkit-tap-highlight-color: rgba(0,0,0,0); }
+
