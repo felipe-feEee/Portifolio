@@ -1352,6 +1352,30 @@ window.addEventListener('DOMContentLoaded', async () => {
   const loadingEl = document.getElementById('initial-loading');
 
   try {
+    // cria o overlay dinamicamente
+    const refreshOverlay = document.createElement('div');
+    refreshOverlay.className = 'pull-refresh';
+    refreshOverlay.innerHTML = '<div class="arrow"></div> Atualizando...';
+    document.body.appendChild(refreshOverlay);
+    
+    let touchStartY = 0;
+    
+    document.addEventListener("touchstart", (e) => {
+      touchStartY = e.touches[0].clientY;
+    });
+    
+    document.addEventListener("touchend", (e) => {
+      const touchEndY = e.changedTouches[0].clientY;
+    
+      // gesto de arrastar para baixo no topo da página
+      if (touchEndY - touchStartY > 60 && window.scrollY === 0) {
+        refreshOverlay.classList.add('show');
+        setTimeout(() => {
+          location.reload(); // recarrega a página
+        }, 1000);
+      }
+    });
+
     // Inicializa supabase e carrega dados
     await initializeSupabase();
     await carregarPostsDoBanco();
