@@ -1,43 +1,67 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Pesquisa de Notas Fiscais XML</title>
-  <link rel="stylesheet" href="style.css">
-  <link rel="icon" href="./favicon.ico" type="image/x-icon">
+  <link rel="icon" href="./favicon.ico" type="image/x-icon" />
+  <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <header class="topbar">
-    <div class="path-info">
-      <h1 id="folderHeader">Arquivos XML na pasta ...</h1>
+  <header class="topbar" role="banner">
+    <div class="topbar-row">
+      <div class="path-info" aria-hidden="false">
+        <h1 id="folderHeader">Arquivos XML na pasta ...</h1>
+      </div>
+
+      <div class="topbar-meta">
+        <div id="last-update" aria-live="polite">Última atualização: ...</div>
+      </div>
     </div>
 
-    <div class="controls">
-      <!-- Campo principal de chave de acesso -->
-      <input id="accessKey" type="text" placeholder="Digite a chave de acesso (44 dígitos)" maxlength="44" />
+    <div class="controls" role="search" aria-label="Busca de notas fiscais">
+      <label for="accessKey" class="sr-only">Chave de acesso (44 dígitos)</label>
+      <div class="search-row">
+        <div class="search-field">
+          <input id="accessKey" type="text" placeholder="Digite a chave de acesso (44 dígitos)" maxlength="44" autocomplete="off" />
+        </div>
+
+        <div class="file-counter" id="fileCounter" aria-live="polite">Exibindo 0 arquivos</div>
+      </div>
 
       <div class="control-row">
-        <div id="fileCounter"></div>
-        <button id="toggleSort"><span id="sortIcon">⬇️</span> Mais novos</button>
-        <button id="exportCsv">Exportar CSV</button>
-        <button id="btnFilters">Filtros</button>
+        <div class="btn-group">
+          <button id="toggleSort" type="button" aria-pressed="false"><span id="sortIcon">⬇️</span> Mais novos</button>
+          <button id="exportCsv" type="button">Exportar CSV</button>
+          <button id="btnFilters" type="button" aria-expanded="false" aria-controls="filterPanel">Filtros</button>
+        </div>
       </div>
     </div>
   </header>
 
-  <div class="list-container">
-    <ul id="fileList"></ul>
-  </div>
-
-  <div id="last-update">Última atualização: ...</div>
+  <main class="list-container" role="main">
+    <ul id="fileList" aria-live="polite"></ul>
+  </main>
 
   <!-- Overlay + painel lateral -->
-  <div id="overlay" class="overlay hidden"></div>
-  <div id="filterPanel" class="filter-panel hidden">
-    <h2>Filtros avançados</h2>
-    <form id="filterForm"></form>
+  <div id="overlay" class="overlay hidden" aria-hidden="true"></div>
+
+  <aside id="filterPanel" class="filter-panel hidden" role="region" aria-label="Filtros avançados">
+    <div class="filter-header">
+      <h2>Filtros avançados</h2>
+      <button id="closeFilters" class="close-btn" aria-label="Fechar filtros">✕</button>
+    </div>
+    <form id="filterForm" aria-label="Formulário de filtros">
+      <!-- campos de filtro existentes serão injetados pelo seu JS -->
+    </form>
+  </aside>
+
+  <!-- Popup container (mantido) -->
+  <div id="popup" class="popup hidden" role="dialog" aria-modal="true" aria-hidden="true">
+    <div class="popup-content"></div>
   </div>
 
+  <!-- Mantive suas referências de script -->
   <script src="script/file_data.json"></script>
   <script src="script/base_app.js"></script>
 </body>
