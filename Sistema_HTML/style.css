@@ -219,19 +219,6 @@ ul#fileList li:hover {
   pointer-events: none;
 }
 
-/* mastro encostado à borda direita */
-.status-flag::before {
-  content: "";
-  position: absolute;
-  right: 0;            /* mastro encostado na borda direita */
-  top: 0;
-  width: 2px;
-  height: 100%;
-  background: #333;
-  border-radius: 1px;
-  box-shadow: 0 1px 2px rgba(0,0,0,0.12);
-}
-
 /* triângulo apontando para a esquerda (border-left) e colado ao mastro */
 .status-flag::after {
   content: "";
@@ -283,6 +270,10 @@ ul#fileList li:hover {
   .status-flag { top: 3px; right: 6px; height: 18px; }
   .status-flag::after { top: 2px; border-top-width: 7px; border-bottom-width: 7px; border-left-width: 12px; right: 2px; }
   .status-flag.tight::after { right: 1px; border-left-width: 10px; }
+}
+
+.status-flag::before {
+  display: none;
 }
 
 /* Conteúdo do card */
@@ -524,6 +515,7 @@ a, button { -webkit-tap-highlight-color: rgba(0,0,0,0); }
   #last-update { font-size: 12px; }
   #last-update .last-update-date { font-size: 12px; }
 }
+
 
 
 
