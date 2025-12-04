@@ -1,13 +1,17 @@
 // main.js — versão unificada e compatível com tabela "posts" e bucket "images"
 
-// ---------- Sidebar / Hamburger (inicialização única) ----------
 let _sidebarAutoCloseInitialized = false;
 
-function closeSidebarIfMobile() {
+function toggleSidebar(open) {
   const sidebar = document.querySelector('.sidebar');
   const hamburger = document.getElementById('hamburger-btn') || document.querySelector('.hamburger');
   if (!sidebar) return;
-  if (window.innerWidth <= 768 && sidebar.classList.contains('open')) {
+
+  if (open) {
+    sidebar.classList.add('open');
+    document.body.classList.add('sidebar-open');
+    if (hamburger) hamburger.classList.add('open');
+  } else {
     sidebar.classList.remove('open');
     document.body.classList.remove('sidebar-open');
     if (hamburger) hamburger.classList.remove('open');
@@ -20,24 +24,16 @@ function setupSidebarAutoClose() {
 
   const sidebar = document.querySelector('.sidebar');
   const hamburger = document.getElementById('hamburger-btn') || document.querySelector('.hamburger');
-
   if (!sidebar || !hamburger) return;
 
   // evita que cliques dentro da sidebar fechem ela
   sidebar.addEventListener('click', (e) => e.stopPropagation());
 
-  // hamburger abre/fecha (apenas um listener)
+  // hamburger abre/fecha
   hamburger.addEventListener('click', (e) => {
     e.stopPropagation();
     const opening = !sidebar.classList.contains('open');
-    sidebar.classList.toggle('open');
-    if (opening) {
-      hamburger.classList.add('open');
-      document.body.classList.add('sidebar-open');
-    } else {
-      hamburger.classList.remove('open');
-      document.body.classList.remove('sidebar-open');
-    }
+    toggleSidebar(opening);
   });
 
   // clique fora fecha
@@ -46,30 +42,48 @@ function setupSidebarAutoClose() {
     if (hamburger && (hamburger === target || hamburger.contains(target))) return;
     if (sidebar.contains(target)) return;
     if (sidebar.classList.contains('open')) {
-      sidebar.classList.remove('open');
-      document.body.classList.remove('sidebar-open');
-      if (hamburger) hamburger.classList.remove('open');
+      toggleSidebar(false);
     }
   });
 
   // fecha ao redimensionar para desktop
   window.addEventListener('resize', () => {
     if (window.innerWidth > 768 && sidebar.classList.contains('open')) {
-      sidebar.classList.remove('open');
-      document.body.classList.remove('sidebar-open');
-      if (hamburger) hamburger.classList.remove('open');
+      toggleSidebar(false);
+    }
+  });
+
+  // gestos touch (abre/fecha)
+  let touchStartX = 0;
+  document.addEventListener("touchstart", (e) => {
+    touchStartX = e.touches[0].clientX;
+  });
+  document.addEventListener("touchend", (e) => {
+    const touchEndX = e.changedTouches[0].clientX;
+    if (touchStartX - touchEndX > 60) {
+      toggleSidebar(false); // arrastar para esquerda → fecha
+    }
+    if (touchEndX - touchStartX > 60) {
+      toggleSidebar(true); // arrastar para direita → abre
     }
   });
 }
 
-// Chame setupSidebarAutoClose() uma vez na inicialização do app
+// inicialização única
 window.addEventListener('DOMContentLoaded', () => {
   setupSidebarAutoClose();
+
+  const addBtn = document.getElementById('add-content-btn');
+  if (addBtn) {
+    addBtn.addEventListener('click', () => {
+      renderEditorUI({ mode: 'add' });
+      toggleSidebar(false); // fecha sidebar no mobile
+    });
+  }
 });
 
 function scrollContentToTop({ smooth = true } = {}) {
-  const content = document.getElementById('content') 
-                || document.querySelector('.content');
+  const content = document.getElementById('content') || document.querySelector('.content');
   if (!content) return;
 
   if (smooth && 'scrollTo' in content) {
@@ -1032,7 +1046,7 @@ function loadArticle(categoria, id) {
       });
     });
   }
-  closeSidebarIfMobile();
+  setupSidebarAutoClose();
   scrollContentToTop({ smooth: true });
 }
 
@@ -1338,6 +1352,30 @@ window.addEventListener('DOMContentLoaded', async () => {
   const loadingEl = document.getElementById('initial-loading');
 
   try {
+    // cria o overlay dinamicamente
+    const refreshOverlay = document.createElement('div');
+    refreshOverlay.className = 'pull-refresh';
+    refreshOverlay.innerHTML = '<div class="arrow"></div> Atualizando...';
+    document.body.appendChild(refreshOverlay);
+    
+    let touchStartY = 0;
+    
+    document.addEventListener("touchstart", (e) => {
+      touchStartY = e.touches[0].clientY;
+    });
+    
+    document.addEventListener("touchend", (e) => {
+      const touchEndY = e.changedTouches[0].clientY;
+    
+      // gesto de arrastar para baixo no topo da página
+      if (touchEndY - touchStartY > 60 && window.scrollY === 0) {
+        refreshOverlay.classList.add('show');
+        setTimeout(() => {
+          location.reload(); // recarrega a página
+        }, 1000);
+      }
+    });
+
     // Inicializa supabase e carrega dados
     await initializeSupabase();
     await carregarPostsDoBanco();
@@ -1358,7 +1396,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   if (addBtn) {
     addBtn.addEventListener('click', () => {
       renderEditorUI({ mode: 'add' });
-      closeSidebarIfMobile(); // fecha a sidebar no mobile
+      setupSidebarAutoClose(); // fecha a sidebar no mobile
     });
   }
 });
