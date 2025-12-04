@@ -69,9 +69,98 @@ function setupSidebarAutoClose() {
   });
 }
 
+function setupThemeToggle() {
+  const toggle = document.getElementById('themeToggle');
+  if (!toggle) return;
+
+  const stored = localStorage.getItem('sIdM_theme'); // "light" ou "dark" ou null
+
+  // aplica preferência salva
+  if (stored === 'light') {
+    document.body.setAttribute('data-theme', 'light');
+    toggle.checked = true;
+  } else {
+    document.body.removeAttribute('data-theme');
+    toggle.checked = false;
+  }
+
+  // se não houver preferência salva, respeita o sistema operacional
+  if (!stored) {
+    try {
+      const prefersLight = window.matchMedia('(prefers-color-scheme: light)').matches;
+      if (prefersLight) {
+        document.body.setAttribute('data-theme', 'light');
+        toggle.checked = true;
+      }
+    } catch (e) {}
+  }
+
+  // listener para alternar
+  toggle.addEventListener('change', function () {
+    if (this.checked) {
+      document.body.setAttribute('data-theme', 'light');
+      localStorage.setItem('sIdM_theme', 'light');
+    } else {
+      document.body.removeAttribute('data-theme');
+      localStorage.setItem('sIdM_theme', 'dark');
+    }
+  });
+}
+
+function setupPullToRefresh() {
+  // cria dinamicamente o overlay
+  const refreshOverlay = document.createElement('div');
+  refreshOverlay.className = 'pull-refresh';
+  refreshOverlay.innerHTML = `
+    <svg class="progress-circle" viewBox="0 0 36 36">
+      <path class="circle-bg"
+            d="M18 2.0845
+               a 15.9155 15.9155 0 0 1 0 31.831
+               a 15.9155 15.9155 0 0 1 0 -31.831"/>
+      <path class="circle"
+            stroke-dasharray="0,100"
+            d="M18 2.0845
+               a 15.9155 15.9155 0 0 1 0 31.831
+               a 15.9155 15.9155 0 0 1 0 -31.831"/>
+    </svg>
+    <span>Atualizando...</span>
+  `;
+  document.body.appendChild(refreshOverlay);
+
+  let touchStartY = 0;
+
+  document.addEventListener("touchstart", e => {
+    touchStartY = e.touches[0].clientY;
+  });
+
+  document.addEventListener("touchmove", e => {
+    const deltaY = e.touches[0].clientY - touchStartY;
+    if (deltaY > 0 && window.scrollY === 0) {
+      refreshOverlay.classList.add('show');
+      const circle = refreshOverlay.querySelector('.circle');
+      const progress = Math.min(deltaY / 2, 100); // limite 100%
+      circle.setAttribute('stroke-dasharray', `${progress},100`);
+      if (progress >= 100) {
+        refreshOverlay.classList.add('complete');
+      } else {
+        refreshOverlay.classList.remove('complete');
+      }
+    }
+  });
+
+  document.addEventListener("touchend", () => {
+    if (refreshOverlay.classList.contains('complete')) {
+      setTimeout(() => location.reload(), 800);
+    } else {
+      refreshOverlay.classList.remove('show', 'complete');
+    }
+  });
+}
+
 // inicialização única
 window.addEventListener('DOMContentLoaded', () => {
   setupSidebarAutoClose();
+  setupThemeToggle();
 
   const addBtn = document.getElementById('add-content-btn');
   if (addBtn) {
@@ -1353,28 +1442,7 @@ window.addEventListener('DOMContentLoaded', async () => {
 
   try {
     // cria o overlay dinamicamente
-    const refreshOverlay = document.createElement('div');
-    refreshOverlay.className = 'pull-refresh';
-    refreshOverlay.innerHTML = '<div class="arrow"></div> Atualizando...';
-    document.body.appendChild(refreshOverlay);
-    
-    let touchStartY = 0;
-    
-    document.addEventListener("touchstart", (e) => {
-      touchStartY = e.touches[0].clientY;
-    });
-    
-    document.addEventListener("touchend", (e) => {
-      const touchEndY = e.changedTouches[0].clientY;
-    
-      // gesto de arrastar para baixo no topo da página
-      if (touchEndY - touchStartY > 60 && window.scrollY === 0) {
-        refreshOverlay.classList.add('show');
-        setTimeout(() => {
-          location.reload(); // recarrega a página
-        }, 1000);
-      }
-    });
+    setupPullToRefresh();
 
     // Inicializa supabase e carrega dados
     await initializeSupabase();
