@@ -208,55 +208,54 @@ ul#fileList li:hover {
   border-color: #dcdcdc;
 }
 
-/* Bandeira posicionada no canto direito do card */
+/* Bandeira triangular no canto direito, triângulo apontando para a esquerda */
 .status-flag {
- position: absolute;
-  top: 6px;        /* sobe a bandeira (antes: 10px) */
-  right: 10px;     /* distância da borda direita do card */
+  position: absolute;
+  top: 4px;            /* sobe a bandeira (ajuste fino aqui) */
+  right: 8px;          /* distância da borda direita do card */
   width: 0;
-  height: 20px;
+  height: 22px;
   z-index: 6;
   pointer-events: none;
 }
 
-/* mastro (linha vertical) — alinhado ao lado direito */
+/* mastro (linha vertical) encostado à borda direita */
 .status-flag::before {
-    content: "";
-     position: absolute;
-     right: 0;        /* mastro encostado na borda direita */
-     top: 0;
-     width: 2px;
-     height: 100%;
-     background: #333;
-     border-radius: 1px;
-     box-shadow: 0 1px 2px rgba(0,0,0,0.12);
-   }
+  content: "";
+  position: absolute;
+  right: 0;            /* mastro encostado na borda direita */
+  top: 0;
+  width: 2px;
+  height: 100%;
+  background: #333;
+  border-radius: 1px;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.12);
+}
 
-/* pano da bandeira — deslocado para a esquerda do mastro */
+/* triângulo (pano) usando border trick; aponta para a esquerda (border-left) */
 .status-flag::after {
   content: "";
   position: absolute;
-  right: 2px;      /* aproxima o triângulo do mastro (antes: 4px) */
-  top: 2px;        /* sobe o triângulo dentro do card (antes: 4px) */
+  right: 2px;          /* aproxima o triângulo do mastro */
+  top: 3px;            /* sobe o triângulo dentro do card */
   width: 0;
   height: 0;
   border-top: 9px solid transparent;
   border-bottom: 9px solid transparent;
   border-left: 14px solid #16a34a; /* cor padrão (ok) */
   transform-origin: right center;
+  will-change: transform;
   box-shadow: 0 2px 6px rgba(0,0,0,0.08);
 }
 
-/* versão mais colada ao mastro */
-.status-flag.tight::after { right: 2px; border-left-width: 12px; }
-
-/* cores por status (troque conforme paleta) */
+/* cores por status */
 .status-flag.cancelado::after   { border-left-color: #c0392b; }
 .status-flag.evento::after      { border-left-color: #2471a3; }
 .status-flag.inutilizado::after { border-left-color: #d35400; }
 .status-flag.pendente::after    { border-left-color: #6b7280; }
 .status-flag.ok::after          { border-left-color: #16a34a; }
 
+/* versão ainda mais colada (opcional) */
 .status-flag.tight::after {
   right: 1px;
   border-left-width: 12px;
@@ -264,27 +263,19 @@ ul#fileList li:hover {
   border-bottom-width: 8px;
 }
 
-/* animação opcional */
-.status-flag::after {
-  /* triângulo já definido */
-  transform-origin: right center;
-  will-change: transform;
-}
-
-/* aplica a animação ao pseudo-elemento quando a classe animate estiver presente */
+/* animação aplicada diretamente ao pseudo-elemento */
 .status-flag.animate::after {
   animation: flagWave 1.6s ease-in-out infinite;
 }
-
 @keyframes flagWave {
   0%   { transform: skewX(8deg) translateX(0); }
   50%  { transform: skewX(2deg) translateX(-1px); }
   100% { transform: skewX(8deg) translateX(0); }
 }
 
-/* ajustes mobile */
+/* mobile */
 @media (max-width: 480px) {
-  .status-flag { top: 4px; right: 8px; height: 18px; }
+  .status-flag { top: 3px; right: 6px; height: 18px; }
   .status-flag::after { top: 2px; border-top-width: 7px; border-bottom-width: 7px; border-left-width: 12px; right: 2px; }
   .status-flag.tight::after { right: 1px; border-left-width: 10px; }
 }
@@ -528,6 +519,7 @@ a, button { -webkit-tap-highlight-color: rgba(0,0,0,0); }
   #last-update { font-size: 12px; }
   #last-update .last-update-date { font-size: 12px; }
 }
+
 
 
 
