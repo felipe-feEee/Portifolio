@@ -801,7 +801,7 @@ function renderWelcome() {
   const article = document.getElementById('article-content');
   if (!article) return;
   article.innerHTML = `
-    <h1 id="article-title">Bem-vindo</h1>
+    <h1 id="article-title">Bem-vinda minha Deusa Rainha!</h1>
     <button id="edit-article-link" style="display:none;">Editar</button>
     <div id="content-body" contenteditable="false" data-placeholder="Digite ou cole o conteúdo aqui">
       <p>Selecione um item no menu para ver o conteúdo.</p>
