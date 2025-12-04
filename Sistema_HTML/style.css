@@ -409,4 +409,25 @@ li.old-file .chave-acesso {
 /* Small polish */
 a, button { -webkit-tap-highlight-color: rgba(0,0,0,0); }
 
+/* Estilo para #last-update: quebra de linha e destaque da data */
+#last-update {
+  white-space: normal;        /* permite quebras normais */
+  display: block;
+  font-size: 13px;
+  color: #666666;
+  line-height: 1.2;
+}
 
+#last-update .last-update-date {
+  display: block;            /* força a data em linha separada */
+  margin-top: 6px;
+  font-weight: 700;
+  color: #222222;
+  font-size: 13px;
+}
+
+/* Ajuste para telas pequenas */
+@media (max-width: 480px) {
+  #last-update { font-size: 12px; }
+  #last-update .last-update-date { font-size: 12px; }
+}
