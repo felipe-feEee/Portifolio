@@ -1046,7 +1046,7 @@ function loadArticle(categoria, id) {
       });
     });
   }
-  setupSidebarAutoClose();
+  toggleSidebar(false);
   scrollContentToTop({ smooth: true });
 }
 
