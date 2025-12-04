@@ -29,13 +29,13 @@
       <button id="hamburger-btn" class="hamburger" aria-label="Abrir menu">
         <span></span><span></span><span></span>
       </button>
-
+  
       <div class="search-header" role="search">
         <input id="search-input" class="search-bar" placeholder="Buscar conteúdo..." aria-label="Buscar conteúdo" />
         <ul id="search-suggestions" class="search-suggestions" role="listbox" aria-label="Sugestões de busca"></ul>
       </div>
-
-      <!-- Theme switch (dark/light) - não interfere no JS existente -->
+  
+      <!-- Theme switch (dark/light) -->
       <div class="header-actions" aria-hidden="true">
         <label class="theme-switch" title="Alternar tema">
           <input type="checkbox" id="themeToggle" aria-label="Alternar tema claro/escuro" />
@@ -126,45 +126,6 @@
       <button class="apply-debug" type="button">Aplicar</button>
     </div>
   </div>
-
-  <!-- Theme toggle script (isolado e seguro) -->
-  <script>
-    (function(){
-      const toggle = document.getElementById('themeToggle');
-      const stored = localStorage.getItem('sIdM_theme'); // "light" or "dark" or null
-      // prefer dark by default; if user set light before, restore
-      if(stored === 'light'){
-        document.body.setAttribute('data-theme','light');
-        if(toggle) toggle.checked = true;
-      } else {
-        document.body.removeAttribute('data-theme');
-        if(toggle) toggle.checked = false;
-      }
-
-      // respect user OS preference only if no saved pref
-      if(!stored){
-        try {
-          const prefersLight = window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches;
-          if(prefersLight){
-            document.body.setAttribute('data-theme','light');
-            if(toggle) toggle.checked = true;
-          }
-        } catch(e){}
-      }
-
-      if(toggle){
-        toggle.addEventListener('change', function(){
-          if(this.checked){
-            document.body.setAttribute('data-theme','light');
-            localStorage.setItem('sIdM_theme','light');
-          } else {
-            document.body.removeAttribute('data-theme');
-            localStorage.setItem('sIdM_theme','dark');
-          }
-        });
-      }
-    })();
-  </script>
 
 </body>
 </html>
