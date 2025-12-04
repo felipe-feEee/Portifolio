@@ -265,6 +265,39 @@ function displayFiles(data, append = false) {
     const file = mapFile(f);
     const li = document.createElement('li');
 
+    // --- status-dot e label acessível (colocar logo após criar o li) ---
+    const statusDot = document.createElement('span');
+    statusDot.className = 'status-dot'; // classe base
+    
+    // Determina a classe de status a partir dos campos do arquivo
+    // Ajuste as condições conforme sua lógica real (ex.: file.nNF, file.chNFe, file.serie)
+    if (file.nNF === "s1" || li.classList.contains('cancelado')) {
+      statusDot.classList.add('cancelado');
+      statusDot.title = 'Cancelado';
+    } else if (file.nNF === "s2" || li.classList.contains('evento')) {
+      statusDot.classList.add('evento');
+      statusDot.title = 'Evento';
+    } else if (file.chNFe === "s3" || li.classList.contains('inutilizacao')) {
+      statusDot.classList.add('inutilizado');
+      statusDot.title = 'Inutilizado';
+    } else {
+      // exemplo de status padrão/ok
+      statusDot.classList.add('ok');
+      statusDot.title = 'OK';
+    }
+    
+    // marca como decorativo para leitores de tela (o sr-only fornece texto)
+    statusDot.setAttribute('aria-hidden', 'true');
+    
+    // elemento para leitores de tela (visível apenas para AT)
+    const sr = document.createElement('span');
+    sr.className = 'sr-only';
+    sr.textContent = 'Status: ' + (statusDot.title || 'OK');
+    
+    // Insere no li antes do conteúdo principal
+    li.appendChild(statusDot);
+    li.appendChild(sr);
+
     // 🔎 Topo do card
     const infoTop = document.createElement('span');
     infoTop.className = 'info-top';
@@ -996,6 +1029,7 @@ window.onload = () => {
   });
 
 };
+
 
 
 
