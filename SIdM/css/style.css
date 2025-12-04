@@ -371,20 +371,10 @@ button:focus, a:focus, input:focus { outline: 3px solid rgba(255,255,255,0.06); 
     box-shadow: var(--shadow-sm);
     z-index: 1200;
   }
-  .hamburger span {
-    margin: 2px 0;
-    background: #fff;
-  }
-  .hamburger.open span:nth-child(1) {
-    transform: translateY(6px) rotate(45deg);
-  }
-  .hamburger.open span:nth-child(2) {
-    opacity: 0;
-    transform: scaleX(0.6);
-  }
-  .hamburger.open span:nth-child(3) {
-    transform: translateY(-6px) rotate(-45deg);
-  }
+  .hamburger span { margin: 2px 0; background: #fff; }
+  .hamburger.open span:nth-child(1) { transform: translateY(6px) rotate(45deg); }
+  .hamburger.open span:nth-child(2) { opacity: 0; transform: scaleX(0.6); }
+  .hamburger.open span:nth-child(3) { transform: translateY(-6px) rotate(-45deg); }
 
   /* sidebar off-canvas behavior */
   .sidebar {
@@ -396,28 +386,59 @@ button:focus, a:focus, input:focus { outline: 3px solid rgba(255,255,255,0.06); 
     box-shadow: 12px 0 36px rgba(0,0,0,0.36);
     transition: transform .32s var(--ease);
 
-    /* 👉 fundo sólido no mobile */
+    /* fundo sólido no mobile */
     background: linear-gradient(180deg, var(--bg), var(--bg-alt));
   }
-
   .sidebar.open {
     transform: translateX(0);
-    /* reforça fundo sólido quando aberto */
     background: linear-gradient(180deg, var(--bg), var(--bg-alt));
   }
 
+  /* conteúdo e rich text */
   .content {
     padding: 12px;
     align-items: flex-start;
+    background: linear-gradient(180deg, var(--bg), var(--bg-alt)); /* fundo sólido */
   }
   #article-content {
     padding: 6px;
   }
+
+  /* 👉 rich text/editor com fundo sólido */
+  #content-body,
+  .editor-toolbar-fixed {
+    background: linear-gradient(180deg, var(--bg), var(--bg-alt));
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+  }
+
   .editor-toolbar-fixed {
     position: fixed;
     left: 12px;
     right: 12px;
     bottom: 12px;
+    box-shadow: var(--shadow-sm);
+  }
+
+  /* overlay para pull-to-refresh */
+  .pull-refresh {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 50px;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    background: var(--accent);
+    color: #fff;
+    font-weight: 600;
+    z-index: 2000;
+    animation: slideInFromLeft .3s var(--ease);
+  }
+  .pull-refresh.show {
+    display: flex;
   }
 }
 
