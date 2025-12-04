@@ -73,38 +73,66 @@ function setupThemeToggle() {
   const toggle = document.getElementById('themeToggle');
   if (!toggle) return;
 
-  const stored = localStorage.getItem('sIdM_theme'); // "light" ou "dark" ou null
+  // Nome da chave no localStorage
+  const KEY = 'sIdM_theme'; // "light" ou "dark"
 
-  // aplica preferência salva
-  if (stored === 'light') {
-    document.body.setAttribute('data-theme', 'light');
-    toggle.checked = true;
-  } else {
-    document.body.removeAttribute('data-theme');
-    toggle.checked = false;
-  }
-
-  // se não houver preferência salva, respeita o sistema operacional
-  if (!stored) {
-    try {
-      const prefersLight = window.matchMedia('(prefers-color-scheme: light)').matches;
-      if (prefersLight) {
-        document.body.setAttribute('data-theme', 'light');
-        toggle.checked = true;
-      }
-    } catch (e) {}
-  }
-
-  // listener para alternar
-  toggle.addEventListener('change', function () {
-    if (this.checked) {
+  // Função utilitária para aplicar tema
+  const applyTheme = (theme) => {
+    if (theme === 'light') {
       document.body.setAttribute('data-theme', 'light');
-      localStorage.setItem('sIdM_theme', 'light');
     } else {
       document.body.removeAttribute('data-theme');
-      localStorage.setItem('sIdM_theme', 'dark');
     }
+  };
+
+  // Decide tema inicial: localStorage -> prefers-color-scheme -> fallback 'dark'
+  const stored = localStorage.getItem(KEY);
+  if (stored === 'light' || stored === 'dark') {
+    applyTheme(stored);
+    toggle.checked = stored === 'light';
+  } else {
+    // sem preferência salva: respeita o sistema (se suportado)
+    let prefersLight = false;
+    try {
+      prefersLight = window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches;
+    } catch (e) { /* ignore */ }
+
+    if (prefersLight) {
+      applyTheme('light');
+      toggle.checked = true;
+    } else {
+      applyTheme('dark'); // fallback
+      toggle.checked = false;
+    }
+  }
+
+  // Listener para alternar e persistir
+  toggle.addEventListener('change', function () {
+    const theme = this.checked ? 'light' : 'dark';
+    applyTheme(theme);
+    localStorage.setItem(KEY, theme);
   });
+
+  // Atualiza automaticamente se o usuário mudar a preferência do sistema (opcional)
+  try {
+    if (window.matchMedia) {
+      const mq = window.matchMedia('(prefers-color-scheme: light)');
+      mq.addEventListener ? mq.addEventListener('change', (e) => {
+        // só aplica se não houver preferência salva
+        if (!localStorage.getItem(KEY)) {
+          const newTheme = e.matches ? 'light' : 'dark';
+          applyTheme(newTheme);
+          toggle.checked = newTheme === 'light';
+        }
+      }) : mq.addListener((e) => {
+        if (!localStorage.getItem(KEY)) {
+          const newTheme = e.matches ? 'light' : 'dark';
+          applyTheme(newTheme);
+          toggle.checked = newTheme === 'light';
+        }
+      });
+    }
+  } catch (e) {}
 }
 
 function setupPullToRefresh() {
@@ -1443,6 +1471,8 @@ window.addEventListener('DOMContentLoaded', async () => {
   try {
     // cria o overlay dinamicamente
     setupPullToRefresh();
+
+    document.addEventListener('DOMContentLoaded', setupThemeToggle);
 
     // Inicializa supabase e carrega dados
     await initializeSupabase();
