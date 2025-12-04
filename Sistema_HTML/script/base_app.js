@@ -614,28 +614,139 @@ function initSubfolders(header) {
   header.insertAdjacentElement('afterend', subfoldersDiv);
 }
 
+/* ============================
+   initSubfolders(header)
+   - Cria a área .subfolders logo após o header (mantém compatibilidade)
+   - Adiciona/remover classe .active nos spans
+   - Atualiza selectedFolders e reexecuta busca/paginação
+   ============================ */
+function initSubfolders(header) {
+  // Remove qualquer subfolders já existente para evitar duplicação
+  const existing = document.querySelector('.subfolders');
+  if (existing) existing.remove();
+
+  const subfoldersDiv = document.createElement('div');
+  subfoldersDiv.className = 'subfolders';
+
+  // Proteção caso folderMap não exista
+  if (typeof folderMap === 'undefined') {
+    header.insertAdjacentElement('afterend', subfoldersDiv);
+    return;
+  }
+
+  Object.keys(folderMap)
+    .filter(k => k !== "0")
+    .forEach(k => {
+      const span = document.createElement('span');
+      span.textContent = folderMap[k].split(/[\\/]+/).pop();
+      span.dataset.folderIndex = k;
+      // Se já estiver selecionado no estado, aplica classe
+      if (selectedFolders.includes(String(k))) span.classList.add('active');
+
+      span.addEventListener('click', () => {
+        const idx = String(span.dataset.folderIndex);
+        const pos = selectedFolders.indexOf(idx);
+
+        if (pos >= 0) {
+          selectedFolders.splice(pos, 1);
+          span.classList.remove('active');
+        } else {
+          selectedFolders.push(idx);
+          span.classList.add('active');
+        }
+
+        // Reset de paginação e dados exibidos
+        currentPage = 1;
+        displayedFiles = [];
+
+        // Reaplica busca/filtragem conforme estado atual
+        if (isSearching) {
+          searchFiles();
+        } else {
+          const base = fileData;
+          const filtered = filterBySubfolders(base);
+          searchResults = filtered;
+          displayedFiles = filtered.slice(0, itemsPerPage);
+          displayFiles(displayedFiles, false);
+        }
+
+        // Atualiza estado visual do botão de filtros (caso haja filtros ativos)
+        updateFilterButtonState();
+      });
+
+      subfoldersDiv.appendChild(span);
+    });
+
+  header.insertAdjacentElement('afterend', subfoldersDiv);
+}
+
+/* ============================
+   updateFilterButtonState()
+   - Lê todos os campos do painel de filtros e aplica .active-filter no #btnFilters
+   - Deve ser chamado sempre que um campo de filtro mudar
+   ============================ */
+function updateFilterButtonState() {
+  const btnFilters = document.getElementById("btnFilters");
+  if (!btnFilters) return;
+
+  const status = document.getElementById("filterStatus")?.value?.trim() || "";
+  const cnpj   = document.getElementById("filter_CNPJ")?.value?.trim() || "";
+  const serie  = document.getElementById("filter_serie")?.value?.trim() || "";
+  const nNF    = document.getElementById("filter_nNF")?.value?.trim() || "";
+  const chNFe  = document.getElementById("filter_infNFe_Id")?.value?.trim() || "";
+  const uf     = document.getElementById("filterUF")?.value?.trim() || "";
+  const ano    = document.getElementById("filterAno")?.value?.trim() || "";
+  const mes    = document.getElementById("filterMes")?.value?.trim() || "";
+
+  const hasStatus = status !== "";
+
+  if (hasStatus || cnpj || serie || nNF || chNFe || uf || ano || mes || selectedFolders.length > 0) {
+    btnFilters.classList.add("active-filter");
+  } else {
+    btnFilters.classList.remove("active-filter");
+  }
+}
+
+/* ============================
+   initFilters()
+   - Constrói o formulário de filtros dentro de #filterForm
+   - Adiciona listeners para inputs/selects para atualizar o estado do botão
+   - Garante que o botão "Aplicar" execute a busca e feche o painel
+   - Mantém IDs esperados pelo restante do sistema
+   ============================ */
 function initFilters() {
-  const statusMap = { s1: "Cancelado", s2: "Evento", s3: "Inutilizado" };
-  const fieldMap = { infNFe_Id: "Chave de Acesso", nNF: "Número NF", serie: "Série", CNPJ: "CNPJ" };
-
+  // Proteção: se não existir o form, aborta
   const form = document.getElementById("filterForm");
+  if (!form) return;
 
-  // Status
+  // Limpa conteúdo anterior (se houver)
+  form.innerHTML = '';
+
+  // Mapa local de status e campos (mantendo compatibilidade com seu código)
+  const statusMapLocal = { s1: "Cancelado", s2: "Evento", s3: "Inutilizado" };
+  const fieldMapLocal = { infNFe_Id: "Chave de Acesso", nNF: "Número NF", serie: "Série", CNPJ: "CNPJ" };
+
+  // --- Status select ---
   const statusLabel = document.createElement("label");
   statusLabel.textContent = "Status:";
+  statusLabel.htmlFor = "filterStatus";
   const statusSelect = document.createElement("select");
   statusSelect.id = "filterStatus";
   statusSelect.innerHTML = `<option value="">Todos</option>`;
-  Object.entries(statusMap).forEach(([key, label]) => {
-    statusSelect.innerHTML += `<option value="${key}">${label}</option>`;
+  Object.entries(statusMapLocal).forEach(([key, label]) => {
+    const opt = document.createElement("option");
+    opt.value = key;
+    opt.textContent = label;
+    statusSelect.appendChild(opt);
   });
   form.appendChild(statusLabel);
   form.appendChild(statusSelect);
 
-  // Campos
-  Object.entries(fieldMap).forEach(([field, label]) => {
+  // --- Campos textuais ---
+  Object.entries(fieldMapLocal).forEach(([field, label]) => {
     const lbl = document.createElement("label");
     lbl.textContent = label + ":";
+    lbl.htmlFor = "filter_" + field;
     const input = document.createElement("input");
     input.type = "text";
     input.id = "filter_" + field;
@@ -643,133 +754,165 @@ function initFilters() {
     form.appendChild(lbl);
     form.appendChild(input);
   });
-  
+
+  // --- UF select ---
   const ufLabel = document.createElement("label");
-ufLabel.textContent = "UF:";
-const ufSelect = document.createElement("select");
-ufSelect.id = "filterUF";
+  ufLabel.textContent = "UF:";
+  ufLabel.htmlFor = "filterUF";
+  const ufSelect = document.createElement("select");
+  ufSelect.id = "filterUF";
+  const optAllUF = document.createElement("option");
+  optAllUF.value = "";
+  optAllUF.textContent = "Todos";
+  ufSelect.appendChild(optAllUF);
 
-// opção "Todos"
-const optAllUF = document.createElement("option");
-optAllUF.value = "";
-optAllUF.textContent = "Todos";
-ufSelect.appendChild(optAllUF);
+  if (typeof ufMap !== 'undefined') {
+    const ufEntries = Object.entries(ufMap).sort((a, b) => a[1].localeCompare(b[1]));
+    ufEntries.forEach(([code, sigla]) => {
+      const opt = document.createElement("option");
+      opt.value = code;
+      opt.textContent = sigla;
+      ufSelect.appendChild(opt);
+    });
+  }
+  form.appendChild(ufLabel);
+  form.appendChild(ufSelect);
 
-// transforma em array e ordena pela sigla (valor)
-const ufEntries = Object.entries(ufMap).sort((a, b) => a[1].localeCompare(b[1]));
+  // --- Ano e Mês ---
+  const anoLabel = document.createElement("label");
+  anoLabel.textContent = "Ano:";
+  anoLabel.htmlFor = "filterAno";
+  const anoInput = document.createElement("input");
+  anoInput.type = "text";
+  anoInput.id = "filterAno";
+  anoInput.placeholder = "AA (ex: 25)";
+  form.appendChild(anoLabel);
+  form.appendChild(anoInput);
 
-ufEntries.forEach(([code, sigla]) => {
-  const opt = document.createElement("option");
-  opt.value = code;       // valor = código numérico (ex: 35)
-  opt.textContent = sigla; // exibe sigla (SP)
-  ufSelect.appendChild(opt);
-});
+  const mesLabel = document.createElement("label");
+  mesLabel.textContent = "Mês:";
+  mesLabel.htmlFor = "filterMes";
+  const mesInput = document.createElement("input");
+  mesInput.type = "text";
+  mesInput.id = "filterMes";
+  mesInput.placeholder = "MM (01-12)";
+  form.appendChild(mesLabel);
+  form.appendChild(mesInput);
 
-form.appendChild(ufLabel);
-form.appendChild(ufSelect);
-
-const anoLabel = document.createElement("label");
-anoLabel.textContent = "Ano:";
-const anoInput = document.createElement("input");
-anoInput.type = "text";
-anoInput.id = "filterAno";
-anoInput.placeholder = "AA (ex: 25)";
-form.appendChild(anoLabel);
-form.appendChild(anoInput);
-
-const mesLabel = document.createElement("label");
-mesLabel.textContent = "Mês:";
-const mesInput = document.createElement("input");
-mesInput.type = "text";
-mesInput.id = "filterMes";
-mesInput.placeholder = "MM (01-12)";
-form.appendChild(mesLabel);
-form.appendChild(mesInput);
-
-  
-  // Aciona a busca ao aplicar filtros
-let applyBtn = document.getElementById("applyFilters");
-if (applyBtn) {
-  applyBtn.addEventListener("click", (e) => {
-    e.preventDefault(); // evita submit do form
-    currentPage = 1;
-    displayedFiles = [];
-
-    // Opcional: sanitiza o campo de chave
-    const accessKeyEl = document.getElementById("accessKey");
-    if (accessKeyEl) {
-      accessKeyEl.value = accessKeyEl.value.replace(/\D/g, "").slice(0, 44);
-    }
-
-    // Executa a busca considerando filtros do painel
-    searchFiles();
-
-    // Fecha painel e overlay
-    document.getElementById("overlay")?.classList.add("hidden");
-    document.getElementById("filterPanel")?.classList.add("hidden");
-  });
-}
-
-  // Botão "Aplicar"
-  applyBtn = document.createElement("button");
+  // --- Botão Aplicar (mantém id applyFilters) ---
+  const applyBtn = document.createElement("button");
   applyBtn.id = "applyFilters";
   applyBtn.textContent = "Aplicar";
-  applyBtn.type = "button"; // evita submit automático
-  applyBtn.style.alignSelf = "center"; // centraliza dentro do form
-  applyBtn.style.marginTop = "16px";
+  applyBtn.type = "button";
+  applyBtn.style.alignSelf = "center";
+  applyBtn.style.marginTop = "12px";
+  form.appendChild(applyBtn);
 
-  applyBtn.addEventListener("click", (e) => {
+  // --- Listeners: atualiza estado do botão de filtros quando algo muda ---
+  const inputsToWatch = [
+    statusSelect,
+    document.getElementById("filter_infNFe_Id"),
+    document.getElementById("filter_nNF"),
+    document.getElementById("filter_serie"),
+    document.getElementById("filter_CNPJ"),
+    ufSelect,
+    anoInput,
+    mesInput
+  ];
+
+  // Alguns inputs podem ainda não existir no DOM (por id), então selecionamos dinamicamente
+  const dynamicWatch = Array.from(form.querySelectorAll('input, select'));
+  dynamicWatch.forEach(el => {
+    el.addEventListener('input', updateFilterButtonState);
+    el.addEventListener('change', updateFilterButtonState);
+  });
+
+  // Aplica filtros ao clicar em "Aplicar"
+  applyBtn.addEventListener('click', (e) => {
     e.preventDefault();
-    currentPage = 1;
-    displayedFiles = [];
 
+    // Sanitização leve: remove não-dígitos da chave de acesso
     const accessKeyEl = document.getElementById("accessKey");
     if (accessKeyEl) {
       accessKeyEl.value = accessKeyEl.value.replace(/\D/g, "").slice(0, 44);
     }
 
+    // Reset de paginação e dados exibidos
+    currentPage = 1;
+    displayedFiles = [];
+
+    // Executa busca com os filtros aplicados
     searchFiles();
 
+    // Fecha painel e overlay (se existirem)
     document.getElementById("overlay")?.classList.add("hidden");
     document.getElementById("filterPanel")?.classList.add("hidden");
   });
 
-  form.appendChild(applyBtn);
+  // Inicializa estado do botão de filtros (caso já haja valores)
+  updateFilterButtonState();
 
-  // Overlay
+  // Overlay e botão de filtros: garantir que abram/fechem corretamente (não sobrescreve handlers existentes)
   const overlay = document.getElementById("overlay");
   const panel = document.getElementById("filterPanel");
   const btnFilters = document.getElementById("btnFilters");
+  const closeBtn = document.getElementById("closeFilters");
 
-  btnFilters.addEventListener("click", () => {
-    overlay.classList.remove("hidden");
-    panel.classList.remove("hidden");
-  });
-  overlay.addEventListener("click", () => {
-    overlay.classList.add("hidden");
-    panel.classList.add("hidden");
-  });
-}
+  // Se btnFilters existir e não tiver listener, adiciona toggle seguro
+  if (btnFilters && !btnFilters.dataset._hasToggle) {
+    btnFilters.addEventListener('click', (e) => {
+      e.preventDefault();
+      if (panel && !panel.classList.contains('hidden')) {
+        panel.classList.add('hidden');
+        overlay?.classList.add('hidden');
+        btnFilters.classList.remove('active-filter');
+        btnFilters.setAttribute('aria-expanded', 'false');
+      } else {
+        panel?.classList.remove('hidden');
+        overlay?.classList.remove('hidden');
+        btnFilters.classList.add('active-filter');
+        btnFilters.setAttribute('aria-expanded', 'true');
+      }
+    });
+    btnFilters.dataset._hasToggle = '1';
+  }
 
-function updateFilterButtonState() {
-  const btnFilters = document.getElementById("btnFilters");
+  // Overlay fecha o painel ao clicar fora (se não tiver listener já)
+  if (overlay && !overlay.dataset._hasListener) {
+    overlay.addEventListener('click', () => {
+      panel?.classList.add('hidden');
+      overlay.classList.add('hidden');
+      btnFilters?.classList.remove('active-filter');
+      btnFilters?.setAttribute('aria-expanded', 'false');
+    });
+    overlay.dataset._hasListener = '1';
+  }
 
-  const status = document.getElementById("filterStatus")?.value.trim();
-  const cnpj   = document.getElementById("filter_CNPJ")?.value.trim();
-  const serie  = document.getElementById("filter_serie")?.value.trim();
-  const nNF    = document.getElementById("filter_nNF")?.value.trim();
-  const chNFe  = document.getElementById("filter_infNFe_Id")?.value.trim();
-  const uf     = document.getElementById("filterUF")?.value.trim();
-  const ano    = document.getElementById("filterAno")?.value.trim();
-  const mes    = document.getElementById("filterMes")?.value.trim();
+  // Botão X fecha o painel
+  if (closeBtn && !closeBtn.dataset._hasClose) {
+    closeBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      panel?.classList.add('hidden');
+      overlay?.classList.add('hidden');
+      btnFilters?.classList.remove('active-filter');
+      btnFilters?.setAttribute('aria-expanded', 'false');
+    });
+    closeBtn.dataset._hasClose = '1';
+  }
 
-  // status só conta se não for "Todos" (valor vazio)
-  const hasStatus = status !== "";
-
-  if (hasStatus || cnpj || serie || nNF || chNFe || uf || ano || mes) {
-    btnFilters.classList.add("active-filter");
-  } else {
-    btnFilters.classList.remove("active-filter");
+  // Fechar com ESC (apenas uma vez)
+  if (!document.body.dataset._hasEscFilter) {
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        if (panel && !panel.classList.contains('hidden')) {
+          panel.classList.add('hidden');
+          overlay?.classList.add('hidden');
+          btnFilters?.classList.remove('active-filter');
+          btnFilters?.setAttribute('aria-expanded', 'false');
+        }
+      }
+    });
+    document.body.dataset._hasEscFilter = '1';
   }
 }
 
@@ -846,3 +989,4 @@ window.onload = () => {
   });
 
 };
+
