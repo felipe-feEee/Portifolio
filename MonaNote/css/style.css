@@ -371,20 +371,10 @@ button:focus, a:focus, input:focus { outline: 3px solid rgba(255,255,255,0.06); 
     box-shadow: var(--shadow-sm);
     z-index: 1200;
   }
-  .hamburger span {
-    margin: 2px 0;
-    background: #fff;
-  }
-  .hamburger.open span:nth-child(1) {
-    transform: translateY(6px) rotate(45deg);
-  }
-  .hamburger.open span:nth-child(2) {
-    opacity: 0;
-    transform: scaleX(0.6);
-  }
-  .hamburger.open span:nth-child(3) {
-    transform: translateY(-6px) rotate(-45deg);
-  }
+  .hamburger span { margin: 2px 0; background: #fff; }
+  .hamburger.open span:nth-child(1) { transform: translateY(6px) rotate(45deg); }
+  .hamburger.open span:nth-child(2) { opacity: 0; transform: scaleX(0.6); }
+  .hamburger.open span:nth-child(3) { transform: translateY(-6px) rotate(-45deg); }
 
   /* sidebar off-canvas behavior */
   .sidebar {
@@ -396,28 +386,90 @@ button:focus, a:focus, input:focus { outline: 3px solid rgba(255,255,255,0.06); 
     box-shadow: 12px 0 36px rgba(0,0,0,0.36);
     transition: transform .32s var(--ease);
 
-    /* 👉 fundo sólido no mobile */
+    /* fundo sólido no mobile */
     background: linear-gradient(180deg, var(--bg), var(--bg-alt));
   }
-
   .sidebar.open {
     transform: translateX(0);
-    /* reforça fundo sólido quando aberto */
     background: linear-gradient(180deg, var(--bg), var(--bg-alt));
   }
 
+  /* conteúdo e rich text */
   .content {
     padding: 12px;
     align-items: flex-start;
+    background: linear-gradient(180deg, var(--bg), var(--bg-alt)); /* fundo sólido */
   }
   #article-content {
     padding: 6px;
   }
+
+  /* 👉 rich text/editor com fundo sólido */
+  #content-body,
+  .editor-toolbar-fixed {
+    background: linear-gradient(180deg, var(--bg), var(--bg-alt));
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+  }
+
   .editor-toolbar-fixed {
     position: fixed;
     left: 12px;
     right: 12px;
     bottom: 12px;
+    box-shadow: var(--shadow-sm);
+  }
+
+/* Pull-to-refresh overlay — estilo igual ao inicial */
+.pull-refresh {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 70px;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.8); /* fundo escuro igual ao inicial */
+  color: #fff;
+  font-weight: 600;
+  z-index: 2000;
+  transition: opacity 0.3s var(--ease);
+}
+
+.pull-refresh.show {
+  display: flex;
+}
+
+.progress-circle {
+  width: 44px;
+  height: 44px;
+  margin-right: 12px;
+  transform: rotate(-90deg); /* inicia do topo */
+}
+
+.pull-refresh.complete .progress-circle {
+  animation: spin 1s linear infinite;
+}
+
+.circle-bg {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.1);
+  stroke-width: 4;
+}
+
+.circle {
+  fill: none;
+  stroke: url(#spinnerGradient); /* aplica degradê */
+  stroke-width: 4;
+  stroke-linecap: round;
+  transition: stroke-dasharray 0.2s ease;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(270deg); /* gira 360° a partir de -90° */
   }
 }
 
