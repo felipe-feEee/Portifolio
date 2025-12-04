@@ -265,38 +265,39 @@ function displayFiles(data, append = false) {
     const file = mapFile(f);
     const li = document.createElement('li');
 
-    // --- status-dot e label acessível (colocar logo após criar o li) ---
-    const statusDot = document.createElement('span');
-    statusDot.className = 'status-dot'; // classe base
+    // --- status-flag (bandeira) ---
+    const statusFlag = document.createElement('span');
+    statusFlag.className = 'status-flag'; // classe base
     
-    // Determina a classe de status a partir dos campos do arquivo
-    // Ajuste as condições conforme sua lógica real (ex.: file.nNF, file.chNFe, file.serie)
-    if (file.nNF === "s1" || li.classList.contains('cancelado')) {
-      statusDot.classList.add('cancelado');
-      statusDot.title = 'Cancelado';
-    } else if (file.nNF === "s2" || li.classList.contains('evento')) {
-      statusDot.classList.add('evento');
-      statusDot.title = 'Evento';
-    } else if (file.chNFe === "s3" || li.classList.contains('inutilizacao')) {
-      statusDot.classList.add('inutilizado');
-      statusDot.title = 'Inutilizado';
+    // Determina status (ajuste conforme sua lógica)
+    if (file.nNF === "s1" || file.chNFe === "s1" || file.nNF === "CANCELADO" || li.classList.contains('cancelado')) {
+      statusFlag.classList.add('cancelado');
+      statusFlag.title = 'Cancelado';
+    } else if (file.nNF === "s2" || file.chNFe === "s2" || file.nNF === "EVENTO" || li.classList.contains('evento')) {
+      statusFlag.classList.add('evento');
+      statusFlag.title = 'Evento';
+    } else if (file.chNFe === "s3" || file.nNF === "INUTILIZADO" || li.classList.contains('inutilizacao')) {
+      statusFlag.classList.add('inutilizado');
+      statusFlag.title = 'Inutilizado';
     } else {
-      // exemplo de status padrão/ok
-      statusDot.classList.add('ok');
-      statusDot.title = 'OK';
+      statusFlag.classList.add('ok');
+      statusFlag.title = 'OK';
     }
     
-    // marca como decorativo para leitores de tela (o sr-only fornece texto)
-    statusDot.setAttribute('aria-hidden', 'true');
+    // opcional: animação suave (adicione/remova conforme preferir)
+    statusFlag.classList.add('animate');
     
-    // elemento para leitores de tela (visível apenas para AT)
+    // acessibilidade: escondemos a bandeira visual, mas mantemos texto para AT
+    statusFlag.setAttribute('aria-hidden', 'true');
+    
     const sr = document.createElement('span');
     sr.className = 'sr-only';
-    sr.textContent = 'Status: ' + (statusDot.title || 'OK');
+    sr.textContent = 'Status: ' + statusFlag.title;
     
-    // Insere no li antes do conteúdo principal
-    li.appendChild(statusDot);
+    // inserir no li antes do conteúdo principal
+    li.appendChild(statusFlag);
     li.appendChild(sr);
+
 
     // 🔎 Topo do card
     const infoTop = document.createElement('span');
@@ -1029,6 +1030,7 @@ window.onload = () => {
   });
 
 };
+
 
 
 
