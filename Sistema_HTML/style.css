@@ -270,6 +270,23 @@ ul#fileList li:hover .status-dot { transform: scale(1.12); box-shadow: 0 6px 18p
 /* Old file style */
 li.old-file { background:#fafafa; color:#999; border:1px solid #eee; box-shadow:none; }
 li.old-file .info-top, li.old-file .info-bottom { color:#777; }
+/* Chave de acesso em arquivos antigos — texto menor e mais discreto */
+li.old-file .chave-acesso {
+  font-size: 12px;        /* reduzido de 13/14px para 12px */
+  line-height: 1.2;
+  color: #6b6b6b;         /* tom mais suave que .info-bottom */
+  font-style: italic;     /* opcional: mantém distinção visual */
+  margin-top: 8px;
+  word-break: break-word; /* evita overflow em nomes longos */
+  text-align: left;
+}
+
+/* Versão ainda menor em telas pequenas */
+@media (max-width: 480px) {
+  li.old-file .chave-acesso {
+    font-size: 11px;
+  }
+}
 
 /* ===========================
    Subpastas selecionáveis
@@ -391,4 +408,5 @@ li.old-file .info-top, li.old-file .info-bottom { color:#777; }
 
 /* Small polish */
 a, button { -webkit-tap-highlight-color: rgba(0,0,0,0); }
+
 
