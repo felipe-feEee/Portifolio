@@ -208,6 +208,8 @@ let currentPostId = null;
     window.configureSupabase({ ... });
   ============================ */
 
+import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
+
 const SupabaseConfig = {
   supabaseUrl: 'https://pwshckrmqaqymngbosgo.supabase.co',
   supabaseKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB3c2hja3JtcWFxeW1uZ2Jvc2dvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQzNjAwOTEsImV4cCI6MjA3OTkzNjA5MX0.f8iX0RoqrdxJmq-EgSyn_YWPgCHMoARQTT4ygtbcoLg',
@@ -215,42 +217,33 @@ const SupabaseConfig = {
   bucketName: 'images'  // padrão: images
 };
 
-// Função pública para configurar em runtime
-function setSupabaseConfig({ supabaseUrl, supabaseKey, tableName, bucketName } = {}) {
-  if (supabaseUrl) SupabaseConfig.supabaseUrl = supabaseUrl;
-  if (supabaseKey) SupabaseConfig.supabaseKey = supabaseKey;
-  if (tableName) SupabaseConfig.tableName = tableName;
-  if (bucketName) SupabaseConfig.bucketName = bucketName;
-  // expõe globalmente para conveniência (opcional)
-  window.SupabaseConfig = SupabaseConfig;
-}
-window.configureSupabase = setSupabaseConfig;
-
-// Inicializa o cliente Supabase usando a configuração atual
-async function initializeSupabase() {
-  // Se já existir window.supabase, respeita (não re-cria)
+export async function initializeSupabase() {
   if (window.supabase) {
-    console.info('Supabase já inicializado (window.supabase).');
-    return;
+    console.info('Supabase já inicializado.');
+    return window.supabase;
   }
 
-  // Se não houver URL/KEY na config, tenta variáveis globais antigas (compatibilidade)
-  const url = SupabaseConfig.supabaseUrl || window.supabaseUrl || window.SUPABASE_URL || null;
-  const key = SupabaseConfig.supabaseKey || window.supabaseKey || window.SUPABASE_KEY || null;
+  const url = SupabaseConfig.supabaseUrl;
+  const key = SupabaseConfig.supabaseKey;
 
   if (!url || !key) {
-    console.warn('Supabase: credenciais não configuradas. Use setSupabaseConfig(...) antes de inicializar.');
-    return;
+    console.warn('Supabase: credenciais não configuradas.');
+    return null;
   }
 
   try {
-    // Import dinâmico do cliente (ESM CDN)
-    const mod = await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm');
-    const { createClient } = mod;
-    window.supabase = createClient(url, key);
+    const supabase = createClient(url, key);
+    window.supabase = supabase;
+
+    // teste rápido
+    const { data, error } = await supabase.auth.getSession();
+    if (error) throw error;
+
     console.info('Supabase inicializado com sucesso.');
+    return supabase;
   } catch (err) {
-    console.error('Falha ao importar/inicializar Supabase:', err);
+    console.error('Falha ao inicializar Supabase:', err);
+    return null;
   }
 }
 
