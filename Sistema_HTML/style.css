@@ -208,18 +208,18 @@ ul#fileList li:hover {
   border-color: #dcdcdc;
 }
 
-/* Bandeira triangular no canto direito, triângulo apontando para a esquerda */
+/* Bandeira triangular correta no canto direito */
 .status-flag {
   position: absolute;
-  top: 4px;            /* sobe a bandeira (ajuste fino aqui) */
+  top: 4px;            /* ajuste vertical da bandeira */
   right: 8px;          /* distância da borda direita do card */
   width: 0;
   height: 22px;
-  z-index: 6;
+  z-index: 60;
   pointer-events: none;
 }
 
-/* mastro (linha vertical) encostado à borda direita */
+/* mastro encostado à borda direita */
 .status-flag::before {
   content: "";
   position: absolute;
@@ -232,11 +232,11 @@ ul#fileList li:hover {
   box-shadow: 0 1px 2px rgba(0,0,0,0.12);
 }
 
-/* triângulo (pano) usando border trick; aponta para a esquerda (border-left) */
+/* triângulo apontando para a esquerda (border-left) e colado ao mastro */
 .status-flag::after {
   content: "";
   position: absolute;
-  right: 2px;          /* aproxima o triângulo do mastro */
+  right: 2px;          /* distância do mastro; reduza para aproximar */
   top: 3px;            /* sobe o triângulo dentro do card */
   width: 0;
   height: 0;
@@ -255,7 +255,7 @@ ul#fileList li:hover {
 .status-flag.pendente::after    { border-left-color: #6b7280; }
 .status-flag.ok::after          { border-left-color: #16a34a; }
 
-/* versão ainda mais colada (opcional) */
+/* versão mais colada ao mastro */
 .status-flag.tight::after {
   right: 1px;
   border-left-width: 12px;
@@ -263,7 +263,7 @@ ul#fileList li:hover {
   border-bottom-width: 8px;
 }
 
-/* animação aplicada diretamente ao pseudo-elemento */
+/* animação aplicada ao pseudo-elemento */
 .status-flag.animate::after {
   animation: flagWave 1.6s ease-in-out infinite;
 }
@@ -273,7 +273,12 @@ ul#fileList li:hover {
   100% { transform: skewX(8deg) translateX(0); }
 }
 
-/* mobile */
+/* Força absoluta caso outra regra esteja sobrescrevendo (use apenas se necessário) */
+.status-flag.force-right { right: 8px !important; top: 4px !important; }
+.status-flag.force-right::before { right: 0 !important; }
+.status-flag.force-right::after { right: 2px !important; }
+
+/* ajuste mobile */
 @media (max-width: 480px) {
   .status-flag { top: 3px; right: 6px; height: 18px; }
   .status-flag::after { top: 2px; border-top-width: 7px; border-bottom-width: 7px; border-left-width: 12px; right: 2px; }
@@ -511,7 +516,7 @@ a, button { -webkit-tap-highlight-color: rgba(0,0,0,0); }
   margin-top: 6px;
   font-weight: 700;
   color: #222222;
-  font-size: 13px;
+  font-size: 10px;
 }
 
 /* Ajuste para telas pequenas */
@@ -519,6 +524,7 @@ a, button { -webkit-tap-highlight-color: rgba(0,0,0,0); }
   #last-update { font-size: 12px; }
   #last-update .last-update-date { font-size: 12px; }
 }
+
 
 
 
