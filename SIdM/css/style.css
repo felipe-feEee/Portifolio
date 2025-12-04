@@ -421,7 +421,7 @@ button:focus, a:focus, input:focus { outline: 3px solid rgba(255,255,255,0.06); 
     box-shadow: var(--shadow-sm);
   }
 
-/* Pull-to-refresh overlay */
+/* Pull-to-refresh overlay — estilo igual ao inicial */
 .pull-refresh {
   position: fixed;
   top: 0;
@@ -431,7 +431,7 @@ button:focus, a:focus, input:focus { outline: 3px solid rgba(255,255,255,0.06); 
   display: none;
   align-items: center;
   justify-content: center;
-  background: var(--accent);
+  background: rgba(0, 0, 0, 0.8); /* fundo escuro igual ao inicial */
   color: #fff;
   font-weight: 600;
   z-index: 2000;
@@ -443,27 +443,26 @@ button:focus, a:focus, input:focus { outline: 3px solid rgba(255,255,255,0.06); 
 }
 
 .progress-circle {
-  width: 32px;
-  height: 32px;
-  margin-right: 8px;
+  width: 44px;
+  height: 44px;
+  margin-right: 12px;
   transform: rotate(-90deg); /* inicia do topo */
 }
 
-/* animação aplicada ao SVG inteiro */
 .pull-refresh.complete .progress-circle {
   animation: spin 1s linear infinite;
 }
 
 .circle-bg {
   fill: none;
-  stroke: rgba(255, 255, 255, 0.3);
-  stroke-width: 3;
+  stroke: rgba(255, 255, 255, 0.1);
+  stroke-width: 4;
 }
 
 .circle {
   fill: none;
-  stroke: #fff;
-  stroke-width: 3;
+  stroke: url(#spinnerGradient); /* aplica degradê */
+  stroke-width: 4;
   stroke-linecap: round;
   transition: stroke-dasharray 0.2s ease;
 }
