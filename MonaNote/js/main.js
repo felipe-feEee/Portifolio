@@ -1323,7 +1323,7 @@ function cancelAddingContent() {
 // main.js — versão unificada e compatível com tabela "posts" e bucket "images"
 
 // ---------- Sidebar / Hamburger (inicialização única) ----------
-let _sidebarAutoCloseInitialized = false;
+_sidebarAutoCloseInitialized = false;
 
 function closeSidebarIfMobile() {
   const sidebar = document.querySelector('.sidebar');
