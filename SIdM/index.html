@@ -168,5 +168,28 @@
     })();
   </script>
 
+<script>
+const overlay = document.getElementById("menuOverlay");
+const sidebar = document.querySelector(".sidebar");
+const hamburger = document.getElementById("hamburger-btn");
+
+// ativar overlay quando menu abrir
+const observer = new MutationObserver(() => {
+  if (sidebar.classList.contains("open")) {
+    overlay.classList.add("active");
+  } else {
+    overlay.classList.remove("active");
+  }
+});
+
+observer.observe(sidebar, { attributes: true, attributeFilter: ["class"] });
+
+// clicar fora fecha o menu
+overlay.addEventListener("click", () => {
+  sidebar.classList.remove("open");
+  hamburger.classList.remove("open");
+});
+</script>
+
 </body>
 </html>
