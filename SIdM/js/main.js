@@ -210,7 +210,7 @@ let currentPostId = null;
 
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
 
-const setSupabaseConfig = {
+const SupabaseConfig = {
   supabaseUrl: 'https://pwshckrmqaqymngbosgo.supabase.co',
   supabaseKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB3c2hja3JtcWFxeW1uZ2Jvc2dvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQzNjAwOTEsImV4cCI6MjA3OTkzNjA5MX0.f8iX0RoqrdxJmq-EgSyn_YWPgCHMoARQTT4ygtbcoLg',
   tableName: 'posts',   // padrão: posts
@@ -223,8 +223,8 @@ export async function initializeSupabase() {
     return window.supabase;
   }
 
-  const url = setSupabaseConfig.supabaseUrl;
-  const key = setSupabaseConfig.supabaseKey;
+  const url = SupabaseConfig.supabaseUrl;
+  const key = SupabaseConfig.supabaseKey;
 
   if (!url || !key) {
     console.warn('Supabase: credenciais não configuradas.');
@@ -297,7 +297,7 @@ async function carregarPostsDoBanco() {
   }
 
   // usa a tabela configurada
-  const table = setSupabaseConfig.tableName || 'posts';
+  const table = SupabaseConfig.tableName || 'posts';
 
   try {
     const { data, error } = await window.supabase
@@ -347,7 +347,7 @@ async function uploadToSupabase(file) {
     return '';
   }
 
-  const bucket = setSupabaseConfig.bucketName || 'images';
+  const bucket = SupabaseConfig.bucketName || 'images';
   const safeName = sanitizeFilename(file);
   const filePath = `${safeName.startsWith('/') ? safeName.slice(1) : safeName}`;
 
@@ -373,7 +373,7 @@ async function insertPost(payload) {
     console.warn('insertPost: Supabase não inicializado. Fallback local.');
     return null;
   }
-  const table = setSupabaseConfig.tableName || 'posts';
+  const table = SupabaseConfig.tableName || 'posts';
   try {
     const resp = await window.supabase.from(table).insert(payload).select().single();
     if (resp.error) {
@@ -392,7 +392,7 @@ async function updatePost(postId, payload) {
     console.warn('updatePost: Supabase não inicializado. Fallback local.');
     return null;
   }
-  const table = setSupabaseConfig.tableName || 'posts';
+  const table = SupabaseConfig.tableName || 'posts';
   try {
     const resp = await window.supabase.from(table).update(payload).eq('id', postId);
     if (resp.error) {
@@ -416,7 +416,7 @@ async function updatePost(postId, payload) {
   ============================ */
 
 // expõe utilitários para debug/uso externo
-window.setSupabaseConfig = setSupabaseConfig;
+window.SupabaseConfig = SupabaseConfig;
 window.initializeSupabase = initializeSupabase;
 window.insertPost = insertPost;
 window.updatePost = updatePost;
