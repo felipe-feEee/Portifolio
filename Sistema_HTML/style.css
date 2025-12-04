@@ -513,14 +513,5 @@ a, button { -webkit-tap-highlight-color: rgba(0,0,0,0); }
 /* Ajuste para telas pequenas */
 @media (max-width: 480px) {
   #last-update { font-size: 11px; }
-  #last-update .last-update-date { font-size: 11px; }
+  #last-update .last-update-date { font-size: 10px; }
 }
-
-
-
-
-
-
-
-
-
