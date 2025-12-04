@@ -265,18 +265,18 @@ function displayFiles(data, append = false) {
     const file = mapFile(f);
     const li = document.createElement('li');
 
-    // --- status-flag (bandeira) ---
+    // status-flag triangular
     const statusFlag = document.createElement('span');
-    statusFlag.className = 'status-flag'; // classe base
+    statusFlag.className = 'status-flag';
     
-    // Determina status (ajuste conforme sua lógica)
-    if (file.nNF === "s1" || file.chNFe === "s1" || file.nNF === "CANCELADO" || li.classList.contains('cancelado')) {
+    // determinar status (ajuste as condições conforme seus campos)
+    if (file.nNF === "s1") {
       statusFlag.classList.add('cancelado');
       statusFlag.title = 'Cancelado';
-    } else if (file.nNF === "s2" || file.chNFe === "s2" || file.nNF === "EVENTO" || li.classList.contains('evento')) {
+    } else if (file.nNF === "s2") {
       statusFlag.classList.add('evento');
       statusFlag.title = 'Evento';
-    } else if (file.chNFe === "s3" || file.nNF === "INUTILIZADO" || li.classList.contains('inutilizacao')) {
+    } else if (file.chNFe === "s3") {
       statusFlag.classList.add('inutilizado');
       statusFlag.title = 'Inutilizado';
     } else {
@@ -284,20 +284,17 @@ function displayFiles(data, append = false) {
       statusFlag.title = 'OK';
     }
     
-    // opcional: animação suave (adicione/remova conforme preferir)
-    statusFlag.classList.add('animate');
+    // opcional: bandeira mais colada ao mastro
+    // statusFlag.classList.add('tight');
     
-    // acessibilidade: escondemos a bandeira visual, mas mantemos texto para AT
     statusFlag.setAttribute('aria-hidden', 'true');
     
     const sr = document.createElement('span');
     sr.className = 'sr-only';
     sr.textContent = 'Status: ' + statusFlag.title;
     
-    // inserir no li antes do conteúdo principal
     li.appendChild(statusFlag);
     li.appendChild(sr);
-
 
     // 🔎 Topo do card
     const infoTop = document.createElement('span');
@@ -1030,6 +1027,7 @@ window.onload = () => {
   });
 
 };
+
 
 
 
