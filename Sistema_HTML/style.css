@@ -21,6 +21,56 @@
   --ease: cubic-bezier(.2,.9,.25,1);
 }
 
+/* ===== Ajuste para scroll no list-container (infinite scroll) ===== */
+
+/* garantir que a página use toda a altura e que o body seja um flex column */
+html, body {
+  height: 100%;
+  min-height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+/* body como coluna flex para permitir que .list-container cresça e role */
+body {
+  display: flex;
+  flex-direction: column;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* topbar ocupa seu espaço natural (não flexível) */
+.topbar {
+  flex: 0 0 auto;
+}
+
+/* list-container deve crescer e rolar internamente
+   Mantém max-width e centralização já usadas no layout */
+.list-container {
+  flex: 1 1 auto;               /* ocupa o espaço restante */
+  overflow: auto;               /* scroll interno — seu JS deve escutar este container */
+  -webkit-overflow-scrolling: touch; /* smooth scrolling em iOS */
+  width: 100%;
+  max-width: var(--max-width, 1200px);
+  margin: 18px auto;
+  padding: 18px;
+  background: transparent;
+  box-sizing: border-box;
+}
+
+/* garantir que nenhum outro container capture o scroll por engano */
+html, body, .list-container, #fileList {
+  /* não forçar overflow:hidden em body/html; permitir scroll no container */
+}
+
+/* opcional: melhorar visibilidade do indicador de scroll (desktop) */
+.list-container::-webkit-scrollbar { width: 10px; }
+.list-container::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, var(--accent), var(--accent-strong));
+  border-radius: 999px;
+  border: 2px solid rgba(255,255,255,0.06);
+}
+
 /* Reset / base (preserve comportamento de scroll da janela) */
 * { box-sizing: border-box; }
 html, body {
@@ -355,3 +405,4 @@ li.old-file .info-top, li.old-file .info-bottom { color:#777; }
 
 /* Small polish */
 a, button { -webkit-tap-highlight-color: rgba(0,0,0,0); }
+
