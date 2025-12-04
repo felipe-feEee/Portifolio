@@ -14,6 +14,21 @@ function closeSidebarIfMobile() {
   }
 }
 
+let touchStartX = 0;
+
+document.addEventListener("touchstart", (e) => {
+  touchStartX = e.touches[0].clientX;
+});
+
+document.addEventListener("touchend", (e) => {
+  const touchEndX = e.changedTouches[0].clientX;
+  
+  if (touchStartX - touchEndX > 60) {
+    // gesto de arrastar para esquerda
+    closeSidebarIfMobile();
+  }
+});
+
 function setupSidebarAutoClose() {
   if (_sidebarAutoCloseInitialized) return;
   _sidebarAutoCloseInitialized = true;
