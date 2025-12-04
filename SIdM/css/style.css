@@ -490,6 +490,7 @@ body.sidebar-open { overflow: hidden; }
 }
 
 /* theme switch style (header) - uses same class as injected in HTML */
+/* container */
 .theme-switch {
   position: relative;
   width: 48px;
@@ -497,18 +498,72 @@ body.sidebar-open { overflow: hidden; }
   display: inline-block;
   cursor: pointer;
   margin-left: 8px;
+  vertical-align: middle;
+  box-sizing: border-box;
 }
-.theme-switch input { display: none; }
+
+/* esconder input de forma acessível e forçar aparência neutra */
+.theme-switch input[type="checkbox"] {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+  opacity: 0;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+/* slider base */
 .theme-switch .slider {
-  position: absolute; inset: 0; border-radius: 999px; background: rgba(255,255,255,0.06); transition: .28s var(--ease);
+  position: absolute;
+  inset: 0;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.06);
+  transition: background .28s var(--ease), box-shadow .28s var(--ease);
   box-shadow: inset 0 1px 0 rgba(255,255,255,0.02);
+  display: block;
 }
+
+/* knob */
 .theme-switch .slider::before {
-  content: ""; position: absolute; width: 20px; height:20px; left:3px; top:3px; border-radius:50%;
-  background: var(--accent); transition: .28s var(--ease); box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+  content: "";
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  left: 3px;
+  top: 3px;
+  border-radius: 50%;
+  background: var(--accent);
+  transition: transform .28s var(--ease), background .28s var(--ease);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
 }
-.theme-switch input:checked + .slider { background: rgba(0,0,0,0.06); }
-.theme-switch input:checked + .slider::before { transform: translateX(22px); background: var(--accent-strong); }
+
+/* estado checked — cobre estruturas +.slider e ~.slider */
+.theme-switch input[type="checkbox"]:checked + .slider,
+.theme-switch input[type="checkbox"]:checked ~ .slider {
+  background: rgba(0,0,0,0.06);
+}
+.theme-switch input[type="checkbox"]:checked + .slider::before,
+.theme-switch input[type="checkbox"]:checked ~ .slider::before {
+  transform: translateX(22px);
+  background: var(--accent-strong);
+}
+
+/* foco por teclado */
+.theme-switch input[type="checkbox"]:focus + .slider,
+.theme-switch input[type="checkbox"]:focus ~ .slider {
+  box-shadow: 0 0 0 3px rgba(0,120,212,0.12);
+}
+
+/* fallback se algum framework reativar o checkbox nativo */
+.theme-switch input[type="checkbox"].force-hide {
+  display: none !important;
+}
 
 /* small message helpers (missing-image etc) kept intact */
 .missing-image-message {
