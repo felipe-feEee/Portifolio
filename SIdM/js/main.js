@@ -1,6 +1,4 @@
 // main.js — versão unificada e compatível com tabela "posts" e bucket "images"
-import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
-
 let _sidebarAutoCloseInitialized = false;
 
 function toggleSidebar(open) {
@@ -195,6 +193,7 @@ function setupPullToRefresh() {
 
 // inicialização única
 window.addEventListener('DOMContentLoaded', () => {
+  import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
   setupSidebarAutoClose();
   setupThemeToggle();
 
