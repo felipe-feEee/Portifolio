@@ -6,7 +6,7 @@
    - Switch no header usa #themeToggle
    =================================================================== */
 
-/* ---------- Variáveis (core) ---------- */
+/* ---------- Variáveis globais ---------- */
 :root {
   --font-sans: "Inter", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   --bg: #0f1724;
@@ -23,11 +23,23 @@
   --header-height: 64px;
   --max-content: 980px;
   --ease: cubic-bezier(.2,.9,.25,1);
-  -webkit-font-smoothing: antialiased;
+  /* apenas variáveis aqui — sem propriedades de apresentação */
+}
+
+/* ---------- Propriedades globais (aplicadas ao documento) ---------- */
+html, body {
+  height: 100%;
   box-sizing: border-box;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-family: var(--font-sans);
+  color: var(--text);
   scrollbar-width: thin;
   scrollbar-color: var(--accent) transparent;
+  margin: 0;
+  background: linear-gradient(180deg, var(--bg), var(--bg-alt));
 }
+* { box-sizing: inherit; }
 
 /* Light theme override */
 body[data-theme="light"]{
