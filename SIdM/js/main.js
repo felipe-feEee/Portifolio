@@ -379,7 +379,7 @@ async function uploadToSupabase(file) {
     return '';
   }
 
-  const bucket = SupabaseConfig.bucketName || 'images';
+  const bucket = setSupabaseConfig.bucketName || 'images';
   const safeName = sanitizeFilename(file);
   const filePath = `${safeName.startsWith('/') ? safeName.slice(1) : safeName}`;
 
@@ -405,7 +405,7 @@ async function insertPost(payload) {
     console.warn('insertPost: Supabase não inicializado. Fallback local.');
     return null;
   }
-  const table = SupabaseConfig.tableName || 'posts';
+  const table = setSupabaseConfig.tableName || 'posts';
   try {
     const resp = await window.supabase.from(table).insert(payload).select().single();
     if (resp.error) {
@@ -424,7 +424,7 @@ async function updatePost(postId, payload) {
     console.warn('updatePost: Supabase não inicializado. Fallback local.');
     return null;
   }
-  const table = SupabaseConfig.tableName || 'posts';
+  const table = setSupabaseConfig.tableName || 'posts';
   try {
     const resp = await window.supabase.from(table).update(payload).eq('id', postId);
     if (resp.error) {
@@ -448,7 +448,7 @@ async function updatePost(postId, payload) {
   ============================ */
 
 // expõe utilitários para debug/uso externo
-window.SupabaseConfig = SupabaseConfig;
+window.setSupabaseConfig = setSupabaseConfig;
 window.initializeSupabase = initializeSupabase;
 window.insertPost = insertPost;
 window.updatePost = updatePost;
