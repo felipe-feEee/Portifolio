@@ -75,10 +75,29 @@ export async function initializeSupabase({ retries = 2, retryDelay = 400, timeou
         await destroySupabase();
 
         // import dinâmico do SDK ESM
-        const { createClient } = await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.33.0/dist/module/index.js');
-
-        // cria cliente com persistência de sessão
-        const supabase = createClient(url, key, { auth: { persistSession: true } });
+        // dentro de initializeSupabase, antes de criar o client
+         const sdkCandidates = [
+           'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.34.0/dist/module/index.mjs',
+           'https://unpkg.com/@supabase/supabase-js@2.34.0/dist/module/index.mjs'
+         ];
+         
+         let createClient = null;
+         let lastErr = null;
+         for (const sdkUrl of sdkCandidates) {
+           try {
+             const mod = await import(sdkUrl);
+             createClient = mod.createClient || mod.default?.createClient || null;
+             if (createClient) break;
+           } catch (e) {
+             lastErr = e;
+           }
+         }
+         
+         if (!createClient) {
+           throw new Error('createClient não encontrado no SDK do Supabase. Último erro: ' + (lastErr && lastErr.message));
+         }
+         
+         const supabase = createClient(_supabaseConfig.url, _supabaseConfig.key, { auth: { persistSession: true } });
 
         // teste leve de conectividade com timeout (não bloqueia UI)
         const sessionCheck = (async () => {
