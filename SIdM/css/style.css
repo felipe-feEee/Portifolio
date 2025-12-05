@@ -356,3 +356,143 @@ label.theme-switch input[type="checkbox"]:focus ~ .slider {
 
 /* debug helper (remove in production) */
 /* .debug-outline { outline: 2px dashed rgba(255,255,255,0.12) !important; } */
+
+/* -------------------------
+   Light theme variables (override)
+   (mantém compatibilidade com body[data-theme="light"])
+   ------------------------- */
+body[data-theme="light"]{
+  --bg: #f6f7fb;
+  --bg-alt: #ffffff;
+  --card: #ffffff;
+  --text: #0f1724;
+  --muted: #6b7280;
+  --accent: #2563eb;
+  --accent-strong: #1e4fd4;
+  --border: rgba(15,23,42,0.06);
+  --shadow-lg: 0 10px 30px rgba(15,23,42,0.08);
+  --shadow-sm: 0 2px 6px rgba(15,23,42,0.06);
+}
+
+/* -------------------------
+   Botões (primário / secundário / ghost)
+   ------------------------- */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.85rem;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 0.95rem;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: background .16s var(--ease), transform .08s var(--ease), box-shadow .12s var(--ease);
+  box-shadow: var(--shadow-sm);
+  color: var(--text);
+  background: var(--card);
+}
+
+/* primary */
+.btn-primary, #add-content-btn {
+  background: linear-gradient(180deg, var(--accent), var(--accent-strong));
+  color: #fff;
+  border-color: transparent;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.12);
+}
+.btn-primary:hover, #add-content-btn:hover { filter: brightness(.98); transform: translateY(-1px); }
+
+/* secondary */
+.btn-secondary {
+  background: transparent;
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+.btn-secondary:hover { background: rgba(255,255,255,0.02); }
+
+/* ghost / link-like */
+.btn-ghost {
+  background: transparent;
+  color: var(--accent);
+  border: none;
+  padding: 0.35rem 0.5rem;
+}
+
+/* small / icon buttons */
+.btn-icon {
+  width: 40px; height: 40px; padding: 0; border-radius: 8px;
+  display:inline-flex; align-items:center; justify-content:center;
+}
+
+/* -------------------------
+   Estado active do menu (reforçado)
+   ------------------------- */
+#menu a,
+#menu > ul > li > a,
+#menu > ul > li > ul > li > a {
+  color: var(--muted);
+  text-decoration: none;
+  display: block;
+  padding: 0.6rem 0.75rem;
+  border-left: 3px solid transparent;
+  transition: color .12s var(--ease), background .12s var(--ease), border-color .12s var(--ease);
+}
+
+/* estado hover */
+#menu a:hover,
+#menu > ul > li > a:hover,
+#menu > ul > li > ul > li > a:hover {
+  color: var(--text);
+  background: rgba(255,255,255,0.02);
+}
+
+/* estado active (maior especificidade para evitar sobrescrita) */
+#menu a.active,
+#menu > ul > li > a.active,
+#menu > ul > li > ul > li > a.active,
+.sidebar li > a.active {
+  background-color: transparent;
+  color: var(--accent) !important;
+  font-weight: 600;
+  border-left-color: var(--accent) !important;
+  padding-left: calc(1rem - 3px);
+}
+
+/* se o menu usar <span> em vez de <a> */
+#menu li.active > span,
+#menu li.active > a {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+/* -------------------------
+   Theme switch colors por tema
+   ------------------------- */
+/* dark (padrão) já usa var(--accent) */
+label.theme-switch .slider { background: rgba(255,255,255,0.06); }
+label.theme-switch .slider::before { background: var(--accent); }
+
+/* light mode: ajuste visual do slider e knob */
+body[data-theme="light"] label.theme-switch .slider {
+  background: rgba(15,23,42,0.06);
+  box-shadow: inset 0 1px 0 rgba(0,0,0,0.02);
+}
+body[data-theme="light"] label.theme-switch .slider::before {
+  background: var(--accent);
+  box-shadow: 0 3px 8px rgba(0,0,0,0.12);
+}
+
+/* -------------------------
+   Pequenos ajustes de acessibilidade e layout
+   ------------------------- */
+label.theme-switch { touch-action: manipulation; }
+label.theme-switch input[type="checkbox"] { cursor: pointer; }
+
+/* garante contraste mínimo para botões em tema claro */
+body[data-theme="light"] .btn-primary { box-shadow: 0 6px 18px rgba(30,79,212,0.08); }
+
+/* -------------------------
+   Utilitários (opcional)
+   ------------------------- */
+.btn[disabled], button[disabled] { opacity: 0.5; cursor: not-allowed; pointer-events: none; }
