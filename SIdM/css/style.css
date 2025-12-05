@@ -1,6 +1,9 @@
 /* ===================================================================
-   style.css — GitBook Modern 2025 (Consolidado)
-   Mantém classes/IDs originais. Switch no header usa #themeToggle.
+   style.css — GitBook Modern 2025 (Refatorado)
+   Mantém todas as classes/IDs do index.html original (sem renomear)
+   - Dark Accent por padrão
+   - Light mode via body[data-theme="light"]
+   - Switch no header usa #themeToggle
    =================================================================== */
 
 /* ---------- Variáveis (core) ---------- */
@@ -8,12 +11,12 @@
   --font-sans: "Inter", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 
   /* Dark (padrão) */
-  --bg: #0f1724;
-  --bg-alt: #0b1320;
-  --card: #0f1726;
-  --text: #E6EEF8;
-  --muted: #9aa6b2;
-  --accent: #ff6666;
+  --bg: #0f1724;              /* fundo app */
+  --bg-alt: #0b1320;          /* gradiente / shades */
+  --card: #0f1726;            /* cartão / editor fundo */
+  --text: #E6EEF8;            /* texto principal */
+  --muted: #9aa6b2;           /* texto secundário */
+  --accent: #ff6666;          /* seu vermelho como destaque */
   --accent-strong: #ff4b4b;
   --border: rgba(255,255,255,0.06);
   --shadow-lg: 0 12px 40px rgba(2,6,23,0.6);
@@ -32,7 +35,7 @@ body[data-theme="light"]{
   --card: #ffffff;
   --text: #0f1724;
   --muted: #6b7280;
-  --accent: #2563eb;
+  --accent: #2563eb;     /* azul GitBook-like no light mode */
   --accent-strong: #1e4fd4;
   --border: rgba(15,23,42,0.06);
   --shadow-lg: 0 10px 30px rgba(15,23,42,0.08);
@@ -49,7 +52,7 @@ body{
   color: var(--text);
   -webkit-font-smoothing:antialiased;
   -moz-osx-font-smoothing:grayscale;
-  overflow:hidden;
+  overflow:hidden; /* keep internal scrolls as before */
 }
 
 /* ---------- Scrollbars (WebKit + FF) ---------- */
@@ -67,7 +70,7 @@ body{
 @keyframes slideInFromLeft { 0% {opacity:0; transform:translateX(-10px)} 100% {opacity:1; transform:none} }
 @keyframes scaleIn { from { transform: scale(.98); opacity:0 } to { transform:none; opacity:1 } }
 
-/* ========== HEADER ========== */
+/* ========== HEADER (mantido) ========== */
 .main-header{
   position: sticky;
   top: 0;
@@ -82,6 +85,8 @@ body{
   padding: 0 1rem;
   border-bottom: 1px solid var(--border);
 }
+
+/* inner wrapper */
 .main-header .header-inner{
   width:100%;
   max-width:1280px;
@@ -90,9 +95,9 @@ body{
   gap:0.75rem;
 }
 
-/* ---------- Hamburger ---------- */
+/* ---------- Hamburger (keeps behavior) ---------- */
 .hamburger {
-  display: none;
+  display: none; /* shown on mobile via media queries */
   border: none;
   background: transparent;
   padding: 0;
@@ -101,6 +106,8 @@ body{
   align-items:center;
   justify-content:center;
 }
+
+/* hamburger bars */
 .hamburger span {
   display:block;
   width:18px;
@@ -111,7 +118,7 @@ body{
   transform-origin:center;
 }
 
-/* ---------- Search header ---------- */
+/* ---------- Search header (mantained) ---------- */
 .search-header{
   display:flex;
   align-items:center;
@@ -119,6 +126,8 @@ body{
   justify-content:center;
   position:relative;
 }
+
+/* search input */
 .search-bar{
   width:100%;
   max-width:820px;
@@ -132,7 +141,10 @@ body{
   outline:none;
   transition: box-shadow .12s ease, border-color .12s ease;
 }
-body[data-theme="light"] .search-bar { background: rgba(0,0,0,0.03); color: var(--text); }
+body[data-theme="light"] .search-bar {
+  background: rgba(0,0,0,0.03);
+  color: var(--text);
+}
 .search-bar::placeholder { color: rgba(255,255,255,0.6); }
 body[data-theme="light"] .search-bar::placeholder { color: rgba(0,0,0,0.36); }
 .search-bar:focus { box-shadow: 0 10px 30px rgba(2,6,23,0.08); border-color: rgba(255,255,255,0.08); }
@@ -158,7 +170,7 @@ body[data-theme="light"] .search-bar::placeholder { color: rgba(0,0,0,0.36); }
 .search-suggestions li{ list-style:none; padding:0.6rem 1rem; cursor:pointer; border-bottom:1px solid rgba(0,0,0,0.03); }
 .search-suggestions li:hover { background: rgba(255,255,255,0.02); }
 
-/* ---------- Layout principal ---------- */
+/* ---------- Layout principal (sidebar + content) ========== */
 .app-layout{
   display:flex;
   height: calc(100vh - var(--header-height));
@@ -166,7 +178,7 @@ body[data-theme="light"] .search-bar::placeholder { color: rgba(0,0,0,0.36); }
   overflow:hidden;
 }
 
-/* ---------- SIDEBAR ---------- */
+/* ---------- SIDEBAR (desktop fixed) ---------- */
 .sidebar{
   width: 260px;
   min-width: 200px;
@@ -179,6 +191,8 @@ body[data-theme="light"] .search-bar::placeholder { color: rgba(0,0,0,0.36); }
   z-index: 1000;
   border-right: 1px solid var(--border);
 }
+
+/* sidebar content */
 .sidebar .brand { font-weight:700; margin-bottom:0.5rem; }
 #add-content-btn, #export-json-btn {
   width:100%;
@@ -192,7 +206,7 @@ body[data-theme="light"] .search-bar::placeholder { color: rgba(0,0,0,0.36); }
 #add-content-btn { background: var(--accent); color:#fff; box-shadow: var(--shadow-sm); }
 #export-json-btn { background: #b91c1c; color:#fff; display:none; }
 
-/* menu structure */
+/* menu structure expected by your JS (#menu ul li etc) */
 .sidebar ul{ list-style:none; padding:0; margin:0; }
 .sidebar li > span, .sidebar li > a {
   display:flex; align-items:center; padding:0.6rem 0.75rem; border-radius:6px; color:var(--text); text-decoration:none; font-size:0.95rem;
@@ -203,7 +217,7 @@ body[data-theme="light"] .search-bar::placeholder { color: rgba(0,0,0,0.36); }
 .sidebar li ul li a { display:block; padding:0.45rem 0.75rem; color: var(--muted); font-size:0.9rem; border-left: 3px solid transparent; }
 .sidebar li ul li a:hover { color: var(--text); border-left-color: var(--accent); }
 
-/* ---------- CONTENT area ---------- */
+/* ---------- CONTENT area (center) ---------- */
 .content{
   flex: 1;
   overflow:auto;
@@ -213,6 +227,8 @@ body[data-theme="light"] .search-bar::placeholder { color: rgba(0,0,0,0.36); }
   align-items:flex-start;
   background: linear-gradient(180deg, transparent, rgba(255,255,255,0.02));
 }
+
+/* article container */
 #article-content{
   width:100%;
   max-width: var(--max-content);
@@ -223,23 +239,125 @@ body[data-theme="light"] .search-bar::placeholder { color: rgba(0,0,0,0.36); }
   animation: slideInFromLeft .28s var(--ease);
 }
 
-/* typography, buttons, editor, images, etc. (mantidos) */
-/* ... (mantive seus blocos originais sem alterações funcionais) ... */
+/* title and edit button */
+#article-title { font-size: 1.9rem; margin: 0 0 0.6rem 0; color: var(--text); }
+#edit-article-link {
+  display:inline-block; margin-bottom:0.75rem; background: var(--accent); color:#fff; padding:0.45rem 0.8rem; border-radius:8px;
+  text-decoration:none; font-weight:600; border:none; cursor:pointer;
+}
+#edit-article-link:hover { background: var(--accent-strong); }
+
+/* category inputs & controls (kept) */
+#category-wrapper { display:flex; gap:0.5rem; align-items:center; margin-bottom:0.75rem; width:100%; }
+#category-select, #new-category {
+  padding:0.5rem 0.6rem; border-radius:8px; border:1px solid var(--border); background: var(--card); color: var(--text);
+  font-size: 0.95rem; box-shadow: var(--shadow-sm);
+}
+#title-input {
+  display:block; width:100%; padding:0.6rem 0.8rem; margin:0.5rem 0 1rem 0; border-radius:8px; border:1px solid var(--border);
+  background: var(--card); color: var(--text); font-size:1.15rem; font-weight:600; box-shadow: var(--shadow-sm);
+}
+
+/* close edit btn */
+#close-edit-btn {
+  display:inline-flex; align-items:center; justify-content:center; width:40px; height:40px; padding:0; border-radius:8px; border:none;
+  background: rgba(255,255,255,0.03); color: var(--text); font-size:1.1rem; cursor:pointer; margin-left:0.5rem; box-shadow: var(--shadow-sm);
+}
+#close-edit-btn:hover { background: var(--accent); color:#fff; }
+
+/* ---------- CONTENT BODY / EDITOR ---------- */
+#content-body{
+  width:100%;
+  min-height:160px;
+  padding:14px;
+  border-radius:8px;
+  border:1px solid var(--border);
+  background: var(--card);
+  color: var(--text);
+  line-height:1.6;
+  overflow:auto;
+  transition: box-shadow .12s ease, border-color .12s ease;
+}
+#content-body[contenteditable]:empty::before { content: attr(data-placeholder); color: var(--muted); font-style: italic; }
+#content-body:focus { outline: none; border-color: rgba(255,255,255,0.04); box-shadow: var(--shadow-sm); }
+
+/* headings & paragraphs */
+#article-content h1,#content-body h1 { font-size:1.8rem; margin:1rem 0; color: var(--text); }
+#article-content h2,#content-body h2 { font-size:1.25rem; margin:0.9rem 0; color: var(--text); }
+#article-content p,#content-body p { margin:0.5rem 0; color: var(--muted); }
+#article-content a,#content-body a { color: var(--accent); text-decoration: underline; }
+
+/* images */
+#article-content img, #content-body img {
+  max-width: 90%;
+  width: auto;
+  height: auto;
+  border-radius:8px;
+  display:block;
+  margin:1rem auto;
+  cursor: zoom-in;
+  box-shadow: var(--shadow-sm);
+}
+
+/* ---------- Editor toolbar ---------- */
+.editor-toolbar-fixed {
+  display:flex; flex-wrap:wrap; gap:8px; margin-top:12px; padding:8px; border-radius:10px; background: rgba(255,255,255,0.02);
+  position: sticky; bottom: 12px; z-index: 900; box-shadow: var(--shadow-sm);
+}
+.editor-toolbar-fixed button {
+  background: var(--card); border:1px solid var(--border); padding:8px 10px; border-radius:8px; cursor:pointer; font-weight:600; color: var(--text);
+}
+.editor-toolbar-fixed .sep { width:1px; height:20px; background: var(--border); margin: 0 6px; }
+
+/* ---------- Image splash ---------- */
+#image-splash {
+  position: fixed; inset:0; display:none; align-items:center; justify-content:center; background: rgba(0,0,0,0.8); z-index:1400; padding:20px;
+}
+#image-splash img { max-width:100%; max-height:100vh; border-radius:12px; box-shadow: 0 12px 40px rgba(0,0,0,0.6); }
+
+/* ---------- Loading / Error / Debug overlays ---------- */
+#initial-loading {
+  position: fixed; inset:0; display:flex; align-items:center; justify-content:center; background: rgba(0,0,0,0.8); z-index:1500; padding:1rem;
+}
+.loading-box, .error-box {
+  background: var(--card); padding:20px 28px; border-radius:10px; box-shadow: var(--shadow-lg); text-align:center; max-width:420px; width:calc(100% - 2rem);
+  animation: scaleIn 220ms ease;
+}
+.loading-box p, .error-box p { margin-top:12px; color: var(--text); font-weight:500; font-size:1rem; }
+
+/* spinner */
+.spinner { width:44px; height:44px; border:4px solid rgba(255,255,255,0.06); border-top:4px solid var(--accent); border-radius:50%; margin:0 auto; animation: spin 1s linear infinite; }
+
+/* debug popup */
+.debug-popup { position: fixed; inset:0; display:none; align-items:center; justify-content:center; background: rgba(0,0,0,0.7); z-index:1600; padding:1rem; }
+.debug-popup-content { width: min(1100px, 96%); max-height: 90vh; overflow:auto; background: var(--card); border-radius:10px; padding:12px; box-shadow: var(--shadow-lg); }
 
 /* ---------- Utilities ---------- */
 .hidden { display:none !important; }
 .center { display:flex; align-items:center; justify-content:center; }
+
+/* accessibility focus */
 button:focus, a:focus, input:focus { outline: 3px solid rgba(255,255,255,0.06); outline-offset: 3px; }
 
-/* ---------- Responsive ---------- */
+/* ---------- Mobile / Responsive ---------- */
 @media (max-width: 1024px) {
-  .sidebar { width: 240px; }
-  .main-header .header-inner { max-width: 1000px; }
+  .sidebar {
+    width: 240px;
+  }
+  .main-header .header-inner {
+    max-width: 1000px;
+  }
 }
-@media (max-width: 768px) {
-  .main-header { padding: 8px 12px; }
-  .main-header .header-inner { gap: 0.5rem; }
 
+@media (max-width: 768px) {
+  .main-header {
+    padding: 8px 12px;
+  }
+  .main-header .header-inner {
+    gap: 0.5rem;
+  }
+
+  /* hamburger visível no mobile */
   .hamburger {
     display: inline-flex !important;
     flex-direction: column;
@@ -258,6 +376,7 @@ button:focus, a:focus, input:focus { outline: 3px solid rgba(255,255,255,0.06); 
   .hamburger.open span:nth-child(2) { opacity: 0; transform: scaleX(0.6); }
   .hamburger.open span:nth-child(3) { transform: translateY(-6px) rotate(-45deg); }
 
+  /* sidebar off-canvas behavior */
   .sidebar {
     position: fixed;
     top: var(--header-height);
@@ -266,233 +385,137 @@ button:focus, a:focus, input:focus { outline: 3px solid rgba(255,255,255,0.06); 
     transform: translateX(-110%);
     box-shadow: 12px 0 36px rgba(0,0,0,0.36);
     transition: transform .32s var(--ease);
+
+    /* fundo sólido no mobile */
     background: linear-gradient(180deg, var(--bg), var(--bg-alt));
   }
-  .sidebar.open { transform: translateX(0); }
-  .content { padding: 12px; align-items: flex-start; background: linear-gradient(180deg, var(--bg), var(--bg-alt)); }
-  #article-content { padding: 6px; }
+  .sidebar.open {
+    transform: translateX(0);
+    background: linear-gradient(180deg, var(--bg), var(--bg-alt));
+  }
+
+  /* conteúdo e rich text */
+  .content {
+    padding: 12px;
+    align-items: flex-start;
+    background: linear-gradient(180deg, var(--bg), var(--bg-alt)); /* fundo sólido */
+  }
+  #article-content {
+    padding: 6px;
+  }
+
+  /* 👉 rich text/editor com fundo sólido */
+  #content-body,
+  .editor-toolbar-fixed {
+    background: linear-gradient(180deg, var(--bg), var(--bg-alt));
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+  }
+
+  .editor-toolbar-fixed {
+    position: fixed;
+    left: 12px;
+    right: 12px;
+    bottom: 12px;
+    box-shadow: var(--shadow-sm);
+  }
+
+/* Pull-to-refresh overlay — estilo igual ao inicial */
+.pull-refresh {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 70px;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.8); /* fundo escuro igual ao inicial */
+  color: #fff;
+  font-weight: 600;
+  z-index: 2000;
+  transition: opacity 0.3s var(--ease);
 }
 
-/* ---------- Theme switch (consolidado) ---------- */
-/* container (label.theme-switch expected in header) */
-label.theme-switch {
+.pull-refresh.show {
+  display: flex;
+}
+
+.progress-circle {
+  width: 44px;
+  height: 44px;
+  margin-right: 12px;
+  transform: rotate(-90deg); /* inicia do topo */
+}
+
+.pull-refresh.complete .progress-circle {
+  animation: spin 1s linear infinite;
+}
+
+.circle-bg {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.1);
+  stroke-width: 4;
+}
+
+.circle {
+  fill: none;
+  stroke: url(#spinnerGradient); /* aplica degradê */
+  stroke-width: 4;
+  stroke-linecap: round;
+  transition: stroke-dasharray 0.2s ease;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(270deg); /* gira 360° a partir de -90° */
+  }
+}
+
+/* small helpers your JS may toggle */
+body.sidebar-open { overflow: hidden; }
+
+/* keep menu small-type rule (existing) */
+#menu > ul > li > ul > li > a { font-size: 0.9em; line-height: 1.2; }
+
+/* active item style - keeps alignment with previous CSS, but using variables */
+#menu a.active,
+#menu > ul > li > ul > li > a.active {
+  background-color: transparent;
+  color: var(--accent);
+  font-weight: 600;
+  border-left: 3px solid var(--accent);
+  padding-left: calc(1rem - 3px);
+}
+
+/* theme switch style (header) - uses same class as injected in HTML */
+.theme-switch {
   position: relative;
   width: 48px;
   height: 26px;
   display: inline-block;
   cursor: pointer;
   margin-left: 8px;
-  vertical-align: middle;
-  box-sizing: border-box;
-  z-index: 1400;
 }
-
-/* accessible hide for input (keeps focusability) */
-label.theme-switch input[type="checkbox"] {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  margin: -1px;
-  overflow: hidden;
-  clip: rect(0 0 0 0);
-  white-space: nowrap;
-  border: 0;
-  opacity: 0;
-  -webkit-appearance: none;
-  appearance: none;
-}
-
-/* slider and knob */
-label.theme-switch .slider {
-  position: absolute;
-  inset: 0;
-  border-radius: 999px;
-  background: rgba(255,255,255,0.06);
-  transition: background .28s var(--ease), box-shadow .28s var(--ease);
+.theme-switch input { display: none; }
+.theme-switch .slider {
+  position: absolute; inset: 0; border-radius: 999px; background: rgba(255,255,255,0.06); transition: .28s var(--ease);
   box-shadow: inset 0 1px 0 rgba(255,255,255,0.02);
-  display: block;
 }
-label.theme-switch .slider::before {
-  content: "";
-  position: absolute;
-  width: 20px;
-  height: 20px;
-  left: 3px;
-  top: 3px;
-  border-radius: 50%;
-  background: var(--accent);
-  transition: transform .28s var(--ease), background .28s var(--ease);
-  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+.theme-switch .slider::before {
+  content: ""; position: absolute; width: 20px; height:20px; left:3px; top:3px; border-radius:50%;
+  background: var(--accent); transition: .28s var(--ease); box-shadow: 0 4px 12px rgba(0,0,0,0.3);
 }
+.theme-switch input:checked + .slider { background: rgba(0,0,0,0.06); }
+.theme-switch input:checked + .slider::before { transform: translateX(22px); background: var(--accent-strong); }
 
-/* checked state (supports + and ~ structures) */
-label.theme-switch input[type="checkbox"]:checked + .slider,
-label.theme-switch input[type="checkbox"]:checked ~ .slider {
-  background: rgba(0,0,0,0.06);
+/* small message helpers (missing-image etc) kept intact */
+.missing-image-message {
+  display: inline-flex; align-items:center; gap:0.6rem; padding:0.45rem 0.6rem; border-radius:8px;
+  background: #fff8f0; color:#6b4a2a; border:1px solid rgba(107,74,42,0.12); font-size:0.95rem; font-style:italic; line-height:1.2;
+  max-width:100%; box-shadow: 0 2px 6px rgba(11,26,43,0.04);
 }
-label.theme-switch input[type="checkbox"]:checked + .slider::before,
-label.theme-switch input[type="checkbox"]:checked ~ .slider::before {
-  transform: translateX(22px);
-  background: var(--accent-strong);
-}
-
-/* keyboard focus */
-label.theme-switch input[type="checkbox"]:focus + .slider,
-label.theme-switch input[type="checkbox"]:focus ~ .slider {
-  box-shadow: 0 0 0 3px rgba(0,120,212,0.12);
-}
-
-/* If some external CSS hides header-actions via aria-hidden, ensure visibility */
-.header-actions,
-.header-actions[aria-hidden="true"] {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  visibility: visible;
-  opacity: 1;
-  pointer-events: auto;
-}
-
-/* debug helper (remove in production) */
-/* .debug-outline { outline: 2px dashed rgba(255,255,255,0.12) !important; } */
-
-/* -------------------------
-   Light theme variables (override)
-   (mantém compatibilidade com body[data-theme="light"])
-   ------------------------- */
-body[data-theme="light"]{
-  --bg: #f6f7fb;
-  --bg-alt: #ffffff;
-  --card: #ffffff;
-  --text: #0f1724;
-  --muted: #6b7280;
-  --accent: #2563eb;
-  --accent-strong: #1e4fd4;
-  --border: rgba(15,23,42,0.06);
-  --shadow-lg: 0 10px 30px rgba(15,23,42,0.08);
-  --shadow-sm: 0 2px 6px rgba(15,23,42,0.06);
-}
-
-/* -------------------------
-   Botões (primário / secundário / ghost)
-   ------------------------- */
-.btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  padding: 0.5rem 0.85rem;
-  border-radius: 8px;
-  font-weight: 600;
-  font-size: 0.95rem;
-  border: 1px solid transparent;
-  cursor: pointer;
-  transition: background .16s var(--ease), transform .08s var(--ease), box-shadow .12s var(--ease);
-  box-shadow: var(--shadow-sm);
-  color: var(--text);
-  background: var(--card);
-}
-
-/* primary */
-.btn-primary, #add-content-btn {
-  background: linear-gradient(180deg, var(--accent), var(--accent-strong));
-  color: #fff;
-  border-color: transparent;
-  box-shadow: 0 6px 18px rgba(0,0,0,0.12);
-}
-.btn-primary:hover, #add-content-btn:hover { filter: brightness(.98); transform: translateY(-1px); }
-
-/* secondary */
-.btn-secondary {
-  background: transparent;
-  color: var(--text);
-  border: 1px solid var(--border);
-}
-.btn-secondary:hover { background: rgba(255,255,255,0.02); }
-
-/* ghost / link-like */
-.btn-ghost {
-  background: transparent;
-  color: var(--accent);
-  border: none;
-  padding: 0.35rem 0.5rem;
-}
-
-/* small / icon buttons */
-.btn-icon {
-  width: 40px; height: 40px; padding: 0; border-radius: 8px;
-  display:inline-flex; align-items:center; justify-content:center;
-}
-
-/* -------------------------
-   Estado active do menu (reforçado)
-   ------------------------- */
-#menu a,
-#menu > ul > li > a,
-#menu > ul > li > ul > li > a {
-  color: var(--muted);
-  text-decoration: none;
-  display: block;
-  padding: 0.6rem 0.75rem;
-  border-left: 3px solid transparent;
-  transition: color .12s var(--ease), background .12s var(--ease), border-color .12s var(--ease);
-}
-
-/* estado hover */
-#menu a:hover,
-#menu > ul > li > a:hover,
-#menu > ul > li > ul > li > a:hover {
-  color: var(--text);
-  background: rgba(255,255,255,0.02);
-}
-
-/* estado active (maior especificidade para evitar sobrescrita) */
-#menu a.active,
-#menu > ul > li > a.active,
-#menu > ul > li > ul > li > a.active,
-.sidebar li > a.active {
-  background-color: transparent;
-  color: var(--accent) !important;
-  font-weight: 600;
-  border-left-color: var(--accent) !important;
-  padding-left: calc(1rem - 3px);
-}
-
-/* se o menu usar <span> em vez de <a> */
-#menu li.active > span,
-#menu li.active > a {
-  color: var(--accent);
-  font-weight: 600;
-}
-
-/* -------------------------
-   Theme switch colors por tema
-   ------------------------- */
-/* dark (padrão) já usa var(--accent) */
-label.theme-switch .slider { background: rgba(255,255,255,0.06); }
-label.theme-switch .slider::before { background: var(--accent); }
-
-/* light mode: ajuste visual do slider e knob */
-body[data-theme="light"] label.theme-switch .slider {
-  background: rgba(15,23,42,0.06);
-  box-shadow: inset 0 1px 0 rgba(0,0,0,0.02);
-}
-body[data-theme="light"] label.theme-switch .slider::before {
-  background: var(--accent);
-  box-shadow: 0 3px 8px rgba(0,0,0,0.12);
-}
-
-/* -------------------------
-   Pequenos ajustes de acessibilidade e layout
-   ------------------------- */
-label.theme-switch { touch-action: manipulation; }
-label.theme-switch input[type="checkbox"] { cursor: pointer; }
-
-/* garante contraste mínimo para botões em tema claro */
-body[data-theme="light"] .btn-primary { box-shadow: 0 6px 18px rgba(30,79,212,0.08); }
-
-/* -------------------------
-   Utilitários (opcional)
-   ------------------------- */
-.btn[disabled], button[disabled] { opacity: 0.5; cursor: not-allowed; pointer-events: none; }
+.missing-image-message::before { content: "⚠️"; display:inline-block; font-size:1.05rem; margin-left:0.1rem; opacity:0.95; }
+.missing-image-message.error { background:#fff1f0; color:#8a1f1f; border-color: rgba(138,31,31,0.12); }
+@media (max-width:480px) { .missing-image-message { display:block; width: calc(100% - 1rem); padding:0.5rem; } }
