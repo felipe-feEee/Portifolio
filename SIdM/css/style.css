@@ -230,6 +230,45 @@ body[data-theme="light"] .search-bar::placeholder { color: rgba(0,0,0,0.36); }
 .sidebar li ul li a { display:block; padding:0.45rem 0.75rem; color: var(--muted); font-size:0.9rem; border-left: 3px solid transparent; }
 .sidebar li ul li a:hover { color: var(--text); border-left-color: var(--accent); }
 
+/* aplica o mesmo estilo do hover ao estado active */
+#menu a.active,
+#menu > ul > li > a.active,
+#menu > ul > li > ul > li > a.active,
+.sidebar li > a.active,
+.sidebar li > span.active,
+#menu li.active > a,
+#menu li.active > span {
+  color: var(--text) !important;
+  background: rgba(255,255,255,0.02) !important;
+  border-left-color: var(--accent) !important;
+  font-weight: 600;
+  padding-left: calc(0.75rem - 3px);
+  transition: color .12s var(--ease), background .12s var(--ease), border-color .12s var(--ease);
+}
+
+/* garante que links internos com .active mantenham display e padding */
+#menu a.active,
+#menu > ul > li > a.active,
+#menu > ul > li > ul > li > a.active {
+  display: block;
+  padding: 0.45rem 0.75rem;
+}
+
+/* alternativa: se você marca o <li> em vez do <a>, propaga o estilo */
+#menu li.active > a,
+#menu li.active > span {
+  color: var(--text);
+  background: rgba(255,255,255,0.02);
+  border-left-color: var(--accent);
+  font-weight: 600;
+}
+
+/* pequena melhoria visual para contraste no tema claro */
+body[data-theme="light"] #menu a.active,
+body[data-theme="light"] #menu li.active > a {
+  background: rgba(15,23,42,0.04);
+}
+
 /* ---------- CONTENT area (center) ---------- */
 .content{
   flex: 1;
