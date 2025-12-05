@@ -7,25 +7,26 @@
    =================================================================== */
 
 /* ---------- Variáveis (core) ---------- */
-:root{
+:root {
   --font-sans: "Inter", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-
-  /* Dark (padrão) */
-  --bg: #0f1724;              /* fundo app */
-  --bg-alt: #0b1320;          /* gradiente / shades */
-  --card: #0f1726;            /* cartão / editor fundo */
-  --text: #E6EEF8;            /* texto principal */
-  --muted: #9aa6b2;           /* texto secundário */
-  --accent: #ff6666;          /* seu vermelho como destaque */
+  --bg: #0f1724;
+  --bg-alt: #0b1320;
+  --card: #0f1726;
+  --text: #E6EEF8;
+  --muted: #9aa6b2;
+  --accent: #ff6666;
   --accent-strong: #ff4b4b;
   --border: rgba(255,255,255,0.06);
   --shadow-lg: 0 12px 40px rgba(2,6,23,0.6);
   --shadow-sm: 0 2px 8px rgba(2,6,23,0.4);
-
   --radius: 10px;
   --header-height: 64px;
   --max-content: 980px;
   --ease: cubic-bezier(.2,.9,.25,1);
+  -webkit-font-smoothing: antialiased;
+  box-sizing: border-box;
+  scrollbar-width: thin;
+  scrollbar-color: var(--accent) transparent;
 }
 
 /* Light theme override */
