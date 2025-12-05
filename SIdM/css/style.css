@@ -652,3 +652,71 @@ label.theme-switch input[type="checkbox"]:focus ~ .slider {
   box-shadow: 0 0 0 3px rgba(0,120,212,0.12) !important;
 }
 
+   /* FORÇA: garante visibilidade do container mesmo se aria-hidden estiver presente */
+.header-actions,
+.header-actions[aria-hidden="true"] {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+
+/* Força o label e o slider a aparecerem (prioridade alta) */
+label.theme-switch {
+  display: inline-block !important;
+  position: relative !important;
+  width: 48px !important;
+  height: 26px !important;
+  margin-left: 8px !important;
+  vertical-align: middle !important;
+  z-index: 1400 !important;
+  pointer-events: auto !important;
+}
+
+/* garante que o slider tenha área visível e não seja reduzido a 0 */
+label.theme-switch .slider {
+  display: block !important;
+  position: relative !important;
+  inset: 0 !important;
+  min-width: 48px !important;
+  min-height: 26px !important;
+  border-radius: 999px !important;
+  background: rgba(255,255,255,0.06) !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.02) !important;
+  opacity: 1 !important;
+}
+
+/* knob visível */
+label.theme-switch .slider::before {
+  left: 3px !important;
+  top: 3px !important;
+  width: 20px !important;
+  height: 20px !important;
+  background: var(--accent) !important;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3) !important;
+}
+
+/* fallback: se algo reativar o checkbox nativo, esconda com força */
+label.theme-switch input[type="checkbox"] {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  margin: -1px !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+  clip: rect(0 0 0 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+  opacity: 0 !important;
+  -webkit-appearance: none !important;
+  appearance: none !important;
+}
+
+/* debug helper (remova depois) — mostra borda para inspecionar */
+.header-actions.debug-outline,
+label.theme-switch.debug-outline,
+label.theme-switch .slider.debug-outline {
+  outline: 2px dashed rgba(255,255,255,0.12) !important;
+}
+
