@@ -489,27 +489,6 @@ body.sidebar-open { overflow: hidden; }
   padding-left: calc(1rem - 3px);
 }
 
-/* theme switch style (header) - uses same class as injected in HTML */
-.theme-switch {
-  position: relative;
-  width: 48px;
-  height: 26px;
-  display: inline-block;
-  cursor: pointer;
-  margin-left: 8px;
-}
-.theme-switch input { display: none; }
-.theme-switch .slider {
-  position: absolute; inset: 0; border-radius: 999px; background: rgba(255,255,255,0.06); transition: .28s var(--ease);
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.02);
-}
-.theme-switch .slider::before {
-  content: ""; position: absolute; width: 20px; height:20px; left:3px; top:3px; border-radius:50%;
-  background: var(--accent); transition: .28s var(--ease); box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-}
-.theme-switch input:checked + .slider { background: rgba(0,0,0,0.06); }
-.theme-switch input:checked + .slider::before { transform: translateX(22px); background: var(--accent-strong); }
-
 /* small message helpers (missing-image etc) kept intact */
 .missing-image-message {
   display: inline-flex; align-items:center; gap:0.6rem; padding:0.45rem 0.6rem; border-radius:8px;
@@ -519,3 +498,121 @@ body.sidebar-open { overflow: hidden; }
 .missing-image-message::before { content: "⚠️"; display:inline-block; font-size:1.05rem; margin-left:0.1rem; opacity:0.95; }
 .missing-image-message.error { background:#fff1f0; color:#8a1f1f; border-color: rgba(138,31,31,0.12); }
 @media (max-width:480px) { .missing-image-message { display:block; width: calc(100% - 1rem); padding:0.5rem; } }
+
+/* =========================
+   Theme switch (consolidado)
+   - label.theme-switch
+   - input#themeToggle
+   - span.slider
+   - suporta body[data-theme="light"]
+   ========================= */
+
+/* container do switch */
+label.theme-switch {
+  display: inline-block;
+  position: relative;
+  width: 48px;
+  height: 26px;
+  margin-left: 8px;
+  vertical-align: middle;
+  cursor: pointer;
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  z-index: 1400;
+}
+
+/* input escondido de forma acessível (mantém foco e teclado) */
+label.theme-switch input[type="checkbox"] {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+  opacity: 0;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+/* trilho do switch */
+label.theme-switch .slider {
+  position: absolute;
+  inset: 0;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.06);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.02);
+  transition: background .28s var(--ease), box-shadow .28s var(--ease);
+  display: block;
+}
+
+/* knob (bola) */
+label.theme-switch .slider::before {
+  content: "";
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  left: 3px;
+  top: 3px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.28);
+  transition: transform .28s var(--ease), background .28s var(--ease), box-shadow .28s var(--ease);
+  will-change: transform;
+}
+
+/* estado checked (suporta + e ~ por segurança) */
+label.theme-switch input[type="checkbox"]:checked + .slider,
+label.theme-switch input[type="checkbox"]:checked ~ .slider {
+  background: rgba(0,0,0,0.06);
+}
+label.theme-switch input[type="checkbox"]:checked + .slider::before,
+label.theme-switch input[type="checkbox"]:checked ~ .slider::before {
+  transform: translateX(22px);
+  background: var(--accent-strong);
+  box-shadow: 0 6px 16px rgba(0,0,0,0.32);
+}
+
+/* foco por teclado visível */
+label.theme-switch input[type="checkbox"]:focus + .slider,
+label.theme-switch input[type="checkbox"]:focus ~ .slider {
+  box-shadow: 0 0 0 4px rgba(37,99,235,0.12);
+}
+
+/* animação opcional: adicione classe .animate ao label para movimento sutil */
+label.theme-switch.animate .slider::before {
+  animation: flagWave 1.6s ease-in-out infinite;
+}
+@keyframes flagWave {
+  0%   { transform: translateX(0) skewX(0deg); }
+  50%  { transform: translateX(1px) skewX(2deg); }
+  100% { transform: translateX(0) skewX(0deg); }
+}
+
+/* adaptações para tema claro */
+body[data-theme="light"] label.theme-switch .slider {
+  background: rgba(15,23,42,0.06);
+  box-shadow: inset 0 1px 0 rgba(0,0,0,0.02);
+}
+body[data-theme="light"] label.theme-switch .slider::before {
+  background: var(--accent);
+  box-shadow: 0 3px 8px rgba(0,0,0,0.12);
+}
+
+/* touch target mínimo e acessibilidade */
+label.theme-switch { touch-action: manipulation; }
+label.theme-switch .slider,
+label.theme-switch .slider::before { pointer-events: none; }
+
+/* responsivo: reduz tamanho em telas muito pequenas */
+@media (max-width: 420px) {
+  label.theme-switch { width: 42px; height: 24px; margin-left: 6px; }
+  label.theme-switch .slider::before { width: 18px; height: 18px; left: 3px; top: 3px; }
+  label.theme-switch input[type="checkbox"]:checked + .slider::before { transform: translateX(18px); }
+}
+
+/* utilitário para forçar visualização caso haja regras conflitantes */
+label.theme-switch.force-visible { display:inline-block !important; visibility:visible !important; opacity:1 !important; }
