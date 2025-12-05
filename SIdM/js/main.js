@@ -1,73 +1,234 @@
-/* Supabase singleton + UI helpers (module) */
+/* =========================
+   Supabase singleton + UI helpers (module)
+   - setSupabaseConfig({ url, key, tableName, bucketName })
+   - initializeSupabase(), getSupabase(), destroySupabase()
+   ========================= */
+
 let _supabase = null;
 let _initializing = null;
-let _supabaseConfig = { url: null, key: null };
+let _supabaseConfig = {
+  url: null,
+  key: null,
+  tableName: 'posts',
+  bucketName: 'images'
+};
 
-export function setSupabaseConfig({ url, key } = {}) {
-  _supabaseConfig = { ..._supabaseConfig, url, key };
+setSupabaseConfig({
+  url: 'https://pwshckrmqaqymngbosgo.supabase.co',
+  key: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB3c2hja3JtcWFxeW1uZ2Jvc2dvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQzNjAwOTEsImV4cCI6MjA3OTkzNjA5MX0.f8iX0RoqrdxJmq-EgSyn_YWPgCHMoARQTT4ygtbcoLg',      // substitua pela anon key
+  tableName: 'posts',
+  bucketName: 'images'
+});
+
+
+/**
+ * Atualiza configuração em runtime.
+ * IMPORTANTE: use apenas anon key no frontend.
+ */
+export function setSupabaseConfig({ url, key, tableName, bucketName } = {}) {
+  if (url) _supabaseConfig.url = url;
+  if (key) _supabaseConfig.key = key;
+  if (tableName) _supabaseConfig.tableName = tableName;
+  if (bucketName) _supabaseConfig.bucketName = bucketName;
 }
-export function getSupabase() { return _supabase; }
+
+/** Retorna o cliente já inicializado (ou null) */
+export function getSupabase() {
+  return _supabase;
+}
+
+/** Limpa conexões/canais (útil em dev/HMR) */
 export async function destroySupabase() {
-  try { if (!_supabase) return; if (typeof _supabase.removeAllChannels === 'function') _supabase.removeAllChannels(); }
-  catch(e){ console.warn('Erro ao limpar Supabase:', e); } finally { _supabase = null; }
+  try {
+    if (!_supabase) return;
+    if (typeof _supabase.removeAllChannels === 'function') {
+      _supabase.removeAllChannels();
+    }
+    // não chame signOut automaticamente aqui (pode afetar UX)
+  } catch (e) {
+    console.warn('Erro ao limpar Supabase:', e);
+  } finally {
+    _supabase = null;
+  }
 }
-export async function initializeSupabase({ retries = 1, retryDelay = 300 } = {}) {
+
+/**
+ * Inicializa o cliente Supabase com import dinâmico, retry/backoff e proteção.
+ * Retorna o cliente ou null em falha.
+ */
+export async function initializeSupabase({ retries = 2, retryDelay = 400, timeoutMs = 8000 } = {}) {
   if (_supabase) return _supabase;
   if (_initializing) return _initializing;
+
   _initializing = (async () => {
     const { url, key } = _supabaseConfig;
-    if (!url || !key) { console.warn('Supabase não configurado (url/key ausentes).'); _initializing = null; return null; }
+    if (!url || !key) {
+      console.warn('Supabase não configurado (url/key ausentes).');
+      _initializing = null;
+      return null;
+    }
+
+    // tentativa com retry/backoff
     for (let attempt = 0; attempt <= retries; attempt++) {
       try {
+        // cleanup caso exista cliente residual (HMR/dev)
+        await destroySupabase();
+
+        // import dinâmico do SDK ESM
         const { createClient } = await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm');
+
+        // cria cliente com persistência de sessão
         const supabase = createClient(url, key, { auth: { persistSession: true } });
-        try { await supabase.auth.getSession(); } catch(e){/* não fatal */ }
-        _supabase = supabase; _initializing = null; console.info('Supabase inicializado.'); return _supabase;
+
+        // teste leve de conectividade com timeout (não bloqueia UI)
+        const sessionCheck = (async () => {
+          try {
+            const p = supabase.auth.getSession();
+            if (timeoutMs > 0) {
+              // race entre getSession e timeout
+              const res = await Promise.race([
+                p,
+                new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), timeoutMs))
+              ]);
+              return res;
+            } else {
+              return await p;
+            }
+          } catch (e) {
+            // não fatal: apenas log
+            console.debug('Supabase getSession (não fatal):', e);
+            return null;
+          }
+        })();
+
+        await sessionCheck;
+
+        _supabase = supabase;
+        _initializing = null;
+        console.info('Supabase inicializado com sucesso.');
+        return _supabase;
       } catch (err) {
-        console.error(`Erro inicializando Supabase (tentativa ${attempt+1}):`, err);
-        if (attempt < retries) await new Promise(r => setTimeout(r, retryDelay * (attempt + 1)));
-        else { _initializing = null; return null; }
+        console.error(`Falha ao inicializar Supabase (tentativa ${attempt + 1}):`, err);
+        if (attempt < retries) {
+          const delay = retryDelay * (attempt + 1);
+          await new Promise(r => setTimeout(r, delay));
+          continue;
+        } else {
+          _initializing = null;
+          return null;
+        }
       }
     }
+    _initializing = null;
+    return null;
   })();
+
   return _initializing;
 }
 
-/* Sidebar / Theme helpers (exportados) */
+/* =========================
+   Sidebar / Theme helpers (exportados)
+   (mantive suas implementações com pequenas melhorias)
+   ========================= */
+
 let _sidebarAutoCloseInitialized = false;
+
 export function toggleSidebar(open) {
   const sidebar = document.querySelector('.sidebar');
   const hamburger = document.getElementById('hamburger-btn') || document.querySelector('.hamburger');
   if (!sidebar) return;
-  if (open) { sidebar.classList.add('open'); document.body.classList.add('sidebar-open'); if (hamburger) hamburger.classList.add('open'); }
-  else { sidebar.classList.remove('open'); document.body.classList.remove('sidebar-open'); if (hamburger) hamburger.classList.remove('open'); }
+  if (open) {
+    sidebar.classList.add('open');
+    document.body.classList.add('sidebar-open');
+    if (hamburger) hamburger.classList.add('open');
+  } else {
+    sidebar.classList.remove('open');
+    document.body.classList.remove('sidebar-open');
+    if (hamburger) hamburger.classList.remove('open');
+  }
 }
+
 export function setupSidebarAutoClose() {
-  if (_sidebarAutoCloseInitialized) return; _sidebarAutoCloseInitialized = true;
+  if (_sidebarAutoCloseInitialized) return;
+  _sidebarAutoCloseInitialized = true;
+
   const sidebar = document.querySelector('.sidebar');
   const hamburger = document.getElementById('hamburger-btn') || document.querySelector('.hamburger');
   if (!sidebar || !hamburger) return;
+
   sidebar.addEventListener('click', (e) => e.stopPropagation());
-  hamburger.addEventListener('click', (e) => { e.stopPropagation(); toggleSidebar(!sidebar.classList.contains('open')); });
-  document.addEventListener('click', (e) => { if (hamburger && (hamburger === e.target || hamburger.contains(e.target))) return; if (sidebar.contains(e.target)) return; if (sidebar.classList.contains('open')) toggleSidebar(false); });
-  window.addEventListener('resize', () => { if (window.innerWidth > 768 && sidebar.classList.contains('open')) toggleSidebar(false); });
+
+  hamburger.addEventListener('click', (e) => {
+    e.stopPropagation();
+    toggleSidebar(!sidebar.classList.contains('open'));
+  });
+
+  document.addEventListener('click', (e) => {
+    if (hamburger && (hamburger === e.target || hamburger.contains(e.target))) return;
+    if (sidebar.contains(e.target)) return;
+    if (sidebar.classList.contains('open')) toggleSidebar(false);
+  });
+
+  window.addEventListener('resize', () => {
+    if (window.innerWidth > 768 && sidebar.classList.contains('open')) toggleSidebar(false);
+  });
+
   let touchStartX = 0;
   document.addEventListener('touchstart', (e) => { touchStartX = e.touches[0].clientX; });
-  document.addEventListener('touchend', (e) => { const touchEndX = e.changedTouches[0].clientX; if (touchStartX - touchEndX > 60) toggleSidebar(false); if (touchEndX - touchStartX > 60) toggleSidebar(true); });
-}
-export function setupThemeToggle() {
-  const toggle = document.getElementById('themeToggle'); if (!toggle) return;
-  const KEY = 'sIdM_theme';
-  const applyTheme = (theme) => { if (theme === 'light') document.body.setAttribute('data-theme','light'); else document.body.removeAttribute('data-theme'); };
-  const stored = localStorage.getItem(KEY);
-  if (stored === 'light' || stored === 'dark') { applyTheme(stored); toggle.checked = stored === 'light'; }
-  else { const prefersLight = window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches; applyTheme(prefersLight ? 'light' : 'dark'); toggle.checked = prefersLight; }
-  toggle.addEventListener('change', function(){ const theme = this.checked ? 'light' : 'dark'; applyTheme(theme); localStorage.setItem(KEY, theme); });
-  try { if (window.matchMedia) { const mq = window.matchMedia('(prefers-color-scheme: light)'); (mq.addEventListener||mq.addListener).call(mq, (e)=>{ if (!localStorage.getItem(KEY)) { const newTheme = e.matches ? 'light' : 'dark'; applyTheme(newTheme); toggle.checked = newTheme === 'light'; } }); } } catch(e){}
+  document.addEventListener('touchend', (e) => {
+    const touchEndX = e.changedTouches[0].clientX;
+    if (touchStartX - touchEndX > 60) toggleSidebar(false);
+    if (touchEndX - touchStartX > 60) toggleSidebar(true);
+  });
 }
 
-function setupPullToRefresh() {
-  // cria dinamicamente o overlay
+export function setupThemeToggle() {
+  const toggle = document.getElementById('themeToggle');
+  if (!toggle) return;
+  const KEY = 'sIdM_theme';
+  const applyTheme = (theme) => {
+    if (theme === 'light') document.body.setAttribute('data-theme', 'light');
+    else document.body.removeAttribute('data-theme');
+  };
+
+  const stored = localStorage.getItem(KEY);
+  if (stored === 'light' || stored === 'dark') {
+    applyTheme(stored);
+    toggle.checked = stored === 'light';
+  } else {
+    const prefersLight = window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches;
+    applyTheme(prefersLight ? 'light' : 'dark');
+    toggle.checked = prefersLight;
+  }
+
+  toggle.addEventListener('change', function () {
+    const theme = this.checked ? 'light' : 'dark';
+    applyTheme(theme);
+    localStorage.setItem(KEY, theme);
+  });
+
+  try {
+    if (window.matchMedia) {
+      const mq = window.matchMedia('(prefers-color-scheme: light)');
+      (mq.addEventListener || mq.addListener).call(mq, (e) => {
+        if (!localStorage.getItem(KEY)) {
+          const newTheme = e.matches ? 'light' : 'dark';
+          applyTheme(newTheme);
+          toggle.checked = newTheme === 'light';
+        }
+      });
+    }
+  } catch (e) { /* ignore */ }
+}
+
+/* =========================
+   Pull-to-refresh (mantido)
+   ========================= */
+
+export function setupPullToRefresh() {
+  // cria dinamicamente o overlay se não existir
+  if (document.querySelector('.pull-refresh')) return;
+
   const refreshOverlay = document.createElement('div');
   refreshOverlay.className = 'pull-refresh';
   refreshOverlay.innerHTML = `
@@ -104,13 +265,10 @@ function setupPullToRefresh() {
     if (deltaY > 0 && window.scrollY === 0) {
       refreshOverlay.classList.add('show');
       const circle = refreshOverlay.querySelector('.circle');
-      const progress = Math.min(deltaY / 2, 100); // limite 100%
+      const progress = Math.min(deltaY / 2, 100);
       circle.setAttribute('stroke-dasharray', `${progress},100`);
-      if (progress >= 100) {
-        refreshOverlay.classList.add('complete');
-      } else {
-        refreshOverlay.classList.remove('complete');
-      }
+      if (progress >= 100) refreshOverlay.classList.add('complete');
+      else refreshOverlay.classList.remove('complete');
     }
   });
 
@@ -123,60 +281,23 @@ function setupPullToRefresh() {
   });
 }
 
-// inicialização única
-window.addEventListener('DOMContentLoaded', () => {
-  setupSidebarAutoClose();
-  setupThemeToggle();
+/* =========================
+   Carregar posts do banco (corrigido)
+   - usa getSupabase() em vez de window.supabase
+   - fallback local robusto
+   - usa _supabaseConfig.tableName
+   ========================= */
 
-  const addBtn = document.getElementById('add-content-btn');
-  if (addBtn) {
-    addBtn.addEventListener('click', () => {
-      renderEditorUI({ mode: 'add' });
-      toggleSidebar(false); // fecha sidebar no mobile
-    });
-  }
-});
-
-function scrollContentToTop({ smooth = true } = {}) {
-  const content = document.getElementById('content') || document.querySelector('.content');
-  if (!content) return;
-
-  if (smooth && 'scrollTo' in content) {
-    content.scrollTo({ top: 0, behavior: 'smooth' });
-  } else {
-    content.scrollTop = 0;
-  }
-}
-
-/* ============================
-   Configurações e estado
-   ============================ */
-const TITLE_MAX = 120;
-const CATEGORY_MAX = 64;
-
-let contentData = {};        // estrutura: { categoria: { key: { postId, titulo, conteudo, categoria } } }
-let currentCategoria = null;
-let currentId = null;
-let currentPostId = null;
-
-/* ============================
-  Funções utilitárias que usam a configuração
-  - carregarPostsDoBanco
-  - uploadToSupabase
-  - insertPost
-  - updatePost
-  Observação: todas usam SupabaseConfig.tableName / bucketName
-  ============================ */
-
-async function carregarPostsDoBanco() {
-  // tenta inicializar se necessário
-  if (!window.supabase) {
-    console.warn('Supabase indisponível. Tentando inicializar automaticamente...');
-    await initializeSupabase();
+export async function carregarPostsDoBanco() {
+  // garante cliente supabase
+  let supabase = getSupabase();
+  if (!supabase) {
+    console.warn('Supabase não inicializado. Tentando inicializar...');
+    supabase = await initializeSupabase();
   }
 
   // fallback local se supabase não estiver disponível
-  if (!window.supabase) {
+  if (!supabase) {
     console.warn('Supabase indisponível. Carregando dados locais se houver.');
     if (typeof window.dataPT !== 'undefined') {
       try {
@@ -209,10 +330,10 @@ async function carregarPostsDoBanco() {
   }
 
   // usa a tabela configurada
-  const table = SupabaseConfig.tableName || 'posts';
+  const table = _supabaseConfig.tableName || 'posts';
 
   try {
-    const { data, error } = await window.supabase
+    const { data, error } = await supabase
       .from(table)
       .select('*')
       .order('created_at', { ascending: false });
@@ -233,7 +354,6 @@ async function carregarPostsDoBanco() {
       if (!contentData[categoria]) contentData[categoria] = {};
       contentData[categoria][key] = {
         postId: post.id,
-        // tenta mapear campos comuns (title / titulo), ajuste se necessário
         titulo: post.title || post.titulo || '(Sem título)',
         conteudo: post.content || post.conteudo || '',
         categoria,
