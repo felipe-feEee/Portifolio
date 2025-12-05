@@ -75,7 +75,7 @@ export async function initializeSupabase({ retries = 2, retryDelay = 400, timeou
         await destroySupabase();
 
         // import dinâmico do SDK ESM
-        const { createClient } = await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm');
+        const { createClient } = await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.30.0/dist/esm/index.js');
 
         // cria cliente com persistência de sessão
         const supabase = createClient(url, key, { auth: { persistSession: true } });
