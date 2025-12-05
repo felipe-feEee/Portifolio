@@ -1,4 +1,5 @@
 // main.js — versão unificada e compatível com tabela "posts" e bucket "images"
+import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
 
 let _sidebarAutoCloseInitialized = false;
 
@@ -242,8 +243,6 @@ let currentPostId = null;
   Ou em runtime:
     window.configureSupabase({ ... });
   ============================ */
-
-import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
 
 const SupabaseConfig = {
   supabaseUrl: 'https://pwshckrmqaqymngbosgo.supabase.co',
