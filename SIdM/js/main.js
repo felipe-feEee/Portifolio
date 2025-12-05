@@ -1,137 +1,69 @@
-// main.js — versão unificada e compatível com tabela "posts" e bucket "images"
-let _sidebarAutoCloseInitialized = false;
+/* Supabase singleton + UI helpers (module) */
+let _supabase = null;
+let _initializing = null;
+let _supabaseConfig = { url: null, key: null };
 
-function toggleSidebar(open) {
+export function setSupabaseConfig({ url, key } = {}) {
+  _supabaseConfig = { ..._supabaseConfig, url, key };
+}
+export function getSupabase() { return _supabase; }
+export async function destroySupabase() {
+  try { if (!_supabase) return; if (typeof _supabase.removeAllChannels === 'function') _supabase.removeAllChannels(); }
+  catch(e){ console.warn('Erro ao limpar Supabase:', e); } finally { _supabase = null; }
+}
+export async function initializeSupabase({ retries = 1, retryDelay = 300 } = {}) {
+  if (_supabase) return _supabase;
+  if (_initializing) return _initializing;
+  _initializing = (async () => {
+    const { url, key } = _supabaseConfig;
+    if (!url || !key) { console.warn('Supabase não configurado (url/key ausentes).'); _initializing = null; return null; }
+    for (let attempt = 0; attempt <= retries; attempt++) {
+      try {
+        const { createClient } = await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm');
+        const supabase = createClient(url, key, { auth: { persistSession: true } });
+        try { await supabase.auth.getSession(); } catch(e){/* não fatal */ }
+        _supabase = supabase; _initializing = null; console.info('Supabase inicializado.'); return _supabase;
+      } catch (err) {
+        console.error(`Erro inicializando Supabase (tentativa ${attempt+1}):`, err);
+        if (attempt < retries) await new Promise(r => setTimeout(r, retryDelay * (attempt + 1)));
+        else { _initializing = null; return null; }
+      }
+    }
+  })();
+  return _initializing;
+}
+
+/* Sidebar / Theme helpers (exportados) */
+let _sidebarAutoCloseInitialized = false;
+export function toggleSidebar(open) {
   const sidebar = document.querySelector('.sidebar');
   const hamburger = document.getElementById('hamburger-btn') || document.querySelector('.hamburger');
   if (!sidebar) return;
-
-  if (open) {
-    sidebar.classList.add('open');
-    document.body.classList.add('sidebar-open');
-    if (hamburger) hamburger.classList.add('open');
-  } else {
-    sidebar.classList.remove('open');
-    document.body.classList.remove('sidebar-open');
-    if (hamburger) hamburger.classList.remove('open');
-  }
+  if (open) { sidebar.classList.add('open'); document.body.classList.add('sidebar-open'); if (hamburger) hamburger.classList.add('open'); }
+  else { sidebar.classList.remove('open'); document.body.classList.remove('sidebar-open'); if (hamburger) hamburger.classList.remove('open'); }
 }
-
-function setupSidebarAutoClose() {
-  if (_sidebarAutoCloseInitialized) return;
-  _sidebarAutoCloseInitialized = true;
-
+export function setupSidebarAutoClose() {
+  if (_sidebarAutoCloseInitialized) return; _sidebarAutoCloseInitialized = true;
   const sidebar = document.querySelector('.sidebar');
   const hamburger = document.getElementById('hamburger-btn') || document.querySelector('.hamburger');
   if (!sidebar || !hamburger) return;
-
-  // evita que cliques dentro da sidebar fechem ela
   sidebar.addEventListener('click', (e) => e.stopPropagation());
-
-  // hamburger abre/fecha
-  hamburger.addEventListener('click', (e) => {
-    e.stopPropagation();
-    const opening = !sidebar.classList.contains('open');
-    toggleSidebar(opening);
-  });
-
-  // clique fora fecha
-  document.addEventListener('click', (e) => {
-    const target = e.target;
-    if (hamburger && (hamburger === target || hamburger.contains(target))) return;
-    if (sidebar.contains(target)) return;
-    if (sidebar.classList.contains('open')) {
-      toggleSidebar(false);
-    }
-  });
-
-  // fecha ao redimensionar para desktop
-  window.addEventListener('resize', () => {
-    if (window.innerWidth > 768 && sidebar.classList.contains('open')) {
-      toggleSidebar(false);
-    }
-  });
-
-  // gestos touch (abre/fecha)
+  hamburger.addEventListener('click', (e) => { e.stopPropagation(); toggleSidebar(!sidebar.classList.contains('open')); });
+  document.addEventListener('click', (e) => { if (hamburger && (hamburger === e.target || hamburger.contains(e.target))) return; if (sidebar.contains(e.target)) return; if (sidebar.classList.contains('open')) toggleSidebar(false); });
+  window.addEventListener('resize', () => { if (window.innerWidth > 768 && sidebar.classList.contains('open')) toggleSidebar(false); });
   let touchStartX = 0;
-  document.addEventListener("touchstart", (e) => {
-    touchStartX = e.touches[0].clientX;
-  });
-  document.addEventListener("touchend", (e) => {
-    const touchEndX = e.changedTouches[0].clientX;
-    if (touchStartX - touchEndX > 60) {
-      toggleSidebar(false); // arrastar para esquerda → fecha
-    }
-    if (touchEndX - touchStartX > 60) {
-      toggleSidebar(true); // arrastar para direita → abre
-    }
-  });
+  document.addEventListener('touchstart', (e) => { touchStartX = e.touches[0].clientX; });
+  document.addEventListener('touchend', (e) => { const touchEndX = e.changedTouches[0].clientX; if (touchStartX - touchEndX > 60) toggleSidebar(false); if (touchEndX - touchStartX > 60) toggleSidebar(true); });
 }
-
-function setupThemeToggle() {
-  const toggle = document.getElementById('themeToggle');
-  if (!toggle) return;
-
-  // Nome da chave no localStorage
-  const KEY = 'sIdM_theme'; // "light" ou "dark"
-
-  // Função utilitária para aplicar tema
-  const applyTheme = (theme) => {
-    if (theme === 'light') {
-      document.body.setAttribute('data-theme', 'light');
-    } else {
-      document.body.removeAttribute('data-theme');
-    }
-  };
-
-  // Decide tema inicial: localStorage -> prefers-color-scheme -> fallback 'dark'
+export function setupThemeToggle() {
+  const toggle = document.getElementById('themeToggle'); if (!toggle) return;
+  const KEY = 'sIdM_theme';
+  const applyTheme = (theme) => { if (theme === 'light') document.body.setAttribute('data-theme','light'); else document.body.removeAttribute('data-theme'); };
   const stored = localStorage.getItem(KEY);
-  if (stored === 'light' || stored === 'dark') {
-    applyTheme(stored);
-    toggle.checked = stored === 'light';
-  } else {
-    // sem preferência salva: respeita o sistema (se suportado)
-    let prefersLight = false;
-    try {
-      prefersLight = window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches;
-    } catch (e) { /* ignore */ }
-
-    if (prefersLight) {
-      applyTheme('light');
-      toggle.checked = true;
-    } else {
-      applyTheme('dark'); // fallback
-      toggle.checked = false;
-    }
-  }
-
-  // Listener para alternar e persistir
-  toggle.addEventListener('change', function () {
-    const theme = this.checked ? 'light' : 'dark';
-    applyTheme(theme);
-    localStorage.setItem(KEY, theme);
-  });
-
-  // Atualiza automaticamente se o usuário mudar a preferência do sistema (opcional)
-  try {
-    if (window.matchMedia) {
-      const mq = window.matchMedia('(prefers-color-scheme: light)');
-      mq.addEventListener ? mq.addEventListener('change', (e) => {
-        // só aplica se não houver preferência salva
-        if (!localStorage.getItem(KEY)) {
-          const newTheme = e.matches ? 'light' : 'dark';
-          applyTheme(newTheme);
-          toggle.checked = newTheme === 'light';
-        }
-      }) : mq.addListener((e) => {
-        if (!localStorage.getItem(KEY)) {
-          const newTheme = e.matches ? 'light' : 'dark';
-          applyTheme(newTheme);
-          toggle.checked = newTheme === 'light';
-        }
-      });
-    }
-  } catch (e) {}
+  if (stored === 'light' || stored === 'dark') { applyTheme(stored); toggle.checked = stored === 'light'; }
+  else { const prefersLight = window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches; applyTheme(prefersLight ? 'light' : 'dark'); toggle.checked = prefersLight; }
+  toggle.addEventListener('change', function(){ const theme = this.checked ? 'light' : 'dark'; applyTheme(theme); localStorage.setItem(KEY, theme); });
+  try { if (window.matchMedia) { const mq = window.matchMedia('(prefers-color-scheme: light)'); (mq.addEventListener||mq.addListener).call(mq, (e)=>{ if (!localStorage.getItem(KEY)) { const newTheme = e.matches ? 'light' : 'dark'; applyTheme(newTheme); toggle.checked = newTheme === 'light'; } }); } } catch(e){}
 }
 
 function setupPullToRefresh() {
@@ -193,7 +125,6 @@ function setupPullToRefresh() {
 
 // inicialização única
 window.addEventListener('DOMContentLoaded', () => {
-  import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
   setupSidebarAutoClose();
   setupThemeToggle();
 
@@ -227,58 +158,6 @@ let contentData = {};        // estrutura: { categoria: { key: { postId, titulo,
 let currentCategoria = null;
 let currentId = null;
 let currentPostId = null;
-
-/* ============================
-  Configurador dinâmico do Supabase
-  Permite alterar: supabaseUrl, supabaseKey, tableName, bucketName
-  Uso:
-    setSupabaseConfig({
-      supabaseUrl: 'https://...supabase.co',
-      supabaseKey: 'public-or-service-key',
-      tableName: 'posts',
-      bucketName: 'images'
-    });
-    await initializeSupabase();
-  Ou em runtime:
-    window.configureSupabase({ ... });
-  ============================ */
-
-const SupabaseConfig = {
-  supabaseUrl: 'https://pwshckrmqaqymngbosgo.supabase.co',
-  supabaseKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB3c2hja3JtcWFxeW1uZ2Jvc2dvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQzNjAwOTEsImV4cCI6MjA3OTkzNjA5MX0.f8iX0RoqrdxJmq-EgSyn_YWPgCHMoARQTT4ygtbcoLg',
-  tableName: 'posts',   // padrão: posts
-  bucketName: 'images'  // padrão: images
-};
-
-export async function initializeSupabase() {
-  if (window.supabase) {
-    console.info('Supabase já inicializado.');
-    return window.supabase;
-  }
-
-  const url = SupabaseConfig.supabaseUrl;
-  const key = SupabaseConfig.supabaseKey;
-
-  if (!url || !key) {
-    console.warn('Supabase: credenciais não configuradas.');
-    return null;
-  }
-
-  try {
-    const supabase = createClient(url, key);
-    window.supabase = supabase;
-
-    // teste rápido
-    const { data, error } = await supabase.auth.getSession();
-    if (error) throw error;
-
-    console.info('Supabase inicializado com sucesso.');
-    return supabase;
-  } catch (err) {
-    console.error('Falha ao inicializar Supabase:', err);
-    return null;
-  }
-}
 
 /* ============================
   Funções utilitárias que usam a configuração
