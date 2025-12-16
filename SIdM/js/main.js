@@ -1060,7 +1060,7 @@ async function handlePaste(e) {
       document.execCommand('insertText', false, plain);
     }
   } catch (err) {
-    console.error('Erro    console.error('Erro no handlePaste:', err);
+    console.error('Erro no handlePaste:', err);
     insertNodeAtCursor(createMissingImageMessage('Falha ao processar conteúdo colado.'));
   }
 }
