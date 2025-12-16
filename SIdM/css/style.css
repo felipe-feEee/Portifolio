@@ -671,18 +671,14 @@ label.theme-switch.force-visible { display:inline-block !important; visibility:v
 
 
 /* ===== Override brando para o input do theme switch (acessível, invisível) ===== */
+
 label.theme-switch input[type="checkbox"] {
-  position: absolute !important;
-  top: 0;
-  left: 0;
-  opacity: 0 !important;
-  width: 100% !important;
-  height: 100% !important;
-  margin: 0 !important;
-  padding: 0 !important;
-  border: 0 !important;
-  /* sem clip/rect e sem reduzir para 1px — mantém área clicável dentro do label */
-  -webkit-appearance: none !important;
-  appearance: none !important;
-  pointer-events: none; /* o clique vai para o label, que ainda aciona o input */
+  position: absolute;
+  inset: 0;                /* ocupa toda a área do label */
+  opacity: 0;              /* invisível */
+  margin: 0;
+  padding: 0;
+  border: 0;
+  -webkit-appearance: none;
+  appearance: none;
 }
