@@ -7,6 +7,9 @@
 let currentCategoria = null;
 let currentId = null;
 let currentPostId = null;
+const TITLE_MAX = 160;        // ajuste conforme sua necessidade
+const CATEGORY_MAX = 60;      // ajuste conforme sua necessidade
+
 
 let _supabase = null;
 let _initializing = null;
@@ -534,26 +537,33 @@ async function insertPost(payload) {
 }
 
 
+
 async function updatePost(postId, payload) {
   if (!window.supabase) {
     console.warn('updatePost: Supabase não inicializado. Fallback local.');
     return null;
   }
-
-  // 🔧 Corrigido: não use setSupabaseConfig como objeto
-  const table = (_supabaseConfig && _supabaseConfig.tableName) || 'posts';
+  const table = _supabaseConfig.tableName;
 
   try {
-    const resp = await window.supabase.from(table).update(payload).eq('id', postId);
-    if (resp.error) {
-      console.error(`Erro ao atualizar na tabela "${table}":`, resp.error);
-      return null;
+    // 🔧 Supabase v2: para obter a linha atualizada, use .select().single()
+    const { data, error } = await window.supabase
+      .from(table)
+      .update(payload)
+      .eq('id', postId)
+      .select()
+      .single();
+
+    if (error) {
+      console.error(`Erro ao atualizar na tabela "${table}":`, error);
+      return { error };
     }
-    return resp.data;
+    // Retorna objeto consistente
+    return { data };
   } catch (err) {
     console.error('updatePost erro inesperado:', err);
-    return null;
-  }
+    return { error: err };
+   }
 }
 
 /* ============================
@@ -1245,6 +1255,24 @@ function setActiveArticle(idOrSelector) {
   }
 }
 
+function scrollContentToTop({ smooth = true } = {}) {
+  // Prioriza a área central de conteúdo
+  const content = document.querySelector('.content');
+  const article = document.getElementById('article-content');
+
+  const target = content || article || document.scrollingElement || document.documentElement;
+
+  try {
+    target.scrollTo({
+      top: 0,
+      behavior: smooth ? 'smooth' : 'auto'
+    });
+  } catch (_) {
+    // Fallback para navegadores antigos
+    target.scrollTop = 0;
+  }
+}
+
 function loadArticle(categoria, id) {
   if (!contentData[categoria] || !contentData[categoria][id]) return;
   const artigo = contentData[categoria][id];
@@ -1524,13 +1552,19 @@ async function saveContentInline() {
         if (!resp || resp.error) {
           console.warn('DBG updatePost returned error or falsy', resp);
           if (typeof carregarPostsDoBanco === 'function') await carregarPostsDoBanco();
-          const existsAfter = contentData?.[categoria] && Object.values(contentData[categoria] || {}).some(x => x.postId === currentPostId);
+      
+          const existsAfter =
+            window.contentData?.[categoria] &&
+            Object.values(window.contentData[categoria] || {}).some(x => x.postId === currentPostId);
+      
           if (!existsAfter) {
             alert('Erro ao salvar conteúdo.');
             return;
           }
         } else {
-          currentPostId = resp.id || (resp.data && (resp.data.id || resp.data.postId)) || currentPostId;
+          const updated = resp.data; // { id, ... }
+          // Se vier id, mantém coerência com seu fluxo
+          if (updated?.id) currentPostId = updated.id;
         }
       } else {
         const resp = await insertPost(payload);
