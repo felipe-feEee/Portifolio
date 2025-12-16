@@ -7,6 +7,9 @@
 let currentCategoria = null;
 let currentId = null;
 let currentPostId = null;
+const TITLE_MAX = 160;        // ajuste conforme sua necessidade
+const CATEGORY_MAX = 60;      // ajuste conforme sua necessidade
+
 
 let _supabase = null;
 let _initializing = null;
@@ -1242,6 +1245,24 @@ function setActiveArticle(idOrSelector) {
     if (itemRect.top < menuRect.top || itemRect.bottom > menuRect.bottom) {
       target.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
     }
+  }
+}
+
+function scrollContentToTop({ smooth = true } = {}) {
+  // Prioriza a área central de conteúdo
+  const content = document.querySelector('.content');
+  const article = document.getElementById('article-content');
+
+  const target = content || article || document.scrollingElement || document.documentElement;
+
+  try {
+    target.scrollTo({
+      top: 0,
+      behavior: smooth ? 'smooth' : 'auto'
+    });
+  } catch (_) {
+    // Fallback para navegadores antigos
+    target.scrollTop = 0;
   }
 }
 
