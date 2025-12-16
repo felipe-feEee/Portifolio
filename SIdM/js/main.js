@@ -57,9 +57,24 @@ export async function destroySupabase() {
  * Retorna o cliente ou null em falha.
  */
 
+
 export async function initializeSupabase({ retries = 2, retryDelay = 400, timeoutMs = 8000 } = {}) {
   if (_supabase) return _supabase;
   if (_initializing) return _initializing;
+
+  // Loader de script UMD com cache por id
+  const loadUmdOnce = (src, id = 'supabase-umd') =>
+    new Promise((resolve, reject) => {
+      if (document.getElementById(id)) return resolve();
+      const s = document.createElement('script');
+      s.id = id;
+      s.src = src;
+      s.async = true;
+      s.crossOrigin = 'anonymous';
+      s.onload = () => resolve();
+      s.onerror = (e) => reject(e);
+      document.head.appendChild(s);
+    });
 
   _initializing = (async () => {
     const { url, key } = _supabaseConfig;
@@ -69,36 +84,42 @@ export async function initializeSupabase({ retries = 2, retryDelay = 400, timeou
       return null;
     }
 
+    const UMD_CANDIDATES = [
+      // Versões estáveis do bundle UMD
+      'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.33.0/dist/umd/supabase.js',
+      'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.35.0/dist/umd/supabase.js',
+      'https://unpkg.com/@supabase/supabase-js@2.33.0/dist/umd/supabase.js',
+    ];
+
     for (let attempt = 0; attempt <= retries; attempt++) {
       try {
         await destroySupabase();
 
-        // Mantém seu import ESM (com fallback entre CDNs)
-        const sdkCandidates = [
-          'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.34.0/dist/module/index.mjs',
-          'https://unpkg.com/@supabase/supabase-js@2.34.0/dist/module/index.mjs'
-        ];
-        let createClient = null;
+        // Tenta carregar o UMD do Supabase
         let lastErr = null;
-
-        for (const sdkUrl of sdkCandidates) {
+        for (const src of UMD_CANDIDATES) {
           try {
-            const mod = await import(sdkUrl);
-            createClient = mod.createClient ?? mod.default?.createClient ?? null;
-            if (createClient) break;
+            await loadUmdOnce(src);
+            break;
           } catch (e) {
             lastErr = e;
           }
         }
+        // Valida se o createClient está disponível em algum namespace
+        const createClient =
+          window?.Supabase?.createClient ??
+          window?.supabase?.createClient ??
+          null;
+
         if (!createClient) {
-          throw new Error('createClient não encontrado no SDK do Supabase. Último erro: ' + (lastErr && lastErr.message));
+          throw new Error('createClient não encontrado após carregar UMD. Último erro: ' + (lastErr && (lastErr.message || lastErr.type)));
         }
 
         const supabase = createClient(_supabaseConfig.url, _supabaseConfig.key, {
           auth: { persistSession: true, autoRefreshToken: true }
         });
 
-        // Checagem leve de sessão com timeout
+        // Checagem leve de sessão com timeout (não fatal)
         const sessionCheck = (async () => {
           try {
             const p = supabase.auth.getSession();
@@ -118,13 +139,13 @@ export async function initializeSupabase({ retries = 2, retryDelay = 400, timeou
         })();
         await sessionCheck;
 
-        // 🔧 Correção crítica: expõe o client globalmente porque seus helpers usam window.supabase
         _supabase = supabase;
-        window.supabase = _supabase;      // <— faltava
-        window._supabase = _supabase;     // opcional para debug
+        // 🔧 expõe global para seus helpers
+        window.supabase = _supabase;
+        window._supabase = _supabase;
 
         _initializing = null;
-        console.info('Supabase inicializado com sucesso.');
+        console.info('Supabase inicializado com sucesso (UMD).');
         return _supabase;
       } catch (err) {
         console.error(`Falha ao inicializar Supabase (tentativa ${attempt + 1}):`, err);
@@ -138,6 +159,7 @@ export async function initializeSupabase({ retries = 2, retryDelay = 400, timeou
         }
       }
     }
+
     _initializing = null;
     return null;
   })();
@@ -201,16 +223,14 @@ export function setupSidebarAutoClose() {
   });
 }
 
+
 export function setupThemeToggle() {
   const toggle = document.getElementById('themeToggle');
   if (!toggle) return;
-
-  // Evita múltiplas instalações
   if (toggle.dataset.init === '1') return;
   toggle.dataset.init = '1';
 
-  // 🔧 Ajuda o CSS do switch no desktop
-  toggle.classList.add('switch');             // exige que seu CSS tenha estilo para .switch
+  toggle.classList.add('switch');
   toggle.setAttribute('role', 'switch');
 
   const KEY = 'sIdM_theme';
@@ -240,7 +260,6 @@ export function setupThemeToggle() {
     if (window.matchMedia) {
       const mq = window.matchMedia('(prefers-color-scheme: light)');
       (mq.addEventListener ?? mq.addListener).call(mq, (e) => {
-        // Só reage se não houver escolha manual salva
         if (!localStorage.getItem(KEY)) {
           const newTheme = e.matches ? 'light' : 'dark';
           applyTheme(newTheme);
@@ -325,7 +344,15 @@ export function setupPullToRefresh() {
    - usa _supabaseConfig.tableName
    ========================= */
 
+
 export async function carregarPostsDoBanco() {
+  // 🔧 Garante que contentData exista antes de qualquer uso
+  if (typeof window.contentData === 'undefined') {
+    window.contentData = {};
+  }
+  // Usa a ref local para clareza
+  let contentData = window.contentData;
+
   // garante cliente supabase
   let supabase = getSupabase();
   if (!supabase) {
@@ -336,8 +363,8 @@ export async function carregarPostsDoBanco() {
   // fallback local se supabase não estiver disponível
   if (!supabase) {
     console.warn('Supabase indisponível. Carregando dados locais se houver.');
-    if (typeof window.dataPT !== 'undefined') {
-      try {
+    try {
+      if (typeof window.dataPT !== 'undefined') {
         if (Array.isArray(window.dataPT)) {
           contentData = {};
           window.dataPT.forEach(post => {
@@ -354,13 +381,17 @@ export async function carregarPostsDoBanco() {
         } else {
           contentData = JSON.parse(JSON.stringify(window.dataPT));
         }
-      } catch (err) {
-        console.error('Erro ao usar dataPT como fallback:', err);
+        window.contentData = contentData; // sincroniza
+      } else {
         contentData = {};
+        window.contentData = contentData;
       }
-    } else {
+    } catch (err) {
+      console.error('Erro ao usar dataPT como fallback:', err);
       contentData = {};
+      window.contentData = contentData;
     }
+
     renderMenu();
     renderWelcome();
     return;
@@ -377,7 +408,7 @@ export async function carregarPostsDoBanco() {
 
     if (error) {
       console.error(`Erro ao buscar dados da tabela "${table}":`, error);
-      contentData = {};
+      window.contentData = {};
       renderMenu();
       renderWelcome();
       return;
@@ -399,11 +430,12 @@ export async function carregarPostsDoBanco() {
       };
     });
 
+    window.contentData = contentData; // sincroniza
     renderMenu();
     renderWelcome();
   } catch (err) {
     console.error('Erro inesperado ao carregar posts:', err);
-    contentData = {};
+    window.contentData = {};
     renderMenu();
     renderWelcome();
   }
@@ -417,8 +449,9 @@ async function uploadToSupabase(file) {
     return '';
   }
 
-  // 🔧 Corrigido: não use setSupabaseConfig como objeto; leia da config real
-  const bucket = (_supabaseConfig && _supabaseConfig.bucketName) || 'images';
+   const { bucketName, tableName } = _supabaseConfig;
+   const bucket = bucketName;
+   const table  = table;
 
   const safeName = sanitizeFilename(file);
   const filePath = `${safeName.startsWith('/') ? safeName.slice(1) : safeName}`;
