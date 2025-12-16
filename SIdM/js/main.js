@@ -815,15 +815,18 @@ function extractDataUrlsFromHtml(html) {
 /**
  * Converte um data:image para um File (para upload).
  */
+
 function dataURLtoFile(dataurl, filename) {
   const arr = dataurl.split(',');
-  const mime = arr[0].match(/:(.*?);/)[1];
-  const b64 = arr[1] || '';
-  const bstr = atob(b64);
+  const mime = arr[0].match(/:(.*?);/)[1];          // ex.: "data:image/png;base64"
+  const b64  = arr[1] || '';                        // parte base64
+  const bstr = atob(b64);                           // decodifica base64 para string binária
   let n = bstr.length;
-  const u8 = new Uint8Array(n);
-  while (n--) u8[n] =  while (n--) u8[n] = bstr.charCodeAt(n);
-  return new File([u8], filename, { type: mime });
+  const u8 = new Uint8Array(n);                     // buffer de bytes
+  while (n--) {
+    u8[n] = bstr.charCodeAt(n);                     // copia cada byte
+  }
+  return new File([u  return new File([u8], filename, { type: mime });
 }
 
 /**
