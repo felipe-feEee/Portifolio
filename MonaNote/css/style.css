@@ -6,27 +6,40 @@
    - Switch no header usa #themeToggle
    =================================================================== */
 
-/* ---------- Variáveis (core) ---------- */
-:root{
+/* ---------- Variáveis globais ---------- */
+:root {
   --font-sans: "Inter", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-
-  /* Dark (padrão) */
-  --bg: #0f1724;              /* fundo app */
-  --bg-alt: #0b1320;          /* gradiente / shades */
-  --card: #0f1726;            /* cartão / editor fundo */
-  --text: #E6EEF8;            /* texto principal */
-  --muted: #9aa6b2;           /* texto secundário */
-  --accent: #ff6666;          /* seu vermelho como destaque */
+  --bg: #0f1724;
+  --bg-alt: #0b1320;
+  --card: #0f1726;
+  --text: #E6EEF8;
+  --muted: #9aa6b2;
+  --accent: #ff6666;
   --accent-strong: #ff4b4b;
   --border: rgba(255,255,255,0.06);
   --shadow-lg: 0 12px 40px rgba(2,6,23,0.6);
   --shadow-sm: 0 2px 8px rgba(2,6,23,0.4);
-
   --radius: 10px;
   --header-height: 64px;
   --max-content: 980px;
   --ease: cubic-bezier(.2,.9,.25,1);
+  /* apenas variáveis aqui — sem propriedades de apresentação */
 }
+
+/* ---------- Propriedades globais (aplicadas ao documento) ---------- */
+html, body {
+  height: 100%;
+  box-sizing: border-box;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-family: var(--font-sans);
+  color: var(--text);
+  scrollbar-width: thin;
+  scrollbar-color: var(--accent) transparent;
+  margin: 0;
+  background: linear-gradient(180deg, var(--bg), var(--bg-alt));
+}
+* { box-sizing: inherit; }
 
 /* Light theme override */
 body[data-theme="light"]{
@@ -216,6 +229,45 @@ body[data-theme="light"] .search-bar::placeholder { color: rgba(0,0,0,0.36); }
 .sidebar li.active > ul { display:block; }
 .sidebar li ul li a { display:block; padding:0.45rem 0.75rem; color: var(--muted); font-size:0.9rem; border-left: 3px solid transparent; }
 .sidebar li ul li a:hover { color: var(--text); border-left-color: var(--accent); }
+
+/* aplica o mesmo estilo do hover ao estado active */
+#menu a.active,
+#menu > ul > li > a.active,
+#menu > ul > li > ul > li > a.active,
+.sidebar li > a.active,
+.sidebar li > span.active,
+#menu li.active > a,
+#menu li.active > span {
+  color: var(--text) !important;
+  background: rgba(255,255,255,0.02) !important;
+  border-left-color: var(--accent) !important;
+  font-weight: 600;
+  padding-left: calc(0.75rem - 3px);
+  transition: color .12s var(--ease), background .12s var(--ease), border-color .12s var(--ease);
+}
+
+/* garante que links internos com .active mantenham display e padding */
+#menu a.active,
+#menu > ul > li > a.active,
+#menu > ul > li > ul > li > a.active {
+  display: block;
+  padding: 0.45rem 0.75rem;
+}
+
+/* alternativa: se você marca o <li> em vez do <a>, propaga o estilo */
+#menu li.active > a,
+#menu li.active > span {
+  color: var(--text);
+  background: rgba(255,255,255,0.02);
+  border-left-color: var(--accent);
+  font-weight: 600;
+}
+
+/* pequena melhoria visual para contraste no tema claro */
+body[data-theme="light"] #menu a.active,
+body[data-theme="light"] #menu li.active > a {
+  background: rgba(15,23,42,0.04);
+}
 
 /* ---------- CONTENT area (center) ---------- */
 .content{
@@ -616,3 +668,76 @@ label.theme-switch .slider::before { pointer-events: none; }
 
 /* utilitário para forçar visualização caso haja regras conflitantes */
 label.theme-switch.force-visible { display:inline-block !important; visibility:visible !important; opacity:1 !important; }
+
+
+/* ===== Override brando para o input do theme switch (acessível, invisível) ===== */
+
+label.theme-switch input[type="checkbox"] {
+  position: absolute;
+  inset: 0;                /* ocupa toda a área do label */
+  opacity: 0;              /* invisível */
+  margin: 0;
+  padding: 0;
+  border: 0;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+   
+/* ===== Theme switch — reforço desktop ===== */
+
+/* 1) Esconde o input do switch de forma acessível e clicável (DOM nested) */
+.main-header .header-actions label.theme-switch input#themeToggle[type="checkbox"] {
+  position: absolute !important; /* ocupa toda a área do label */
+  inset: 0 !important;
+  opacity: 0 !important;         /* invisível */
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+
+  -webkit-appearance: none !important;
+  appearance: none !important;
+  /* NÃO usar clip/rect ou width:1px;height:1px (isso costuma quebrar o toggle em alguns navegadores) */
+}
+
+/* 2) Garante que o trilho e o knob aparecem no desktop */
+.main-header .header-actions label.theme-switch .slider {
+  position: absolute;
+  inset: 0;
+  display: block !important;     /* força visibilidade */
+  border-radius: 999px;
+  background: rgba(255,255,255,0.06);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.02);
+  transition: background .28s var(--ease), box-shadow .28s var(--ease);
+}
+
+/* 3) Knob padrão */
+.main-header .header-actions label.theme-switch .slider::before {
+  content: "";
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  left: 3px;
+  top: 3px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.28);
+  transition: transform .28s var(--ease), background .28s var(--ease), box-shadow .28s var(--ease);
+}
+
+/* 4) Estado checked no desktop (usando adjacência +) */
+.main-header .header-actions label.theme-switch input#themeToggle[type="checkbox"]:checked + .slider::before {
+  transform: translateX(22px);
+  background: var(--accent-strong);
+  box-shadow: 0 6px 16px rgba(0,0,0,0.32);
+}
+
+/* 5) Tema claro — ajustes */
+body[data-theme="light"] .main-header .header-actions label.theme-switch .slider {
+  background: rgba(15,23,42,0.06);
+  box-shadow: inset 0 1px 0 rgba(0,0,0,0.02);
+}
+body[data-theme="light"] .main-header .header-actions label.theme-switch .slider::before {
+  background: var(--accent);
+  box-shadow: 0 3px 8px rgba(0,0,0,  box-shadow: 0 3px 8px rgba(0,0,0,0.12);
+}
