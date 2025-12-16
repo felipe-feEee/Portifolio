@@ -310,6 +310,37 @@ export function setupThemeToggle() {
   input.dataset.init = '1';
 }
 
+
+// Injeta (uma única vez) um override forte para o input do theme switch
+function ensureThemeSwitchDesktopOverride() {
+  // Não duplica
+  if (document.getElementById('theme-switch-overrides')) return;
+
+  const css = `
+/* ===== Theme switch — override forte para desktop ===== */
+@media (min-width: 768px) {
+  .main-header .header-actions label.theme-switch input#themeToggle[type="checkbox"] {
+    position: absolute !important;
+    inset: 0 !important;
+    opacity: 0 !important;          /* invisível */
+    margin: 0 !important;
+    padding: 0 !important;
+    border: 0 !important;
+    -webkit-appearance: none !important;
+    appearance: none !important;
+  }
+  .main-header .header-actions label.theme-switch .slider {
+    display: block !important;
+  }
+}
+  `.trim();
+
+  const style = document.createElement('style');
+   style.id = 'theme-switch-overrides';
+  style.textContent = css;
+  document.head.appendChild(style);
+}
+
 /* =========================
    Pull-to-refresh (mantido)
    ========================= */
@@ -1622,6 +1653,8 @@ window.addEventListener('DOMContentLoaded', async () => {
     setupPullToRefresh();
 
     document.addEventListener('DOMContentLoaded', setupThemeToggle);
+
+    ensureThemeSwitchDesktopOverride();
 
     // Inicializa supabase e carrega dados
     await initializeSupabase();
