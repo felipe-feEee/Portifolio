@@ -838,6 +838,30 @@ function insertNodeAtCursor(node) {
   sel.addRange(range);
 }
 
+function detectImgsInHtml(html) {
+  const matches = [];
+  if (!html) return matches;
+
+  // <img ... srcimgRe = /<img\b[^>]*\bsrc="'["'][^>]*>/ig;
+  let m;
+  while ((m = imgRe.exec(html)) !== null) {
+    matches.push({ kind: 'img', src: (m[1] || '').trim(), tag: m[0] });
+  }
+
+  // VML do Word: ...
+  const vmlRe = /<v:imagedata\b[^>]*\bsrc="'["'][^>]*>/ig;
+  while ((m = vmlRe.exec(html)) !== null) {
+    matches.push({ kind: 'vml', src: (m[1] || '').trim(), tag: m[0] });
+  }
+
+  return matches;
+}
+
+function detectRtfPict(rtfText) {
+  if (!rtfText) return false;
+  return /\\pict[\s\S]*?\\par/gm.test(rtfText);
+}
+
 function hexToBlob(hex, mime = 'image/png') {
   const bytes = new Uint8Array(hex.length / 2);
   for (let i = 0; i < bytes.length; i++) bytes[i] = parseInt(hex.substr(i * 2, 2), 16);
@@ -885,12 +909,12 @@ async function tryClipboardReadForImages() {
   }
 }
 
-function createMissingImageMessage(message = 'Imagem não disponível') {
+
+function createMissingImageMessage(message = 'Imagem colada do Word não pôde ser incorporada') {
   const msg = document.createElement('div');
   msg.className = 'missing-image-message';
   msg.textContent = message;
-
-  // Estilo visual para destacar o bloco
+  // estilos mínimos; seu CSS pode sobrescrever
   msg.style.color = '#900';
   msg.style.fontStyle = 'italic';
   msg.style.padding = '0.25rem 0.5rem';
@@ -898,12 +922,9 @@ function createMissingImageMessage(message = 'Imagem não disponível') {
   msg.style.backgroundColor = '#ffe0e0';
   msg.style.border = '1px solid #ff0000';
   msg.style.display = 'inline-block';
-
-  // Torna o bloco atômico dentro do contenteditable
+  // acessibilidade mínima
   msg.setAttribute('contenteditable', 'false');
-  // Permite foco por teclado (opcional, melhora acessibilidade)
   msg.setAttribute('tabindex', '0');
-
   return msg;
 }
 
@@ -928,49 +949,109 @@ function generateUniqueImageName(file, prefix = 'paste') {
   return `${prefix}-${timestamp}-${base}.${ext}`;
 }
 
-/* Handler de paste (integra com uploadToSupabase e insertNodeAtCursor) */
-// Substitua a função handlePaste existente por esta
+
+/**
+ * Handler de paste robusto para conteúdo colado do Word (texto + imagem).
+ * - Se houver arquivo real no DataTransfer: tenta upload e insere <img>.
+ * - Se houver data:image/... no HTML: converte em File, tenta upload e insere <img>.
+ * - Se houver referências incoláveis (file://, VML <v:imagedata>, RTF \pict): insere mensagem + texto plain.
+ * - Se vier apenas texto: insere texto plain.
+ */
 async function handlePaste(e) {
   try {
     const clipboard = e.clipboardData || window.clipboardData;
     if (!clipboard) return;
 
-    const contentBody = document.getElementById('content-body');
+    const editor = document.getElementById('content-body');
     const target = e.target || document.activeElement;
-    const isEditor = contentBody && (target === contentBody || contentBody.contains(target));
-
-    // Se não for editor (ex: title-input), deixa o comportamento padrão
+    const isEditor = editor && (target === editor || editor.contains(target));
     if (!isEditor) return;
 
-    // Só bloqueia comportamento nativo dentro do editor
+    // bloqueia apenas dentro do editor
     e.preventDefault();
 
-    const items = clipboard.items || [];
+    const items = clipboard.items ? Array.from(clipboard.items) : [];
     const plain = clipboard.getData('text/plain') || '';
+    const html  = clipboard.getData('text/html')  || '';
+    const rtf   = clipboard.getData('text/rtf')   || '';
 
-    // 1) Imagem direta (printscreen, copiar arquivo)
-    if (items.length > 0 && items[0].type.startsWith('image/')) {
-      const file = items[0].getAsFile();
+    // (1) Arquivo-imagem real (printscreen, copiar arquivo)
+    const fileItem = items.find(it => it.kind === 'file' && it.type.startsWith('image/'));
+    if (fileItem) {
+      const file = fileItem.getAsFile?.();
       if (file) {
-        const publicUrl = await uploadToSupabase(file);
-        const img = document.createElement('img');
-        if (publicUrl) {
-          img.src = publicUrl;
-          img.alt = file.name;
-          insertNodeAtCursor(img);
-        } else {
-          insertNodeAtCursor(createMissingImageMessage(`Falha ao enviar ${file.name}.`));
+        try {
+          const url = typeof uploadToSupabase === 'function'
+            ? await uploadToSupabase(file)
+            : null;
+
+          if (url) {
+            const img = document.createElement('img');
+            img.src = url; // sem atributos extras — seu CSS cuida
+            insertNodeAtCursor(img);
+          } else {
+            insertNodeAtCursor(createMissingImageMessage(`Falha ao enviar ${file.name || 'imagem'}.`));
+          }
+        } catch (err) {
+          console.error('Erro em uploadToSupabase:', err);
+          insertNodeAtCursor(createMissingImageMessage(`Erro inesperado ao enviar ${file?.name || 'imagem'}.`));
         }
       }
+      if (plain) document.execCommand('insertText', false, `\n${plain}\n`);
       return;
     }
 
-    // 2) Texto simples (ignora HTML/RTF)
+    // (2) Inspeciona HTML/RTF colados do Word
+    const refs = detectImgsInHtml(html);
+    const hasPict = detectRtfPict(rtf);
+
+    // (2a) Se houver data:image em <img>, converte e tenta upload
+    const dataImgs = refs.filter(x => x.src.startsWith('data:image/'));
+    if (dataImgs.length > 0) {
+      for (const d of dataImgs) {
+        try {
+          const ext = (d.src.match(/^data:image\/([^;]+)/i)?.[1] || 'png');
+          const file = dataURLtoFile(d.src, `paste-${Date.now()}.${ext}`);
+
+          const url = typeof uploadToSupabase === 'function'
+            ? await uploadToSupabase(file)
+            : null;
+
+          if (url) {
+            const img = document.createElement('img');
+            img.src = url;
+            insertNodeAtCursor(img);
+          } else {
+            insertNodeAtCursor(createMissingImageMessage('Falha ao enviar imagem inline.'));
+          }
+        } catch (err) {
+          console.warn('Falha ao processar data:image:', err);
+          insertNodeAtCursor(createMissingImageMessage('Imagem inline não pôde ser processada.'));
+        }
+      }
+      if (plain) document.execCommand('insertText', false, `\n${plain}\n`);
+      return;
+    }
+
+    // (2b) Se houver referências incoláveis (file://, VML, RTF \pict), mostra mensagem + texto
+    const hasIncolavel =
+      refs.some(x => x.src.startsWith('file:') || x.src.startsWith('cid:')) || // file:// e cid:
+      refs.some(x => x.kind === 'vml') ||                                      // <v:imagedata ...>
+      hasPict;                                                                  // RTF \pict
+
+    if (hasIncolavel) {
+      insertNodeAtCursor(createMissingImageMessage('Imagem colada do Word não pôde ser incorporada'));
+      if (plain) document.execCommand('insertText', false, `\n${plain}\n`);
+      return;
+    }
+
+    // (3) Caso geral: sem imagem → insere texto plain
     if (plain) {
-      insertPlainTextAtCursor(plain, contentBody);
+      document.execCommand('insertText', false, plain);
     }
   } catch (err) {
     console.error('Erro no handlePaste:', err);
+    insertNodeAtCursor(createMissingImageMessage('Falha ao processar conteúdo colado.'));
   }
 }
 
