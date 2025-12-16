@@ -811,21 +811,29 @@ function extractDataUrlsFromHtml(html) {
   return dataFiles;
 }
 
+
+/**
+ * Converte um data:image para um File (para upload).
+ */
 function dataURLtoFile(dataurl, filename) {
   const arr = dataurl.split(',');
   const mime = arr[0].match(/:(.*?);/)[1];
-  const bstr = atob(arr[1]);
+  const b64 = arr[1] || '';
+  const bstr = atob(b64);
   let n = bstr.length;
-  const u8arr = new Uint8Array(n);
-  while (n--) u8arr[n] = bstr.charCodeAt(n);
-  return new File([u8arr], filename, { type: mime });
+  const u8 = new Uint8Array(n);
+  while (n--) u8[n] =  while (n--) u8[n] = bstr.charCodeAt(n);
+  return new File([u8], filename, { type: mime });
 }
 
+/**
+ * Insere um nó na posição atual do cursor dentro do editor.
+ */
 function insertNodeAtCursor(node) {
   const editor = document.getElementById('content-body');
   if (!editor) return;
   const sel = window.getSelection();
-  if (!sel || sel.rangeCount === 0) {
+  if (!sel || sel.rangeCount === 0)  if (!sel || sel.rangeCount === 0) {
     editor.appendChild(node);
     return;
   }
@@ -838,18 +846,21 @@ function insertNodeAtCursor(node) {
   sel.addRange(range);
 }
 
+/**
+ * Detecta imagens no HTML colado do Word:
+ * - <img src=".. (VML)
+ */
 function detectImgsInHtml(html) {
   const matches = [];
   if (!html) return matches;
 
-  // <img ... srcimgRe = /<img\b[^>]*\bsrc="'["'][^>]*>/ig;
+  // <img ... src="... = /<img\b[^>]*\bsrc="'["'][^>]*>/ig;
   let m;
   while ((m = imgRe.exec(html)) !== null) {
     matches.push({ kind: 'img', src: (m[1] || '').trim(), tag: m[0] });
   }
 
-  // VML do Word: ...
-  const vmlRe = /<v:imagedata\b[^>]*\bsrc="'["'][^>]*>/ig;
+  // VML do Word: <v:imagedata ... src/<v:imagedata\b[^>]*\bsrc="'["'][^>]*>/ig;
   while ((m = vmlRe.exec(html)) !== null) {
     matches.push({ kind: 'vml', src: (m[1] || '').trim(), tag: m[0] });
   }
@@ -909,20 +920,20 @@ async function tryClipboardReadForImages() {
   }
 }
 
-
+/**
+ * Cria um bloco de mensagem para quando a imagem não puder ser incorporada.
+ */
 function createMissingImageMessage(message = 'Imagem colada do Word não pôde ser incorporada') {
   const msg = document.createElement('div');
   msg.className = 'missing-image-message';
   msg.textContent = message;
-  // estilos mínimos; seu CSS pode sobrescrever
   msg.style.color = '#900';
   msg.style.fontStyle = 'italic';
   msg.style.padding = '0.25rem 0.5rem';
   msg.style.margin = '0.25rem 0';
   msg.style.backgroundColor = '#ffe0e0';
   msg.style.border = '1px solid #ff0000';
-  msg.style.display = 'inline-block';
-  // acessibilidade mínima
+  msg.style.display  msg.style.display = 'inline-block';
   msg.setAttribute('contenteditable', 'false');
   msg.setAttribute('tabindex', '0');
   return msg;
@@ -950,12 +961,9 @@ function generateUniqueImageName(file, prefix = 'paste') {
 }
 
 
+
 /**
  * Handler de paste robusto para conteúdo colado do Word (texto + imagem).
- * - Se houver arquivo real no DataTransfer: tenta upload e insere <img>.
- * - Se houver data:image/... no HTML: converte em File, tenta upload e insere <img>.
- * - Se houver referências incoláveis (file://, VML <v:imagedata>, RTF \pict): insere mensagem + texto plain.
- * - Se vier apenas texto: insere texto plain.
  */
 async function handlePaste(e) {
   try {
@@ -967,7 +975,6 @@ async function handlePaste(e) {
     const isEditor = editor && (target === editor || editor.contains(target));
     if (!isEditor) return;
 
-    // bloqueia apenas dentro do editor
     e.preventDefault();
 
     const items = clipboard.items ? Array.from(clipboard.items) : [];
@@ -975,7 +982,7 @@ async function handlePaste(e) {
     const html  = clipboard.getData('text/html')  || '';
     const rtf   = clipboard.getData('text/rtf')   || '';
 
-    // (1) Arquivo-imagem real (printscreen, copiar arquivo)
+    // 1) Arquivo-imagem real
     const fileItem = items.find(it => it.kind === 'file' && it.type.startsWith('image/'));
     if (fileItem) {
       const file = fileItem.getAsFile?.();
@@ -987,7 +994,7 @@ async function handlePaste(e) {
 
           if (url) {
             const img = document.createElement('img');
-            img.src = url; // sem atributos extras — seu CSS cuida
+            img.src = url;
             insertNodeAtCursor(img);
           } else {
             insertNodeAtCursor(createMissingImageMessage(`Falha ao enviar ${file.name || 'imagem'}.`));
@@ -1001,11 +1008,11 @@ async function handlePaste(e) {
       return;
     }
 
-    // (2) Inspeciona HTML/RTF colados do Word
+    // 2) HTML/RTF do Word
     const refs = detectImgsInHtml(html);
     const hasPict = detectRtfPict(rtf);
 
-    // (2a) Se houver data:image em <img>, converte e tenta upload
+    // 2a) data:image → converter + subir
     const dataImgs = refs.filter(x => x.src.startsWith('data:image/'));
     if (dataImgs.length > 0) {
       for (const d of dataImgs) {
@@ -1033,11 +1040,11 @@ async function handlePaste(e) {
       return;
     }
 
-    // (2b) Se houver referências incoláveis (file://, VML, RTF \pict), mostra mensagem + texto
+    // 2b) Referências incoláveis (file://, VML, RTF \pict)
     const hasIncolavel =
-      refs.some(x => x.src.startsWith('file:') || x.src.startsWith('cid:')) || // file:// e cid:
-      refs.some(x => x.kind === 'vml') ||                                      // <v:imagedata ...>
-      hasPict;                                                                  // RTF \pict
+      refs.some(x => x.src.startsWith('file:') || x.src.startsWith('cid:')) ||
+      refs.some(x => x.kind === 'vml') ||
+      hasPict;
 
     if (hasIncolavel) {
       insertNodeAtCursor(createMissingImageMessage('Imagem colada do Word não pôde ser incorporada'));
@@ -1045,12 +1052,12 @@ async function handlePaste(e) {
       return;
     }
 
-    // (3) Caso geral: sem imagem → insere texto plain
+    // 3) Apenas texto
     if (plain) {
       document.execCommand('insertText', false, plain);
     }
   } catch (err) {
-    console.error('Erro no handlePaste:', err);
+    console.error('Erro    console.error('Erro no handlePaste:', err);
     insertNodeAtCursor(createMissingImageMessage('Falha ao processar conteúdo colado.'));
   }
 }
