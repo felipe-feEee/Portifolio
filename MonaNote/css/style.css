@@ -341,7 +341,7 @@ body[data-theme="light"] #menu li.active > a {
 
 /* images */
 #article-content img, #content-body img {
-  max-width: 90%;
+  max-width: 35%;
   width: auto;
   height: auto;
   border-radius:8px;
