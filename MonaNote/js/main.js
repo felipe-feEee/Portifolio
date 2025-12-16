@@ -554,31 +554,35 @@ export async function carregarPostsDoBanco() {
   }
 }
 
-
 async function uploadToSupabase(file) {
   if (!file) return '';
-  if (!window.supabase) {
-    console.warn('uploadToSupabase: Supabase não inicializado.');
-    return '';
+
+  // Garante cliente Supabase (usa getSupabase e, se necessário, initializeSupabase)
+  let supabase = (typeof getSupabase === 'function' ? getSupabase() : null) || window.supabase;
+  if (!supabase) {
+    supabase = await initializeSupabase();
+    if (!supabase) {
+      console.warn('uploadToSupabase: Supabase não inicializado.');
+      return '';
+    }
   }
 
-   const { bucketName, tableName } = _supabaseConfig;
-   const bucket = bucketName;
-   const table  = table;
-
-  const safeName = sanitizeFilename(file);
-  const filePath = `${safeName.startsWith('/') ? safeName.slice(1) : safeName}`;
+  const bucket = (_supabaseConfig && _supabaseConfig.bucketName) || 'images';
+  const filename = sanitizeFilename(file); // ex.: "paste-<timestamp>-<base>.<ext>"
+  const filePath = filename.startsWith('/') ? filename.slice(1) : filename;
 
   try {
-    const { data, error } = await window.supabase.storage.from(bucket).upload(filePath, file, {
-      cacheControl: '3600',
-      upsert: true
-    });
+    const { data, error } = await supabase
+      .storage
+      .from(bucket)
+      .upload(filePath, file, { cacheControl: '3600', upsert: true });
+
     if (error) {
       console.error(`Erro no upload para bucket "${bucket}":`, error);
       return '';
     }
-    const { data: urlData } = window.supabase.storage.from(bucket).getPublicUrl(filePath);
+
+    const { data: urlData } = supabase.storage.from(bucket).getPublicUrl(filePath);
     return urlData?.publicUrl || '';
   } catch (err) {
     console.error('uploadToSupabase erro inesperado:', err);
@@ -588,39 +592,42 @@ async function uploadToSupabase(file) {
 
 
 async function insertPost(payload) {
-  if (!window.supabase) {
-    console.warn('insertPost: Supabase não inicializado. Fallback local.');
+  // Garante cliente Supabase
+  let supabase = (typeof getSupabase === 'function' ? getSupabase() : null) || window.supabase;
+  if (!supabase) supabase = await initializeSupabase();
+  if (!supabase) {
+    console.warn('insertPost: Supabase não inicializado.');
     return null;
   }
 
-  // 🔧 Corrigido: não use setSupabaseConfig como objeto
   const table = (_supabaseConfig && _supabaseConfig.tableName) || 'posts';
 
   try {
-    const resp = await window.supabase.from(table).insert(payload).select().single();
-    if (resp.error) {
-      console.error(`Erro ao inserir na tabela "${table}":`, resp.error);
+       const { data, error } = await supabase.from(table).insert(payload).select().single();
+    if (error) {
+      console.error(`Erro ao inserir na tabela "${table}":`, error);
       return null;
     }
-    return resp.data;
+    return data; // objeto da linha inserida
   } catch (err) {
     console.error('insertPost erro inesperado:', err);
     return null;
   }
 }
 
-
-
 async function updatePost(postId, payload) {
-  if (!window.supabase) {
-    console.warn('updatePost: Supabase não inicializado. Fallback local.');
-    return null;
+  // Garante cliente Supabase
+  let supabase = (typeof getSupabase === 'function' ? getSupabase() : null) || window.supabase;
+  if (!supabase) supabase = await initializeSupabase();
+  if (!supabase) {
+    console.warn('updatePost: Supabase não inicializado.');
+    return { error: new Error('Supabase não inicializado') };
   }
-  const table = _supabaseConfig.tableName;
+
+  const table = (_supabaseConfig && _supabaseConfig.tableName) || 'posts';
 
   try {
-    // 🔧 Supabase v2: para obter a linha atualizada, use .select().single()
-    const { data, error } = await window.supabase
+    const { data, error } = await supabase
       .from(table)
       .update(payload)
       .eq('id', postId)
@@ -631,12 +638,11 @@ async function updatePost(postId, payload) {
       console.error(`Erro ao atualizar na tabela "${table}":`, error);
       return { error };
     }
-    // Retorna objeto consistente
-    return { data };
+    return { data }; // objeto da linha atualizada
   } catch (err) {
     console.error('updatePost erro inesperado:', err);
     return { error: err };
-   }
+  }
 }
 
 /* ============================
@@ -811,24 +817,41 @@ function extractDataUrlsFromHtml(html) {
   return dataFiles;
 }
 
+
+
+/**
+ * Converte um data:image para um File (para upload).
+ */
 function dataURLtoFile(dataurl, filename) {
-  const arr = dataurl.split(',');
-  const mime = arr[0].match(/:(.*?);/)[1];
-  const bstr = atob(arr[1]);
+  const arr  = dataurl.split(',');
+  const mime = arr[0].match(/:(.*?);/)[1];   // ex.: "data:image/png;base64"
+  const b64  = arr[1] || '';                 // parte base64 após a vírgula
+  const bstr = atob(b64);                    // decodifica base64 em string binária
+
   let n = bstr.length;
-  const u8arr = new Uint8Array(n);
-  while (n--) u8arr[n] = bstr.charCodeAt(n);
-  return new File([u8arr], filename, { type: mime });
+  const u8 = new Uint8Array(n);
+
+  // Preenche o buffer com cada byte da string binária
+  while (n--) {
+    u8[n] = bstr.charCodeAt(n);
+  }
+
+  return new File([u8], filename, { type: mime });
 }
 
+/**
+ * Insere um nó na posição atual do cursor dentro do editor #content-body.
+ */
 function insertNodeAtCursor(node) {
   const editor = document.getElementById('content-body');
   if (!editor) return;
+
   const sel = window.getSelection();
   if (!sel || sel.rangeCount === 0) {
     editor.appendChild(node);
     return;
   }
+
   const range = sel.getRangeAt(0);
   range.deleteContents();
   range.insertNode(node);
@@ -836,6 +859,41 @@ function insertNodeAtCursor(node) {
   range.collapse(true);
   sel.removeAllRanges();
   sel.addRange(range);
+}
+
+/**
+ * Detecta imagens no HTML colado do Word:
+ * - ...
+ * - ... (VML do Word)
+ * Retorna objetos { kind: 'img'|'vml', src, tag }
+ */
+function detectImgsInHtml(html) {
+  const matches = [];
+   if (!html || typeof html !== 'string') return matches;
+
+  // ...
+  const IMG_RE = /<img\b[^>]*\bsrc="'["'][^>]*>/ig;
+  let m;
+  while ((m = IMG_RE.exec(html)) !== null) {
+    matches.push({ kind: 'img', src: (m[1] || '').trim(), tag: m[0] });
+  }
+
+  // VML do Word: ...
+  const VML_RE = /<v:imagedata\b[^>]*\bsrc="'["'][^>]*>/ig;
+  while ((m = VML_RE.exec(html)) !== null) {
+    matches.push({ kind: 'vml', src: (m[1] || '').trim(), tag: m[0] });
+  }
+
+  return matches;
+}
+
+/**
+ * Sinaliza presença de blocos RTF \pict (imagem codificada).
+ */
+function detectPictInRtf(rtfText) {
+  if (!rtfText || typeof rtfText !== 'string') return false;
+  const PICT_RE = /\\pict[\s\S]*?\\par/gm;
+  return PICT_RE.test(rtfText);
 }
 
 function hexToBlob(hex, mime = 'image/png') {
@@ -885,25 +943,29 @@ async function tryClipboardReadForImages() {
   }
 }
 
-function createMissingImageMessage(message = 'Imagem não disponível') {
+/**
+ * Cria um bloco de mensagem para quando a imagem não puder ser incorporada.
+ */
+
+/**
+ * Cria um bloco de mensagem quando a imagem não pode ser incorporada.
+ */
+function createMissingImageMessage(message = 'Imagem colada do Word não pôde ser incorporada') {
   const msg = document.createElement('div');
   msg.className = 'missing-image-message';
   msg.textContent = message;
 
-  // Estilo visual para destacar o bloco
+  // Estilos mínimos; seu CSS pode sobrescrever
   msg.style.color = '#900';
   msg.style.fontStyle = 'italic';
   msg.style.padding = '0.25rem 0.5rem';
   msg.style.margin = '0.25rem 0';
   msg.style.backgroundColor = '#ffe0e0';
   msg.style.border = '1px solid #ff0000';
-  msg.style.display = 'inline-block';
+   msg.style.display = 'inline-block';
 
-  // Torna o bloco atômico dentro do contenteditable
   msg.setAttribute('contenteditable', 'false');
-  // Permite foco por teclado (opcional, melhora acessibilidade)
   msg.setAttribute('tabindex', '0');
-
   return msg;
 }
 
@@ -928,49 +990,108 @@ function generateUniqueImageName(file, prefix = 'paste') {
   return `${prefix}-${timestamp}-${base}.${ext}`;
 }
 
-/* Handler de paste (integra com uploadToSupabase e insertNodeAtCursor) */
-// Substitua a função handlePaste existente por esta
+
+
+
+/**
+ * Handler de paste robusto para conteúdo colado do Word (texto + imagem).
+ * Mantém nomes e fluxo do seu projeto (usa uploadToSupabase, insertNodeAtCursor, createMissingImageMessage).
+ */
 async function handlePaste(e) {
   try {
     const clipboard = e.clipboardData || window.clipboardData;
     if (!clipboard) return;
 
-    const contentBody = document.getElementById('content-body');
+    const editor = document.getElementById('content-body');
     const target = e.target || document.activeElement;
-    const isEditor = contentBody && (target === contentBody || contentBody.contains(target));
-
-    // Se não for editor (ex: title-input), deixa o comportamento padrão
+    const isEditor = editor && (target === editor || editor.contains(target));
     if (!isEditor) return;
 
-    // Só bloqueia comportamento nativo dentro do editor
+    // bloqueia apenas dentro do editor
     e.preventDefault();
 
-    const items = clipboard.items || [];
+    const items = clipboard.items ? Array.from(clipboard.items) : [];
     const plain = clipboard.getData('text/plain') || '';
+    const html  = clipboard.getData('text/html')  || '';
+    const rtf   = clipboard.getData('text/rtf')   || '';
 
-    // 1) Imagem direta (printscreen, copiar arquivo)
-    if (items.length > 0 && items[0].type.startsWith('image/')) {
-      const file = items[0].getAsFile();
+    // (1) Arquivo-imagem real (printscreen, copiar arquivo)
+    const fileItem = items.find(it => it.kind === 'file' && it.type.startsWith('image/'));
+    if (fileItem) {
+      const file = fileItem.getAsFile?.();
       if (file) {
-        const publicUrl = await uploadToSupabase(file);
-        const img = document.createElement('img');
-        if (publicUrl) {
-          img.src = publicUrl;
-          img.alt = file.name;
-          insertNodeAtCursor(img);
-        } else {
-          insertNodeAtCursor(createMissingImageMessage(`Falha ao enviar ${file.name}.`));
+        try {
+          const url = typeof uploadToSupabase === 'function'
+            ? await uploadToSupabase(file)
+            : null;
+
+          if (url) {
+            const img = document.createElement('img');
+            img.src = url; // sem atributos extras — seu CSS cuida
+            insertNodeAtCursor(img);
+          } else {
+            insertNodeAtCursor(createMissingImageMessage(`Falha ao enviar ${file.name || 'imagem'}.`));
+          }
+        } catch (err) {
+          console.error('Erro em uploadToSupabase:', err);
+          insertNodeAtCursor(createMissingImageMessage(`Erro inesperado ao enviar ${file?.name || 'imagem'}.`));
         }
       }
+      if (plain) document.execCommand('insertText', false, `\n${plain}\n`);
       return;
     }
 
-    // 2) Texto simples (ignora HTML/RTF)
-    if (plain) {
-      insertPlainTextAtCursor(plain, contentBody);
+    // (2) Inspeciona HTML/RTF colados do Word
+    const refs = detectImgsInHtml(html);
+    const hasPict = detectPictInRtf(rtf);
+
+    // 2a) Se houver data:image em <img>, converter e tentar upload
+    const dataImgs = refs.filter(x => x.src.startsWith('data:image/'));
+    if (dataImgs.length > 0) {
+      for (const d of dataImgs) {
+        try {
+          const ext  = (d.src.match(/^data:image\/([^;]+)/i)?.[1] || 'png');
+          const file = dataURLtoFile(d.src, `paste-${Date.now()}.${ext}`);
+
+          const url = typeof uploadToSupabase === 'function'
+            ? await uploadToSupabase(file)
+            : null;
+
+          if (url) {
+            const img = document.createElement('img');
+            img.src = url;
+            insertNodeAtCursor(img);
+          } else {
+            insertNodeAtCursor(createMissingImageMessage('Falha ao enviar imagem inline.'));
+          }
+        } catch (err) {
+          console.warn('Falha ao processar data:image:', err);
+          insertNodeAtCursor(createMissingImageMessage('Imagem inline não pôde ser processada.'));
+        }
+      }
+      if (plain) document.execCommand('insertText', false, `\n${plain}\n`);
+      return;
     }
-  } catch (err) {
+
+    // 2b) Referências incoláveis (file://, VML, RTF \pict) → mensagem + texto
+    const hasIncolavel =
+      refs.some(x => x.src.startsWith('file:') || x.src.startsWith('cid:')) || // file:// e cid:
+      refs.some(x => x.kind === 'vml') ||                                      // <v:imagedata ...>
+      hasPict;                                                                  // RTF \pict
+
+    if (hasIncolavel) {
+      insertNodeAtCursor(createMissingImageMessage('Imagem colada do Word não pôde ser incorporada'));
+      if (plain) document.execCommand('insertText', false, `\n${plain}\n`);
+      return;
+    }
+
+    // (3) Apenas texto
+    if (plain) {
+      document.execCommand('insertText', false, plain);
+    }
+   } catch (err) {
     console.error('Erro no handlePaste:', err);
+    insertNodeAtCursor(createMissingImageMessage('Falha ao processar conteúdo colado.'));
   }
 }
 
