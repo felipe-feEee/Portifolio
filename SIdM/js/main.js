@@ -56,6 +56,7 @@ export async function destroySupabase() {
  * Inicializa o cliente Supabase com import dinâmico, retry/backoff e proteção.
  * Retorna o cliente ou null em falha.
  */
+
 export async function initializeSupabase({ retries = 2, retryDelay = 400, timeoutMs = 8000 } = {}) {
   if (_supabase) return _supabase;
   if (_initializing) return _initializing;
@@ -68,43 +69,40 @@ export async function initializeSupabase({ retries = 2, retryDelay = 400, timeou
       return null;
     }
 
-    // tentativa com retry/backoff
     for (let attempt = 0; attempt <= retries; attempt++) {
       try {
-        // cleanup caso exista cliente residual (HMR/dev)
         await destroySupabase();
 
-        // import dinâmico do SDK ESM
-        // dentro de initializeSupabase, antes de criar o client
-         const sdkCandidates = [
-           'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.34.0/dist/module/index.mjs',
-           'https://unpkg.com/@supabase/supabase-js@2.34.0/dist/module/index.mjs'
-         ];
-         
-         let createClient = null;
-         let lastErr = null;
-         for (const sdkUrl of sdkCandidates) {
-           try {
-             const mod = await import(sdkUrl);
-             createClient = mod.createClient || mod.default?.createClient || null;
-             if (createClient) break;
-           } catch (e) {
-             lastErr = e;
-           }
-         }
-         
-         if (!createClient) {
-           throw new Error('createClient não encontrado no SDK do Supabase. Último erro: ' + (lastErr && lastErr.message));
-         }
-         
-         const supabase = createClient(_supabaseConfig.url, _supabaseConfig.key, { auth: { persistSession: true } });
+        // Mantém seu import ESM (com fallback entre CDNs)
+        const sdkCandidates = [
+          'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.34.0/dist/module/index.mjs',
+          'https://unpkg.com/@supabase/supabase-js@2.34.0/dist/module/index.mjs'
+        ];
+        let createClient = null;
+        let lastErr = null;
 
-        // teste leve de conectividade com timeout (não bloqueia UI)
+        for (const sdkUrl of sdkCandidates) {
+          try {
+            const mod = await import(sdkUrl);
+            createClient = mod.createClient ?? mod.default?.createClient ?? null;
+            if (createClient) break;
+          } catch (e) {
+            lastErr = e;
+          }
+        }
+        if (!createClient) {
+          throw new Error('createClient não encontrado no SDK do Supabase. Último erro: ' + (lastErr && lastErr.message));
+        }
+
+        const supabase = createClient(_supabaseConfig.url, _supabaseConfig.key, {
+          auth: { persistSession: true, autoRefreshToken: true }
+        });
+
+        // Checagem leve de sessão com timeout
         const sessionCheck = (async () => {
           try {
             const p = supabase.auth.getSession();
             if (timeoutMs > 0) {
-              // race entre getSession e timeout
               const res = await Promise.race([
                 p,
                 new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), timeoutMs))
@@ -114,15 +112,17 @@ export async function initializeSupabase({ retries = 2, retryDelay = 400, timeou
               return await p;
             }
           } catch (e) {
-            // não fatal: apenas log
             console.debug('Supabase getSession (não fatal):', e);
             return null;
           }
         })();
-
         await sessionCheck;
 
+        // 🔧 Correção crítica: expõe o client globalmente porque seus helpers usam window.supabase
         _supabase = supabase;
+        window.supabase = _supabase;      // <— faltava
+        window._supabase = _supabase;     // opcional para debug
+
         _initializing = null;
         console.info('Supabase inicializado com sucesso.');
         return _supabase;
@@ -204,10 +204,20 @@ export function setupSidebarAutoClose() {
 export function setupThemeToggle() {
   const toggle = document.getElementById('themeToggle');
   if (!toggle) return;
+
+  // Evita múltiplas instalações
+  if (toggle.dataset.init === '1') return;
+  toggle.dataset.init = '1';
+
+  // 🔧 Ajuda o CSS do switch no desktop
+  toggle.classList.add('switch');             // exige que seu CSS tenha estilo para .switch
+  toggle.setAttribute('role', 'switch');
+
   const KEY = 'sIdM_theme';
   const applyTheme = (theme) => {
     if (theme === 'light') document.body.setAttribute('data-theme', 'light');
     else document.body.removeAttribute('data-theme');
+    toggle.setAttribute('aria-checked', theme === 'light' ? 'true' : 'false');
   };
 
   const stored = localStorage.getItem(KEY);
@@ -229,7 +239,8 @@ export function setupThemeToggle() {
   try {
     if (window.matchMedia) {
       const mq = window.matchMedia('(prefers-color-scheme: light)');
-      (mq.addEventListener || mq.addListener).call(mq, (e) => {
+      (mq.addEventListener ?? mq.addListener).call(mq, (e) => {
+        // Só reage se não houver escolha manual salva
         if (!localStorage.getItem(KEY)) {
           const newTheme = e.matches ? 'light' : 'dark';
           applyTheme(newTheme);
@@ -244,9 +255,14 @@ export function setupThemeToggle() {
    Pull-to-refresh (mantido)
    ========================= */
 
+
 export function setupPullToRefresh() {
-  // cria dinamicamente o overlay se não existir
-  if (document.querySelector('.pull-refresh')) return;
+  // Se o overlay já existe, ainda assim garante o themeToggle
+  const existing = document.querySelector('.pull-refresh');
+  if (existing) {
+    queueMicrotask(() => setupThemeToggle());
+    return;
+  }
 
   const refreshOverlay = document.createElement('div');
   refreshOverlay.className = 'pull-refresh';
@@ -259,27 +275,22 @@ export function setupPullToRefresh() {
         </linearGradient>
       </defs>
       <path class="circle-bg"
-            d="M18 2.0845
-               a 15.9155 15.9155 0 0 1 0 31.831
-               a 15.9155 15.9155 0 0 1 0 -31.831"/>
+        d="M18 2.0845
+           a 15.9155 15.9155 0 0 1 0 31.831
+           a 15.9155 15.9155 0 0 1 0 -31.831"/>
       <path class="circle"
-            stroke-dasharray="0,100"
-            d="M18 2.0845
-               a 15.9155 15.9155 0 0 1 0 31.831
-               a 15.9155 15.9155 0 0 1 0 -31.831"/>
+        stroke-dasharray="0,100"
+        d="M18 2.0845
+           a 15.9155 15.9155 0 0 1 0 31.831
+           a 15.9155 15.9155 0 0 1 0 -31.831"/>
     </svg>
     <span>Atualizando...</span>
   `;
-
   document.body.appendChild(refreshOverlay);
 
   let touchStartY = 0;
-
-  document.addEventListener("touchstart", e => {
-    touchStartY = e.touches[0].clientY;
-  });
-
-  document.addEventListener("touchmove", e => {
+  const onStart = (e) => { touchStartY = e.touches[0].clientY; };
+  const onMove = (e) => {
     const deltaY = e.touches[0].clientY - touchStartY;
     if (deltaY > 0 && window.scrollY === 0) {
       refreshOverlay.classList.add('show');
@@ -289,15 +300,22 @@ export function setupPullToRefresh() {
       if (progress >= 100) refreshOverlay.classList.add('complete');
       else refreshOverlay.classList.remove('complete');
     }
-  });
-
-  document.addEventListener("touchend", () => {
+  };
+  const onEnd = () => {
     if (refreshOverlay.classList.contains('complete')) {
       setTimeout(() => location.reload(), 800);
     } else {
       refreshOverlay.classList.remove('show', 'complete');
     }
-  });
+  };
+
+  // 🔧 Usa passive listeners para não interferir em outros gestos/estilos
+  document.addEventListener('touchstart', onStart, { passive: true });
+  document.addEventListener('touchmove', onMove, { passive: true });
+  document.addEventListener('touchend', onEnd, { passive: true });
+
+  // 🔧 Garante que o theme toggle seja sempre inicializado
+  queueMicrotask(() => setupThemeToggle());
 }
 
 /* =========================
@@ -391,6 +409,7 @@ export async function carregarPostsDoBanco() {
   }
 }
 
+
 async function uploadToSupabase(file) {
   if (!file) return '';
   if (!window.supabase) {
@@ -398,7 +417,9 @@ async function uploadToSupabase(file) {
     return '';
   }
 
-  const bucket = setSupabaseConfig.bucketName || 'images';
+  // 🔧 Corrigido: não use setSupabaseConfig como objeto; leia da config real
+  const bucket = (_supabaseConfig && _supabaseConfig.bucketName) || 'images';
+
   const safeName = sanitizeFilename(file);
   const filePath = `${safeName.startsWith('/') ? safeName.slice(1) : safeName}`;
 
@@ -419,12 +440,16 @@ async function uploadToSupabase(file) {
   }
 }
 
+
 async function insertPost(payload) {
   if (!window.supabase) {
     console.warn('insertPost: Supabase não inicializado. Fallback local.');
     return null;
   }
-  const table = setSupabaseConfig.tableName || 'posts';
+
+  // 🔧 Corrigido: não use setSupabaseConfig como objeto
+  const table = (_supabaseConfig && _supabaseConfig.tableName) || 'posts';
+
   try {
     const resp = await window.supabase.from(table).insert(payload).select().single();
     if (resp.error) {
@@ -438,12 +463,16 @@ async function insertPost(payload) {
   }
 }
 
+
 async function updatePost(postId, payload) {
   if (!window.supabase) {
     console.warn('updatePost: Supabase não inicializado. Fallback local.');
     return null;
   }
-  const table = setSupabaseConfig.tableName || 'posts';
+
+  // 🔧 Corrigido: não use setSupabaseConfig como objeto
+  const table = (_supabaseConfig && _supabaseConfig.tableName) || 'posts';
+
   try {
     const resp = await window.supabase.from(table).update(payload).eq('id', postId);
     if (resp.error) {
