@@ -936,7 +936,7 @@ function createMissingImageMessage(message = 'Imagem colada do Word não pôde s
   msg.style.margin = '0.25rem 0';
   msg.style.backgroundColor = '#ffe0e0';
   msg.style.border = '1px solid #ff0000';
-  msg.style.display  msg.style.display = 'inline-block';
+  msg.style.display = 'inline-block';
   msg.setAttribute('contenteditable', 'false');
   msg.setAttribute('tabindex', '0');
   return msg;
