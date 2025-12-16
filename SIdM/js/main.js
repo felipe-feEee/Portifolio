@@ -311,41 +311,83 @@ export function setupThemeToggle() {
 }
 
 
-// Injeta (uma única vez) um override forte para o input do theme switch
+
+// Injeta (uma única vez) overrides seguros para o theme switch em desktop
 function ensureThemeSwitchDesktopOverride() {
-  // Não duplica
-  if (document.getElementById('theme-switch-overrides')) return;
+  // Remove a versão anterior se existir (para evitar conflito)
+  const old = document.getElementById('theme-switch-overrides');
+  if (old) old.remove();
 
   const css = `
-/* ===== Theme switch — override forte para desktop ===== */
+/* ===== Theme switch — override seguro para desktop ===== */
 @media (min-width: 768px) {
+  /* 1) O label É o contêiner posicionado do switch */
+  .main-header .header-actions label.theme-switch {
+    position: relative !important;   /* <-- garante contexto de posicionamento */
+    display: inline-block !important;
+    width: 48px !important;
+    height: 26px !important;
+    vertical-align: middle;
+  }
+
+  /* 2) Input invisível, restrito ao tamanho do label */
   .main-header .header-actions label.theme-switch input#themeToggle[type="checkbox"] {
     position: absolute !important;
-    inset: 0 !important;
-    opacity: 0 !important;          /* invisível */
+    left: 0 !important;
+    top: 0 !important;
+    width: 100% !important;          /* ocupa só o label */
+    height: 100% !important;         /* ocupa só o label */
+    opacity: 0 !important;           /* invisível */
     margin: 0 !important;
     padding: 0 !important;
     border: 0 !important;
     -webkit-appearance: none !important;
     appearance: none !important;
   }
+
+  /* 3) Trilha do switch visível e no topo do label */
   .main-header .header-actions label.theme-switch .slider {
+    position: absolute !important;
+    left: 0; top: 0; right: 0; bottom: 0;
     display: block !important;
+    border-radius: 999px;
+    background: rgba(15,23,42,0.06); /* bom contraste no light; seu CSS já trata dark */
+    box-shadow: inset 0 1px 0 rgba(0,0,0,0.02);
+    pointer-events: none;             /* não intercepta clique (vai para o input/label) */
+  }
+
+  /* 4) Knob padrão */
+  .main-header .header-actions label.theme-switch .slider::before {
+    content: "";
+    position: absolute;
+    width: 20px;
+    height: 20px;
+    left: 3px;
+    top: 3px;
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.28);
+    transition: transform .28s var(--ease), background .28s var(--ease), box-shadow .28s var(--ease);
+  }
+
+  /* 5) Estado checked */
+  .main-header .header-actions label.theme-switch input#themeToggle[type="checkbox"]:checked + .slider::before {
+    transform: translateX(22px);
+    background: var(--accent-strong);
+    box-shadow: 0 6px 16px rgba(0,0,0,0.32);
   }
 }
   `.trim();
 
   const style = document.createElement('style');
-   style.id = 'theme-switch-overrides';
+  style.id = 'theme-switch-overrides';
   style.textContent = css;
-  document.head.appendChild(style);
+   document.head.appendChild(style);
 }
 
 /* =========================
    Pull-to-refresh (mantido)
    ========================= */
-
-
 export function setupPullToRefresh() {
   // Se o overlay já existe, ainda assim garante o themeToggle
   const existing = document.querySelector('.pull-refresh');
