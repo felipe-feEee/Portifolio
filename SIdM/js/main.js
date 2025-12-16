@@ -826,7 +826,7 @@ function dataURLtoFile(dataurl, filename) {
   while (n--) {
     u8[n] = bstr.charCodeAt(n);                     // copia cada byte
   }
-  return new File([u  return new File([u8], filename, { type: mime });
+  return new File([u8], filename, { type: mime });
 }
 
 /**
