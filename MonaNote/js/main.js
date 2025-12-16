@@ -4,6 +4,10 @@
    - initializeSupabase(), getSupabase(), destroySupabase()
    ========================= */
 
+let currentCategoria = null;
+let currentId = null;
+let currentPostId = null;
+
 let _supabase = null;
 let _initializing = null;
 let _supabaseConfig = {
@@ -224,38 +228,68 @@ export function setupSidebarAutoClose() {
 }
 
 
-export function setupThemeToggle() {
-  const toggle = document.getElementById('themeToggle');
-  if (!toggle) return;
-  if (toggle.dataset.init === '1') return;
-  toggle.dataset.init = '1';
 
-  toggle.classList.add('switch');
-  toggle.setAttribute('role', 'switch');
+export function setupThemeToggle() {
+  // Localiza o input
+  let input = document.getElementById('themeToggle');
+  if (!input) return;
+
+  // Evita múltipla inicialização
+  if (input.dataset.init === '1') return;
+
+  // Garante estrutura de switch conforme o CSS (label.theme-switch + span.slider)
+  // Se o input não estiver dentro de um label.theme-switch com um span.slider, criamos.
+  const parentLabel = input.closest('label.theme-switch');
+  if (!parentLabel) {
+    const label = document.createElement('label');
+    label.className = 'theme-switch';
+
+    // Move o input para dentro do label
+    input.parentNode.insertBefore(label, input);
+    label.appendChild(input);
+
+    // Cria o trilho/knob do switch
+    const slider = document.createElement('span');
+    slider.className = 'slider';
+    label.appendChild(slider);
+  } else {
+    // Se já existe label, assegura que há um span.slider
+    if (!parentLabel.querySelector('.slider')) {
+      const slider = document.createElement('span');
+      slider.className = 'slider';
+      parentLabel.appendChild(slider);
+    }
+  }
+
+  // Acessibilidade
+  input.setAttribute('role', 'switch');
 
   const KEY = 'sIdM_theme';
   const applyTheme = (theme) => {
     if (theme === 'light') document.body.setAttribute('data-theme', 'light');
     else document.body.removeAttribute('data-theme');
-    toggle.setAttribute('aria-checked', theme === 'light' ? 'true' : 'false');
+    input.setAttribute('aria-checked', theme === 'light' ? 'true' : 'false');
   };
 
+  // Estado inicial
   const stored = localStorage.getItem(KEY);
   if (stored === 'light' || stored === 'dark') {
     applyTheme(stored);
-    toggle.checked = stored === 'light';
+    input.checked = stored === 'light';
   } else {
     const prefersLight = window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches;
     applyTheme(prefersLight ? 'light' : 'dark');
-    toggle.checked = prefersLight;
+    input.checked = prefersLight;
   }
 
-  toggle.addEventListener('change', function () {
+  // Listener de mudança
+  input.addEventListener('change', function () {
     const theme = this.checked ? 'light' : 'dark';
     applyTheme(theme);
     localStorage.setItem(KEY, theme);
   });
 
+  // Reage à mudança do sistema somente se não houver preferência salva
   try {
     if (window.matchMedia) {
       const mq = window.matchMedia('(prefers-color-scheme: light)');
@@ -263,11 +297,14 @@ export function setupThemeToggle() {
         if (!localStorage.getItem(KEY)) {
           const newTheme = e.matches ? 'light' : 'dark';
           applyTheme(newTheme);
-          toggle.checked = newTheme === 'light';
+          input.checked = newTheme === 'light';
         }
       });
     }
   } catch (e) { /* ignore */ }
+
+  // Marca como inicializado
+  input.dataset.init = '1';
 }
 
 /* =========================
