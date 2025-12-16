@@ -208,72 +208,88 @@ ul#fileList li:hover {
   border-color: #dcdcdc;
 }
 
-/* Bandeira triangular correta no canto direito */
+
+
+/* =========================
+   Status Flag (bolinha)
+   ========================= */
+
+/* Base: círculo no canto superior direito */
 .status-flag {
   position: absolute;
-  top: 4px;            /* ajuste vertical da bandeira */
-  right: 8px;          /* distância da borda direita do card */
-  width: 0;
-  height: 22px;
+  top: 8px;              /* ajuste vertical */
+  right: 8px;            /* ajuste horizontal */
+  width: 14px;           /* tamanho padrão */
+  height: 14px;
+  border-radius: 50%;    /* transforma em círculo */
+  background-color: #16a34a; /* cor padrão (ok) */
   z-index: 60;
-  pointer-events: none;
-}
-
-/* triângulo apontando para a esquerda (border-left) e colado ao mastro */
-.status-flag::after {
-  content: "";
-  position: absolute;
-  right: 2px;          /* distância do mastro; reduza para aproximar */
-  top: 3px;            /* sobe o triângulo dentro do card */
-  width: 0;
-  height: 0;
-  border-top: 9px solid transparent;
-  border-bottom: 9px solid transparent;
-  border-left: 14px solid #16a34a; /* cor padrão (ok) */
-  transform-origin: right center;
-  will-change: transform;
+  pointer-events: none;  /* não interfere no clique do card */
   box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+  transition: background-color 0.3s ease, transform 0.3s ease;
 }
 
-/* cores por status */
-.status-flag.cancelado::after   { border-left-color: #c0392b; }
-.status-flag.evento::after      { border-left-color: #2471a3; }
-.status-flag.inutilizado::after { border-left-color: #d35400; }
-.status-flag.pendente::after    { border-left-color: #6b7280; }
-.status-flag.ok::after          { border-left-color: #16a34a; }
-
-/* versão mais colada ao mastro */
-.status-flag.tight::after {
-  right: 1px;
-  border-left-width: 12px;
-  border-top-width: 8px;
-  border-bottom-width: 8px;
+/* Remove pseudo-elementos antigos */
+.status-flag::before,
+.status-flag::after {
+  display: none !important;
+  content: none !important;
 }
 
-/* animação aplicada ao pseudo-elemento */
-.status-flag.animate::after {
-  animation: flagWave 1.6s ease-in-out infinite;
+/* Alpha padrão do fundo da badge */
+.status-flag { --bg-alpha: 1; }
+
+/* Em cards antigos, reduz a alpha do fundo para 50% */
+li.old-file .status-flag { --bg-alpha: 0.5; }
+
+/* =========================
+   Cores por status
+   ========================= */
+.status-flag.cancelado   { background-color: rgba(192, 57,  43,  var(--bg-alpha)); } /* #c0392b */
+.status-flag.evento      { background-color: rgba(36,  113, 163,  var(--bg-alpha)); } /* #2471a3 */
+.status-flag.inutilizado { background-color: rgba(211, 84,  0,   var(--bg-alpha)); } /* #d35400 */
+.status-flag.pendente    { background-color: rgba(107, 114, 128, var(--bg-alpha)); } /* #6b7280 */
+.status-flag.ok          { background-color: rgba(22,  163, 74,  var(--bg-alpha)); } /* #16a34a */
+
+
+/* =========================
+   Tamanhos opcionais
+   ========================= */
+.status-flag.size-sm { width: 10px; height: 10px; }
+.status-flag.size-md { width: 14px; height: 14px; } /* padrão */
+.status-flag.size-lg { width: 18px; height: 18px; }
+.status-flag.size-xl { width: 22px; height: 22px; }
+
+/* =========================
+   Borda para contraste
+   ========================= */
+.status-flag.with-border {
+  border: 2px solid #fff; /* contraste em fundo escuro */
 }
-@keyframes flagWave {
-  0%   { transform: skewX(8deg) translateX(0); }
-  50%  { transform: skewX(2deg) translateX(-1px); }
-  100% { transform: skewX(8deg) translateX(0); }
+body[data-theme="light"] .status-flag.with-border {
+  border: 2px solid #f6f7fb; /* contraste em fundo claro */
 }
 
-/* Força absoluta caso outra regra esteja sobrescrevendo (use apenas se necessário) */
-.status-flag.force-right { right: 8px !important; top: 4px !important; }
-.status-flag.force-right::before { right: 0 !important; }
-.status-flag.force-right::after { right: 2px !important; }
+/* =========================
+   Animação de pulso
+   ========================= */
+@keyframes pulse {
+  0%   { transform: scale(1);   box-shadow: 0 0 0 0 rgba(22,163,74,0.4); }
+  70%  { transform: scale(1.15); box-shadow: 0 0 0 6px rgba(22,163,74,0); }
+  100% { transform: scale(1);   box-shadow: 0 0 0 0 rgba(22,163,74,0); }
+}
+.status-flag.animate {
+  animation: pulse 1.6s ease-out infinite;
+}
 
-/* ajuste mobile */
+/* Ajuste mobile */
 @media (max-width: 480px) {
-  .status-flag { top: 3px; right: 6px; height: 18px; }
-  .status-flag::after { top: 2px; border-top-width: 7px; border-bottom-width: 7px; border-left-width: 12px; right: 2px; }
-  .status-flag.tight::after { right: 1px; border-left-width: 10px; }
-}
-
-.status-flag::before {
-  display: none;
+  .status-flag {
+    top: 6px;
+    right: 6px;
+    width: 12px;
+       height: 12px;
+  }
 }
 
 /* Conteúdo do card */
