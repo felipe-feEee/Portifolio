@@ -1,12 +1,183 @@
-// main.js — versão unificada e compatível com tabela "posts" e bucket "images"
+/* =========================
+   Supabase singleton + UI helpers (module)
+   - setSupabaseConfig({ url, key, tableName, bucketName })
+   - initializeSupabase(), getSupabase(), destroySupabase()
+   ========================= */
+
+let _supabase = null;
+let _initializing = null;
+let _supabaseConfig = {
+  url: null,
+  key: null,
+  tableName: 'monanote',
+  bucketName: 'monanoteimages'
+};
+
+setSupabaseConfig({
+  url: 'https://pwshckrmqaqymngbosgo.supabase.co',
+  key: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB3c2hja3JtcWFxeW1uZ2Jvc2dvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQzNjAwOTEsImV4cCI6MjA3OTkzNjA5MX0.f8iX0RoqrdxJmq-EgSyn_YWPgCHMoARQTT4ygtbcoLg',      // substitua pela anon key
+  tableName: 'posts',
+  bucketName: 'images'
+});
+
+
+/**
+ * Atualiza configuração em runtime.
+ * IMPORTANTE: use apenas anon key no frontend.
+ */
+export function setSupabaseConfig({ url, key, tableName, bucketName } = {}) {
+  if (url) _supabaseConfig.url = url;
+  if (key) _supabaseConfig.key = key;
+  if (tableName) _supabaseConfig.tableName = tableName;
+  if (bucketName) _supabaseConfig.bucketName = bucketName;
+}
+
+/** Retorna o cliente já inicializado (ou null) */
+export function getSupabase() {
+  return _supabase;
+}
+
+/** Limpa conexões/canais (útil em dev/HMR) */
+export async function destroySupabase() {
+  try {
+    if (!_supabase) return;
+    if (typeof _supabase.removeAllChannels === 'function') {
+      _supabase.removeAllChannels();
+    }
+    // não chame signOut automaticamente aqui (pode afetar UX)
+  } catch (e) {
+    console.warn('Erro ao limpar Supabase:', e);
+  } finally {
+    _supabase = null;
+  }
+}
+
+/**
+ * Inicializa o cliente Supabase com import dinâmico, retry/backoff e proteção.
+ * Retorna o cliente ou null em falha.
+ */
+
+
+export async function initializeSupabase({ retries = 2, retryDelay = 400, timeoutMs = 8000 } = {}) {
+  if (_supabase) return _supabase;
+  if (_initializing) return _initializing;
+
+  // Loader de script UMD com cache por id
+  const loadUmdOnce = (src, id = 'supabase-umd') =>
+    new Promise((resolve, reject) => {
+      if (document.getElementById(id)) return resolve();
+      const s = document.createElement('script');
+      s.id = id;
+      s.src = src;
+      s.async = true;
+      s.crossOrigin = 'anonymous';
+      s.onload = () => resolve();
+      s.onerror = (e) => reject(e);
+      document.head.appendChild(s);
+    });
+
+  _initializing = (async () => {
+    const { url, key } = _supabaseConfig;
+    if (!url || !key) {
+      console.warn('Supabase não configurado (url/key ausentes).');
+      _initializing = null;
+      return null;
+    }
+
+    const UMD_CANDIDATES = [
+      // Versões estáveis do bundle UMD
+      'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.33.0/dist/umd/supabase.js',
+      'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.35.0/dist/umd/supabase.js',
+      'https://unpkg.com/@supabase/supabase-js@2.33.0/dist/umd/supabase.js',
+    ];
+
+    for (let attempt = 0; attempt <= retries; attempt++) {
+      try {
+        await destroySupabase();
+
+        // Tenta carregar o UMD do Supabase
+        let lastErr = null;
+        for (const src of UMD_CANDIDATES) {
+          try {
+            await loadUmdOnce(src);
+            break;
+          } catch (e) {
+            lastErr = e;
+          }
+        }
+        // Valida se o createClient está disponível em algum namespace
+        const createClient =
+          window?.Supabase?.createClient ??
+          window?.supabase?.createClient ??
+          null;
+
+        if (!createClient) {
+          throw new Error('createClient não encontrado após carregar UMD. Último erro: ' + (lastErr && (lastErr.message || lastErr.type)));
+        }
+
+        const supabase = createClient(_supabaseConfig.url, _supabaseConfig.key, {
+          auth: { persistSession: true, autoRefreshToken: true }
+        });
+
+        // Checagem leve de sessão com timeout (não fatal)
+        const sessionCheck = (async () => {
+          try {
+            const p = supabase.auth.getSession();
+            if (timeoutMs > 0) {
+              const res = await Promise.race([
+                p,
+                new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), timeoutMs))
+              ]);
+              return res;
+            } else {
+              return await p;
+            }
+          } catch (e) {
+            console.debug('Supabase getSession (não fatal):', e);
+            return null;
+          }
+        })();
+        await sessionCheck;
+
+        _supabase = supabase;
+        // 🔧 expõe global para seus helpers
+        window.supabase = _supabase;
+        window._supabase = _supabase;
+
+        _initializing = null;
+        console.info('Supabase inicializado com sucesso (UMD).');
+        return _supabase;
+      } catch (err) {
+        console.error(`Falha ao inicializar Supabase (tentativa ${attempt + 1}):`, err);
+        if (attempt < retries) {
+          const delay = retryDelay * (attempt + 1);
+          await new Promise(r => setTimeout(r, delay));
+          continue;
+        } else {
+          _initializing = null;
+          return null;
+        }
+      }
+    }
+
+    _initializing = null;
+    return null;
+  })();
+
+  return _initializing;
+}
+
+/* =========================
+   Sidebar / Theme helpers (exportados)
+   (mantive suas implementações com pequenas melhorias)
+   ========================= */
 
 let _sidebarAutoCloseInitialized = false;
 
-function toggleSidebar(open) {
+export function toggleSidebar(open) {
   const sidebar = document.querySelector('.sidebar');
   const hamburger = document.getElementById('hamburger-btn') || document.querySelector('.hamburger');
   if (!sidebar) return;
-
   if (open) {
     sidebar.classList.add('open');
     document.body.classList.add('sidebar-open');
@@ -18,7 +189,7 @@ function toggleSidebar(open) {
   }
 }
 
-function setupSidebarAutoClose() {
+export function setupSidebarAutoClose() {
   if (_sidebarAutoCloseInitialized) return;
   _sidebarAutoCloseInitialized = true;
 
@@ -26,105 +197,69 @@ function setupSidebarAutoClose() {
   const hamburger = document.getElementById('hamburger-btn') || document.querySelector('.hamburger');
   if (!sidebar || !hamburger) return;
 
-  // evita que cliques dentro da sidebar fechem ela
   sidebar.addEventListener('click', (e) => e.stopPropagation());
 
-  // hamburger abre/fecha
   hamburger.addEventListener('click', (e) => {
     e.stopPropagation();
-    const opening = !sidebar.classList.contains('open');
-    toggleSidebar(opening);
+    toggleSidebar(!sidebar.classList.contains('open'));
   });
 
-  // clique fora fecha
   document.addEventListener('click', (e) => {
-    const target = e.target;
-    if (hamburger && (hamburger === target || hamburger.contains(target))) return;
-    if (sidebar.contains(target)) return;
-    if (sidebar.classList.contains('open')) {
-      toggleSidebar(false);
-    }
+    if (hamburger && (hamburger === e.target || hamburger.contains(e.target))) return;
+    if (sidebar.contains(e.target)) return;
+    if (sidebar.classList.contains('open')) toggleSidebar(false);
   });
 
-  // fecha ao redimensionar para desktop
   window.addEventListener('resize', () => {
-    if (window.innerWidth > 768 && sidebar.classList.contains('open')) {
-      toggleSidebar(false);
-    }
+    if (window.innerWidth > 768 && sidebar.classList.contains('open')) toggleSidebar(false);
   });
 
-  // gestos touch (abre/fecha)
   let touchStartX = 0;
-  document.addEventListener("touchstart", (e) => {
-    touchStartX = e.touches[0].clientX;
-  });
-  document.addEventListener("touchend", (e) => {
+  document.addEventListener('touchstart', (e) => { touchStartX = e.touches[0].clientX; });
+  document.addEventListener('touchend', (e) => {
     const touchEndX = e.changedTouches[0].clientX;
-    if (touchStartX - touchEndX > 60) {
-      toggleSidebar(false); // arrastar para esquerda → fecha
-    }
-    if (touchEndX - touchStartX > 60) {
-      toggleSidebar(true); // arrastar para direita → abre
-    }
+    if (touchStartX - touchEndX > 60) toggleSidebar(false);
+    if (touchEndX - touchStartX > 60) toggleSidebar(true);
   });
 }
 
-function setupThemeToggle() {
+
+export function setupThemeToggle() {
   const toggle = document.getElementById('themeToggle');
   if (!toggle) return;
+  if (toggle.dataset.init === '1') return;
+  toggle.dataset.init = '1';
 
-  // Nome da chave no localStorage
-  const KEY = 'sIdM_theme'; // "light" ou "dark"
+  toggle.classList.add('switch');
+  toggle.setAttribute('role', 'switch');
 
-  // Função utilitária para aplicar tema
+  const KEY = 'sIdM_theme';
   const applyTheme = (theme) => {
-    if (theme === 'light') {
-      document.body.setAttribute('data-theme', 'light');
-    } else {
-      document.body.removeAttribute('data-theme');
-    }
+    if (theme === 'light') document.body.setAttribute('data-theme', 'light');
+    else document.body.removeAttribute('data-theme');
+    toggle.setAttribute('aria-checked', theme === 'light' ? 'true' : 'false');
   };
 
-  // Decide tema inicial: localStorage -> prefers-color-scheme -> fallback 'dark'
   const stored = localStorage.getItem(KEY);
   if (stored === 'light' || stored === 'dark') {
     applyTheme(stored);
     toggle.checked = stored === 'light';
   } else {
-    // sem preferência salva: respeita o sistema (se suportado)
-    let prefersLight = false;
-    try {
-      prefersLight = window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches;
-    } catch (e) { /* ignore */ }
-
-    if (prefersLight) {
-      applyTheme('light');
-      toggle.checked = true;
-    } else {
-      applyTheme('dark'); // fallback
-      toggle.checked = false;
-    }
+    const prefersLight = window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches;
+    applyTheme(prefersLight ? 'light' : 'dark');
+    toggle.checked = prefersLight;
   }
 
-  // Listener para alternar e persistir
   toggle.addEventListener('change', function () {
     const theme = this.checked ? 'light' : 'dark';
     applyTheme(theme);
     localStorage.setItem(KEY, theme);
   });
 
-  // Atualiza automaticamente se o usuário mudar a preferência do sistema (opcional)
   try {
     if (window.matchMedia) {
       const mq = window.matchMedia('(prefers-color-scheme: light)');
-      mq.addEventListener ? mq.addEventListener('change', (e) => {
-        // só aplica se não houver preferência salva
-        if (!localStorage.getItem(KEY)) {
-          const newTheme = e.matches ? 'light' : 'dark';
-          applyTheme(newTheme);
-          toggle.checked = newTheme === 'light';
-        }
-      }) : mq.addListener((e) => {
+      (mq.addEventListener ?? mq.addListener).call(mq, (e) => {
         if (!localStorage.getItem(KEY)) {
           const newTheme = e.matches ? 'light' : 'dark';
           applyTheme(newTheme);
@@ -132,11 +267,22 @@ function setupThemeToggle() {
         }
       });
     }
-  } catch (e) {}
+  } catch (e) { /* ignore */ }
 }
 
-function setupPullToRefresh() {
-  // cria dinamicamente o overlay
+/* =========================
+   Pull-to-refresh (mantido)
+   ========================= */
+
+
+export function setupPullToRefresh() {
+  // Se o overlay já existe, ainda assim garante o themeToggle
+  const existing = document.querySelector('.pull-refresh');
+  if (existing) {
+    queueMicrotask(() => setupThemeToggle());
+    return;
+  }
+
   const refreshOverlay = document.createElement('div');
   refreshOverlay.className = 'pull-refresh';
   refreshOverlay.innerHTML = `
@@ -148,161 +294,77 @@ function setupPullToRefresh() {
         </linearGradient>
       </defs>
       <path class="circle-bg"
-            d="M18 2.0845
-               a 15.9155 15.9155 0 0 1 0 31.831
-               a 15.9155 15.9155 0 0 1 0 -31.831"/>
+        d="M18 2.0845
+           a 15.9155 15.9155 0 0 1 0 31.831
+           a 15.9155 15.9155 0 0 1 0 -31.831"/>
       <path class="circle"
-            stroke-dasharray="0,100"
-            d="M18 2.0845
-               a 15.9155 15.9155 0 0 1 0 31.831
-               a 15.9155 15.9155 0 0 1 0 -31.831"/>
+        stroke-dasharray="0,100"
+        d="M18 2.0845
+           a 15.9155 15.9155 0 0 1 0 31.831
+           a 15.9155 15.9155 0 0 1 0 -31.831"/>
     </svg>
     <span>Atualizando...</span>
   `;
-
   document.body.appendChild(refreshOverlay);
 
   let touchStartY = 0;
-
-  document.addEventListener("touchstart", e => {
-    touchStartY = e.touches[0].clientY;
-  });
-
-  document.addEventListener("touchmove", e => {
+  const onStart = (e) => { touchStartY = e.touches[0].clientY; };
+  const onMove = (e) => {
     const deltaY = e.touches[0].clientY - touchStartY;
     if (deltaY > 0 && window.scrollY === 0) {
       refreshOverlay.classList.add('show');
       const circle = refreshOverlay.querySelector('.circle');
-      const progress = Math.min(deltaY / 2, 100); // limite 100%
+      const progress = Math.min(deltaY / 2, 100);
       circle.setAttribute('stroke-dasharray', `${progress},100`);
-      if (progress >= 100) {
-        refreshOverlay.classList.add('complete');
-      } else {
-        refreshOverlay.classList.remove('complete');
-      }
+      if (progress >= 100) refreshOverlay.classList.add('complete');
+      else refreshOverlay.classList.remove('complete');
     }
-  });
-
-  document.addEventListener("touchend", () => {
+  };
+  const onEnd = () => {
     if (refreshOverlay.classList.contains('complete')) {
       setTimeout(() => location.reload(), 800);
     } else {
       refreshOverlay.classList.remove('show', 'complete');
     }
-  });
+  };
+
+  // 🔧 Usa passive listeners para não interferir em outros gestos/estilos
+  document.addEventListener('touchstart', onStart, { passive: true });
+  document.addEventListener('touchmove', onMove, { passive: true });
+  document.addEventListener('touchend', onEnd, { passive: true });
+
+  // 🔧 Garante que o theme toggle seja sempre inicializado
+  queueMicrotask(() => setupThemeToggle());
 }
 
-// inicialização única
-window.addEventListener('DOMContentLoaded', () => {
-  setupSidebarAutoClose();
-  setupThemeToggle();
+/* =========================
+   Carregar posts do banco (corrigido)
+   - usa getSupabase() em vez de window.supabase
+   - fallback local robusto
+   - usa _supabaseConfig.tableName
+   ========================= */
 
-  const addBtn = document.getElementById('add-content-btn');
-  if (addBtn) {
-    addBtn.addEventListener('click', () => {
-      renderEditorUI({ mode: 'add' });
-      toggleSidebar(false); // fecha sidebar no mobile
-    });
+
+export async function carregarPostsDoBanco() {
+  // 🔧 Garante que contentData exista antes de qualquer uso
+  if (typeof window.contentData === 'undefined') {
+    window.contentData = {};
   }
-});
+  // Usa a ref local para clareza
+  let contentData = window.contentData;
 
-function scrollContentToTop({ smooth = true } = {}) {
-  const content = document.getElementById('content') || document.querySelector('.content');
-  if (!content) return;
-
-  if (smooth && 'scrollTo' in content) {
-    content.scrollTo({ top: 0, behavior: 'smooth' });
-  } else {
-    content.scrollTop = 0;
-  }
-}
-
-/* ============================
-   Configurações e estado
-   ============================ */
-const TITLE_MAX = 120;
-const CATEGORY_MAX = 64;
-
-let contentData = {};        // estrutura: { categoria: { key: { postId, titulo, conteudo, categoria } } }
-let currentCategoria = null;
-let currentId = null;
-let currentPostId = null;
-
-/* ============================
-  Configurador dinâmico do Supabase
-  Permite alterar: supabaseUrl, supabaseKey, tableName, bucketName
-  Uso:
-    setSupabaseConfig({
-      supabaseUrl: 'https://...supabase.co',
-      supabaseKey: 'public-or-service-key',
-      tableName: 'posts',
-      bucketName: 'images'
-    });
-    await initializeSupabase();
-  Ou em runtime:
-    window.configureSupabase({ ... });
-  ============================ */
-
-import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
-
-const SupabaseConfig = {
-  supabaseUrl: 'https://pwshckrmqaqymngbosgo.supabase.co',
-  supabaseKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB3c2hja3JtcWFxeW1uZ2Jvc2dvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQzNjAwOTEsImV4cCI6MjA3OTkzNjA5MX0.f8iX0RoqrdxJmq-EgSyn_YWPgCHMoARQTT4ygtbcoLg',
-  tableName: 'monanote',   // padrão: posts
-  bucketName: 'monanoteimages'  // padrão: images
-};
-
-export async function initializeSupabase() {
-  if (window.supabase) {
-    console.info('Supabase já inicializado.');
-    return window.supabase;
-  }
-
-  const url = SupabaseConfig.supabaseUrl;
-  const key = SupabaseConfig.supabaseKey;
-
-  if (!url || !key) {
-    console.warn('Supabase: credenciais não configuradas.');
-    return null;
-  }
-
-  try {
-    const supabase = createClient(url, key);
-    window.supabase = supabase;
-
-    // teste rápido
-    const { data, error } = await supabase.auth.getSession();
-    if (error) throw error;
-
-    console.info('Supabase inicializado com sucesso.');
-    return supabase;
-  } catch (err) {
-    console.error('Falha ao inicializar Supabase:', err);
-    return null;
-  }
-}
-
-/* ============================
-  Funções utilitárias que usam a configuração
-  - carregarPostsDoBanco
-  - uploadToSupabase
-  - insertPost
-  - updatePost
-  Observação: todas usam SupabaseConfig.tableName / bucketName
-  ============================ */
-
-async function carregarPostsDoBanco() {
-  // tenta inicializar se necessário
-  if (!window.supabase) {
-    console.warn('Supabase indisponível. Tentando inicializar automaticamente...');
-    await initializeSupabase();
+  // garante cliente supabase
+  let supabase = getSupabase();
+  if (!supabase) {
+    console.warn('Supabase não inicializado. Tentando inicializar...');
+    supabase = await initializeSupabase();
   }
 
   // fallback local se supabase não estiver disponível
-  if (!window.supabase) {
+  if (!supabase) {
     console.warn('Supabase indisponível. Carregando dados locais se houver.');
-    if (typeof window.dataPT !== 'undefined') {
-      try {
+    try {
+      if (typeof window.dataPT !== 'undefined') {
         if (Array.isArray(window.dataPT)) {
           contentData = {};
           window.dataPT.forEach(post => {
@@ -319,30 +381,34 @@ async function carregarPostsDoBanco() {
         } else {
           contentData = JSON.parse(JSON.stringify(window.dataPT));
         }
-      } catch (err) {
-        console.error('Erro ao usar dataPT como fallback:', err);
+        window.contentData = contentData; // sincroniza
+      } else {
         contentData = {};
+        window.contentData = contentData;
       }
-    } else {
+    } catch (err) {
+      console.error('Erro ao usar dataPT como fallback:', err);
       contentData = {};
+      window.contentData = contentData;
     }
+
     renderMenu();
     renderWelcome();
     return;
   }
 
   // usa a tabela configurada
-  const table = SupabaseConfig.tableName || 'posts';
+  const table = _supabaseConfig.tableName || 'posts';
 
   try {
-    const { data, error } = await window.supabase
+    const { data, error } = await supabase
       .from(table)
       .select('*')
       .order('created_at', { ascending: false });
 
     if (error) {
       console.error(`Erro ao buscar dados da tabela "${table}":`, error);
-      contentData = {};
+      window.contentData = {};
       renderMenu();
       renderWelcome();
       return;
@@ -356,7 +422,6 @@ async function carregarPostsDoBanco() {
       if (!contentData[categoria]) contentData[categoria] = {};
       contentData[categoria][key] = {
         postId: post.id,
-        // tenta mapear campos comuns (title / titulo), ajuste se necessário
         titulo: post.title || post.titulo || '(Sem título)',
         conteudo: post.content || post.conteudo || '',
         categoria,
@@ -365,15 +430,17 @@ async function carregarPostsDoBanco() {
       };
     });
 
+    window.contentData = contentData; // sincroniza
     renderMenu();
     renderWelcome();
   } catch (err) {
     console.error('Erro inesperado ao carregar posts:', err);
-    contentData = {};
+    window.contentData = {};
     renderMenu();
     renderWelcome();
   }
 }
+
 
 async function uploadToSupabase(file) {
   if (!file) return '';
@@ -382,7 +449,10 @@ async function uploadToSupabase(file) {
     return '';
   }
 
-  const bucket = SupabaseConfig.bucketName || 'images';
+   const { bucketName, tableName } = _supabaseConfig;
+   const bucket = bucketName;
+   const table  = table;
+
   const safeName = sanitizeFilename(file);
   const filePath = `${safeName.startsWith('/') ? safeName.slice(1) : safeName}`;
 
@@ -403,12 +473,16 @@ async function uploadToSupabase(file) {
   }
 }
 
+
 async function insertPost(payload) {
   if (!window.supabase) {
     console.warn('insertPost: Supabase não inicializado. Fallback local.');
     return null;
   }
-  const table = SupabaseConfig.tableName || 'posts';
+
+  // 🔧 Corrigido: não use setSupabaseConfig como objeto
+  const table = (_supabaseConfig && _supabaseConfig.tableName) || 'posts';
+
   try {
     const resp = await window.supabase.from(table).insert(payload).select().single();
     if (resp.error) {
@@ -422,12 +496,16 @@ async function insertPost(payload) {
   }
 }
 
+
 async function updatePost(postId, payload) {
   if (!window.supabase) {
     console.warn('updatePost: Supabase não inicializado. Fallback local.');
     return null;
   }
-  const table = SupabaseConfig.tableName || 'posts';
+
+  // 🔧 Corrigido: não use setSupabaseConfig como objeto
+  const table = (_supabaseConfig && _supabaseConfig.tableName) || 'posts';
+
   try {
     const resp = await window.supabase.from(table).update(payload).eq('id', postId);
     if (resp.error) {
@@ -451,7 +529,7 @@ async function updatePost(postId, payload) {
   ============================ */
 
 // expõe utilitários para debug/uso externo
-window.SupabaseConfig = SupabaseConfig;
+window.setSupabaseConfig = setSupabaseConfig;
 window.initializeSupabase = initializeSupabase;
 window.insertPost = insertPost;
 window.updatePost = updatePost;
@@ -932,7 +1010,7 @@ function renderWelcome() {
   const article = document.getElementById('article-content');
   if (!article) return;
   article.innerHTML = `
-    <h1 id="article-title">Bem-vinda minha Deusa Rainha!</h1>
+    <h1 id="article-title">Bem-vinda minha Deusa-Rainha!</h1>
     <button id="edit-article-link" style="display:none;">Editar</button>
     <div id="content-body" contenteditable="false" data-placeholder="Digite ou cole o conteúdo aqui">
       <p>Selecione um item no menu para ver o conteúdo.</p>
