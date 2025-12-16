@@ -554,31 +554,35 @@ export async function carregarPostsDoBanco() {
   }
 }
 
-
 async function uploadToSupabase(file) {
   if (!file) return '';
-  if (!window.supabase) {
-    console.warn('uploadToSupabase: Supabase não inicializado.');
-    return '';
+
+  // Garante cliente Supabase (usa getSupabase e, se necessário, initializeSupabase)
+  let supabase = (typeof getSupabase === 'function' ? getSupabase() : null) || window.supabase;
+  if (!supabase) {
+    supabase = await initializeSupabase();
+    if (!supabase) {
+      console.warn('uploadToSupabase: Supabase não inicializado.');
+      return '';
+    }
   }
 
-   const { bucketName, tableName } = _supabaseConfig;
-   const bucket = bucketName;
-   const table  = table;
-
-  const safeName = sanitizeFilename(file);
-  const filePath = `${safeName.startsWith('/') ? safeName.slice(1) : safeName}`;
+  const bucket = (_supabaseConfig && _supabaseConfig.bucketName) || 'images';
+  const filename = sanitizeFilename(file); // ex.: "paste-<timestamp>-<base>.<ext>"
+  const filePath = filename.startsWith('/') ? filename.slice(1) : filename;
 
   try {
-    const { data, error } = await window.supabase.storage.from(bucket).upload(filePath, file, {
-      cacheControl: '3600',
-      upsert: true
-    });
+    const { data, error } = await supabase
+      .storage
+      .from(bucket)
+      .upload(filePath, file, { cacheControl: '3600', upsert: true });
+
     if (error) {
       console.error(`Erro no upload para bucket "${bucket}":`, error);
       return '';
     }
-    const { data: urlData } = window.supabase.storage.from(bucket).getPublicUrl(filePath);
+
+    const { data: urlData } = supabase.storage.from(bucket).getPublicUrl(filePath);
     return urlData?.publicUrl || '';
   } catch (err) {
     console.error('uploadToSupabase erro inesperado:', err);
@@ -588,39 +592,42 @@ async function uploadToSupabase(file) {
 
 
 async function insertPost(payload) {
-  if (!window.supabase) {
-    console.warn('insertPost: Supabase não inicializado. Fallback local.');
+  // Garante cliente Supabase
+  let supabase = (typeof getSupabase === 'function' ? getSupabase() : null) || window.supabase;
+  if (!supabase) supabase = await initializeSupabase();
+  if (!supabase) {
+    console.warn('insertPost: Supabase não inicializado.');
     return null;
   }
 
-  // 🔧 Corrigido: não use setSupabaseConfig como objeto
   const table = (_supabaseConfig && _supabaseConfig.tableName) || 'posts';
 
   try {
-    const resp = await window.supabase.from(table).insert(payload).select().single();
-    if (resp.error) {
-      console.error(`Erro ao inserir na tabela "${table}":`, resp.error);
+       const { data, error } = await supabase.from(table).insert(payload).select().single();
+    if (error) {
+      console.error(`Erro ao inserir na tabela "${table}":`, error);
       return null;
     }
-    return resp.data;
+    return data; // objeto da linha inserida
   } catch (err) {
     console.error('insertPost erro inesperado:', err);
     return null;
   }
 }
 
-
-
 async function updatePost(postId, payload) {
-  if (!window.supabase) {
-    console.warn('updatePost: Supabase não inicializado. Fallback local.');
-    return null;
+  // Garante cliente Supabase
+  let supabase = (typeof getSupabase === 'function' ? getSupabase() : null) || window.supabase;
+  if (!supabase) supabase = await initializeSupabase();
+  if (!supabase) {
+    console.warn('updatePost: Supabase não inicializado.');
+    return { error: new Error('Supabase não inicializado') };
   }
-  const table = _supabaseConfig.tableName;
+
+  const table = (_supabaseConfig && _supabaseConfig.tableName) || 'posts';
 
   try {
-    // 🔧 Supabase v2: para obter a linha atualizada, use .select().single()
-    const { data, error } = await window.supabase
+    const { data, error } = await supabase
       .from(table)
       .update(payload)
       .eq('id', postId)
@@ -631,12 +638,11 @@ async function updatePost(postId, payload) {
       console.error(`Erro ao atualizar na tabela "${table}":`, error);
       return { error };
     }
-    // Retorna objeto consistente
-    return { data };
+    return { data }; // objeto da linha atualizada
   } catch (err) {
     console.error('updatePost erro inesperado:', err);
     return { error: err };
-   }
+  }
 }
 
 /* ============================
