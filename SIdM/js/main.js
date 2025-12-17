@@ -1883,7 +1883,7 @@ async function saveContentInline() {
       loadArticle(catKey, savedKey);
       
       // 🔗 Garante que a URL reflita o artigo atual
-      ifif (currentPostId != null) {
+      if (currentPostId != null) {
         updateUrlWithArticleId(currentPostId);
       }
   } catch (e) {
