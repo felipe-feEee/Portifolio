@@ -1259,10 +1259,12 @@ function renderWelcome() {
   `;
 }
 
+
 function renderMenu() {
   const menu = document.getElementById('menu');
   if (!menu) return;
   menu.innerHTML = '';
+
   const ul = document.createElement('ul');
 
   // ordenar categorias alfabeticamente
@@ -1272,15 +1274,16 @@ function renderMenu() {
 
   for (const categoria of categoriasOrdenadas) {
     const liCategoria = document.createElement('li');
+    liCategoria.dataset.categoria = categoria; // << NOVO
     const span = document.createElement('span');
     span.textContent = categoria;
     span.style.cursor = 'pointer';
     span.setAttribute('tabindex', '0'); // torna focável pelo teclado
 
-    // 👉 expandir/fechar com clique
+    // expandir/fechar com clique
     span.addEventListener('click', () => liCategoria.classList.toggle('active'));
 
-    // 👉 expandir/fechar também com Enter ou Espaço
+    // expandir/fechar também com Enter ou Espaço
     span.addEventListener('keydown', (e) => {
       if (e.key === 'Enter' || e.key === ' ') {
         e.preventDefault(); // evita scroll da página com espaço
@@ -1299,17 +1302,17 @@ function renderMenu() {
       );
 
     for (const [id, artigo] of titulosOrdenados) {
-      
       const liTitulo = document.createElement('li');
       const link = document.createElement('a');
-      
+
       // Gera URL amigável com ?artigoID=<postId>
       const artigoId = artigo.postId;
       link.href = `?artigoID=${encodeURIComponent(String(artigoId))}`;
       link.textContent = artigo.titulo;
       link.dataset.categoria = categoria;
       link.dataset.id = id;
-      
+      link.dataset.postId = String(artigo.postId); // << NOVO
+
       // Mantém SPA: ao clicar, não recarrega; atualiza URL e renderiza.
       link.addEventListener('click', function (e) {
         e.preventDefault();
@@ -1321,7 +1324,7 @@ function renderMenu() {
         }
         loadArticle(cat, key);
       });
-      
+
       // Opcional: ao focar via teclado, também atualiza SPA e URL
       link.addEventListener('focus', function () {
         const cat = this.dataset.categoria;
@@ -1332,7 +1335,7 @@ function renderMenu() {
         }
         loadArticle(cat, key);
       });
-      
+
       liTitulo.appendChild(link);
       ulTitulos.appendChild(liTitulo);
     }
@@ -1392,85 +1395,88 @@ function renderMenu() {
 })();
 
 /**
- * Marca o item do menu correspondente ao artigo como ativo.
- * @param {string} idOrSelector - id do artigo, ou seletor/href parcial para localizar o link.
+ * Marca o item do menu correspondente ao artigo como ativo e expande sua categoria.
+ * @param {string} idOrSelector - id do artigo (key usada em contentData[categoria][id]),
+ *                                ou um seletor/href parcial para localizar o link.
  */
 function setActiveArticle(idOrSelector) {
   const menu = document.getElementById('menu');
   if (!menu) return;
 
-  // remove active de todos
+  // Remove estados ativos anteriores
   menu.querySelectorAll('a.active').forEach(a => {
     a.classList.remove('active');
     a.removeAttribute('aria-current');
   });
 
-  if (!idOrSelector) {
-    // não faz fallback automático quando id inválido
-    return;
-  }
-
-  // normaliza para string
+  // Nada a marcar
+  if (!idOrSelector) return;
   const needle = String(idOrSelector);
 
-  // helpers
-  const tryQuery = (sel) => {
-    try { return menu.querySelector(sel); } catch (e) { return null; }
-  };
-
-  // 1) procura por atributos de dataset comuns (data-id, data-article-id, data-post-id)
-  let target = Array.from(menu.querySelectorAll('a')).find(a => {
-    const ds = a.dataset || {};
-    return ds.id === needle || ds.articleId === needle || ds.postId === needle || ds['article-id'] === needle;
-  });
-
-  // 2) se não encontrou, tenta data-article-id com escape (caso o id contenha caracteres especiais)
-  if (!target) {
-    try {
-      target = tryQuery(`a[data-article-id="${CSS.escape(needle)}"]`);
-    } catch (e) { /* ignore */ }
-  }
-
-  // 3) tenta localizar por href que contenha o id (apenas se o href for usado no seu app)
-  if (!target) {
-    target = Array.from(menu.querySelectorAll('a')).find(a => {
+  // Tenta localizar o link do artigo por diferentes pistas
+  let target =
+    // 1) por data attributes comuns
+    Array.from(menu.querySelectorAll('a')).find(a => {
+      const ds = a.dataset || {};
+      return ds.id === needle ||
+             ds.articleId === needle ||
+             ds.postId === needle ||
+             ds['article-id'] === needle;
+    }) ||
+    // 2) por href contendo o "needle"
+    Array.from(menu.querySelectorAll('a')).find(a => {
       const href = a.getAttribute('href') || '';
       return href.includes(needle);
-    });
-  }
+    }) ||
+    // 3) interpretando como seletor CSS direto (ex.: '#meu-link')
+    (function () {
+      try { return menu.querySelector(needle); } catch { return null; }
+    })();
 
-  // 4) tenta encontrar por postId armazenado em data attributes com variações
   if (!target) {
-    target = Array.from(menu.querySelectorAll('a')).find(a => {
-      const ds = a.dataset || {};
-      return Object.values(ds).some(v => String(v) === needle);
-    });
-  }
-
-  // 5) se ainda não encontrou, tenta interpretar idOrSelector como seletor CSS (ex: '#foo' ou '.bar')
-  if (!target) {
-    target = tryQuery(needle);
-  }
-
-  // se não encontrou nada, não faz fallback para o primeiro link
-  if (!target) {
-    // opcional: log temporário para depuração
+    // Log opcional para depuração
     if (window && window.console && window.console.debug) {
       console.debug('setActiveArticle: target not found for', idOrSelector);
     }
     return;
   }
 
-  // marca o target
+  // Marca o link como ativo
   target.classList.add('active');
   target.setAttribute('aria-current', 'true');
 
-  // rola suavemente apenas se estiver fora da viewport do menu
-  if (typeof target.scrollIntoView === 'function') {
-    const menuRect = menu.getBoundingClientRect();
-    const itemRect = target.getBoundingClientRect();
-    if (itemRect.top < menuRect.top || itemRect.bottom > menuRect.bottom) {
-      target.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  // === Expande a categoria correspondente ===
+  // Estrutura esperada:
+  // liCategoria > span (nome da categoria) + ulTitulos > liTitulo > a(target)
+  const liTitulo = target.closest('li'); // li do título
+  const liCategoria = liTitulo ? liTitulo.parentElement?.closest('li') : null; // li da categoria
+
+  if (liCategoria) {
+    liCategoria.classList.add('active'); // abre a categoria
+
+    // Acessibilidade: o span (cabeçalho da categoria) pode indicar que está expandido
+    const catSpan = liCategoria.querySelector('span');
+    if (catSpan) {
+      catSpan.setAttribute('aria-expanded', 'true');
+    }
+  }
+
+  // === Rolar suavemente para garantir visibilidade do link e da categoria ===
+  const menuRect = menu.getBoundingClientRect();
+  const itemRect = target.getBoundingClientRect();
+
+  // 1) Rola o menu até o link, se ele estiver fora da viewport do menu
+  const itemOutOfView = itemRect.top < menuRect.top || itemRect.bottom > menuRect.bottom;
+  if (itemOutOfView && typeof target.scrollIntoView === 'function') {
+    target.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  }
+
+  // 2) (Opcional) Rola até o cabeçalho da categoria caso também esteja fora de vista
+  if (liCategoria && typeof liCategoria.scrollIntoView === 'function') {
+    const catRect = liCategoria.getBoundingClientRect();
+    const catOutOfView = catRect.top < menuRect.top || catRect.bottom > menuRect.bottom;
+    if (catOutOfView) {
+      liCategoria.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
     }
   }
 }
@@ -1500,6 +1506,7 @@ function updateUrlWithArticleId(postId) {
 
 // Navega pela query string ao carregar/popstate.
 // Se houver ?artigoID=<id>, abre o artigo correspondente; senão mostra a Welcome.
+
 async function navigateByQuery() {
   try {
     const params = new URLSearchParams(window.location.search);
@@ -1512,23 +1519,22 @@ async function navigateByQuery() {
     if (!window.contentData || Object.keys(window.contentData).length === 0) {
       await carregarPostsDoBanco();
     }
-    const found = findArticleByPostId(idParam);
+    let found = findArticleByPostId(idParam);
+    if (!found) {
+      await carregarPostsDoBanco();
+      found = findArticleByPostId(idParam);
+    }
     if (found) {
       loadArticle(found.categoria, found.id);
+      // Abrir sidebar para orientar o usuário (opcional)
+      if (window.innerWidth >= 768) toggleSidebar(true);
     } else {
-      // Se não achou no cache por algum motivo, revalida e tenta de novo
-      await carregarPostsDoBanco();
-      const found2 = findArticleByPostId(idParam);
-      if (found2) {
-        loadArticle(found2.categoria, found2.id);
-      } else {
-        renderWelcome();
-      }
+      renderWelcome();
     }
   } catch (e) {
     console.warn('navigateByQuery falhou:', e);
     renderWelcome();
-  }
+   }
 }
 
 // Lida com back/forward do navegador mantendo a mesma semântica
@@ -1564,10 +1570,16 @@ function loadArticle(categoria, id) {
 
   // após renderizar:
   setActiveArticle(id);
-  container.innerHTML = `
-    <h1 id="article-title">${artigo.titulo}</h1>
-    <button id="edit-article-link" data-categoria="${categoria}" data-id="${id}" data-post-id="${artigo.postId}">Editar</button>
-    <div id="content-body" contenteditable="false" data-placeholder="Digite ou cole o conteúdo aqui">${artigo.conteudo}</div>
+   
+   container.innerHTML = `
+     <nav class="breadcrumb" aria-label="Você está em">
+       <span class="crumb">${artigo.categoria || categoria}</span>
+       <span class="sep">›</span>
+       <span class="crumb current">${artigo.titulo}</span>
+     </nav>
+      <h1 id="article-title">${artigo.titulo}</h1>
+     <button id="edit-article-link" data-categoria="${categoria}" data-id="${id}" data-post-id="${artigo.postId}">Editar</button>
+     <div id="content-body" contenteditable="false" data-placeholder="Digite ou cole o conteúdo aqui">${artigo.conteudo}</div>
   `;
   enableImageSplash(container);
 
