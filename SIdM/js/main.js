@@ -1299,20 +1299,40 @@ function renderMenu() {
       );
 
     for (const [id, artigo] of titulosOrdenados) {
+      
       const liTitulo = document.createElement('li');
       const link = document.createElement('a');
-      link.href = '#';
+      
+      // Gera URL amigável com ?artigoID=<postId>
+      const artigoId = artigo.postId;
+      link.href = `?artigoID=${encodeURIComponent(String(artigoId))}`;
       link.textContent = artigo.titulo;
       link.dataset.categoria = categoria;
       link.dataset.id = id;
-
-      // 👉 carrega artigo quando o link recebe foco (clique ou Tab)
+      
+      // Mantém SPA: ao clicar, não recarrega; atualiza URL e renderiza.
+      link.addEventListener('click', function (e) {
+        e.preventDefault();
+        const cat = this.dataset.categoria;
+        const key = this.dataset.id;
+        const a = window.contentData?.[cat]?.[key];
+        if (a && a.postId != null) {
+          updateUrlWithArticleId(a.postId);
+        }
+        loadArticle(cat, key);
+      });
+      
+      // Opcional: ao focar via teclado, também atualiza SPA e URL
       link.addEventListener('focus', function () {
         const cat = this.dataset.categoria;
         const key = this.dataset.id;
+        const a = window.contentData?.[cat]?.[key];
+        if (a && a.postId != null) {
+          updateUrlWithArticleId(a.postId);
+        }
         loadArticle(cat, key);
       });
-
+      
       liTitulo.appendChild(link);
       ulTitulos.appendChild(liTitulo);
     }
@@ -1354,9 +1374,15 @@ function renderMenu() {
     matches.slice(0, 10).forEach(({ categoria, id, titulo }) => {
       const li = document.createElement('li');
       li.textContent = titulo;
+      
       li.onclick = () => {
+        // Se conseguirmos o postId, atualiza a URL
+        const a = window.contentData?.[categoria]?.[id];
+        if (a && a.postId != null) {
+          updateUrlWithArticleId(a.postId);
+        }
         loadArticle(categoria, id);
-        suggestions.style.display = 'none';
+         suggestions.style.display = 'none';
         el.value = '';
       };
       suggestions.appendChild(li);
@@ -1449,6 +1475,68 @@ function setActiveArticle(idOrSelector) {
   }
 }
 
+// Localiza um artigo pelo postId (inteiro ou string), retornando { categoria, id, artigo }.
+function findArticleByPostId(postId) {
+  if (!postId && postId !== 0) return null;
+  const needle = String(postId);
+  for (const categoria in window.contentData || {}) {
+    const artigos = window.contentData[categoria] || {};
+    for (const id in artigos) {
+      const a = artigos[id];
+      if (String(a.postId) === needle) {
+        return { categoria, id, artigo: a };
+      }
+    }
+  }
+  return null;
+}
+
+// Atualiza a URL para ?artigoID=<postId> sem recarregar, preservando demais params (SPA).
+function updateUrlWithArticleId(postId) {
+  const url = new URL(window.location.href);
+  url.searchParams.set('artigoID', String(postId));
+  history.pushState({ artigoID: String(postId) }, '', url);
+}
+
+// Navega pela query string ao carregar/popstate.
+// Se houver ?artigoID=<id>, abre o artigo correspondente; senão mostra a Welcome.
+async function navigateByQuery() {
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const idParam = params.get('artigoID');
+    if (!idParam) {
+      renderWelcome();
+      return;
+    }
+    // Garante que os dados já estejam carregados
+    if (!window.contentData || Object.keys(window.contentData).length === 0) {
+      await carregarPostsDoBanco();
+    }
+    const found = findArticleByPostId(idParam);
+    if (found) {
+      loadArticle(found.categoria, found.id);
+    } else {
+      // Se não achou no cache por algum motivo, revalida e tenta de novo
+      await carregarPostsDoBanco();
+      const found2 = findArticleByPostId(idParam);
+      if (found2) {
+        loadArticle(found2.categoria, found2.id);
+      } else {
+        renderWelcome();
+      }
+    }
+  } catch (e) {
+    console.warn('navigateByQuery falhou:', e);
+    renderWelcome();
+  }
+}
+
+// Lida com back/forward do navegador mantendo a mesma semântica
+window.addEventListener('popstate', () => {
+  navigateByQuery();
+});
+``
+
 function scrollContentToTop({ smooth = true } = {}) {
   // Prioriza a área central de conteúdo
   const content = document.querySelector('.content');
@@ -1467,6 +1555,7 @@ function scrollContentToTop({ smooth = true } = {}) {
   }
 }
 
+
 function loadArticle(categoria, id) {
   if (!contentData[categoria] || !contentData[categoria][id]) return;
   const artigo = contentData[categoria][id];
@@ -1475,18 +1564,21 @@ function loadArticle(categoria, id) {
 
   // após renderizar:
   setActiveArticle(id);
-
   container.innerHTML = `
     <h1 id="article-title">${artigo.titulo}</h1>
     <button id="edit-article-link" data-categoria="${categoria}" data-id="${id}" data-post-id="${artigo.postId}">Editar</button>
     <div id="content-body" contenteditable="false" data-placeholder="Digite ou cole o conteúdo aqui">${artigo.conteudo}</div>
   `;
-
   enableImageSplash(container);
 
   currentCategoria = categoria;
   currentId = id;
-  currentPostId = artigo.postId || null;
+  currentPostId = artigo.postId ?? null;
+
+  // 🔗 Mantém a URL sempre alinhada ao artigo atual (SPA)
+  if (currentPostId != null) {
+    updateUrlWithArticleId(currentPostId);
+  }
 
   const editLink = document.getElementById('edit-article-link');
   if (editLink) {
@@ -1693,16 +1785,20 @@ async function saveNewContent() {
       }
       currentPostId = resp.id;
     }
-
-    await carregarPostsDoBanco();
-
-    const catKey = categoria;
-    const newKey = Object.keys(contentData[catKey]).find(
-      k => contentData[catKey][k].postId === currentPostId
-    ) || Object.keys(contentData[catKey]).pop();
-
-    loadArticle(catKey, newKey);
-    //alert('Conteúdo adicionado com sucesso!');
+   await carregarPostsDoBanco();
+   const catKey = categoria;
+   const newKey = Object.keys(contentData[catKey]).find(
+     k => contentData[catKey][k].postId === currentPostId
+   ) ?? Object.keys(contentData[catKey]).pop();
+   
+   loadArticle(catKey, newKey);
+   
+   // 🔗 Garante que a URL reflita o artigo atual
+   if (currentPostId != null) {
+     updateUrlWithArticleId(currentPostId);
+   }
+   
+   //alert('Conteúdo adicionado com sucesso!');
   } catch (e) {
     console.error('Erro ao adicionar:', e);
     alert('Erro ao adicionar conteúdo.');
@@ -1778,15 +1874,18 @@ async function saveContentInline() {
       }
     }
 
-    await carregarPostsDoBanco();
-
-    const catKey = categoria;
-    const savedKey = Object.keys(contentData[catKey]).find(
-      k => contentData[catKey][k].postId === currentPostId
-    ) || Object.keys(contentData[catKey]).pop();
-
-    loadArticle(catKey, savedKey);
-    //alert('Conteúdo salvo com sucesso!');
+      await carregarPostsDoBanco();
+      const catKey = categoria;
+      const savedKey = Object.keys(contentData[catKey]).find(
+        k => contentData[catKey][k].postId === currentPostId
+      ) ?? Object.keys(contentData[catKey]).pop();
+      
+      loadArticle(catKey, savedKey);
+      
+      // 🔗 Garante que a URL reflita o artigo atual
+      ifif (currentPostId != null) {
+        updateUrlWithArticleId(currentPostId);
+      }
   } catch (e) {
     console.error('Erro ao salvar:', e);
     // tenta revalidar antes de notificar o usuário
@@ -1822,6 +1921,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     // Inicializa supabase e carrega dados
     await initializeSupabase();
     await carregarPostsDoBanco();
+    await navigateByQuery();
   } catch (e) {
     console.error('Erro na inicialização:', e);
     // tenta carregar dados locais/fallback mesmo em erro
