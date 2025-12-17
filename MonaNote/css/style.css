@@ -742,3 +742,6 @@ body[data-theme="light"] .main-header .header-actions label.theme-switch .slider
   background: var(--accent);
   box-shadow: 0 3px 8px rgba(0,0,0,  box-shadow: 0 3px 8px rgba(0,0,0,0.12);
 }
+   
+.breadcrumb {
+  display: flex;
