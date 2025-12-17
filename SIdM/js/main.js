@@ -1574,7 +1574,7 @@ function loadArticle(categoria, id) {
    container.innerHTML = `
      <nav class="breadcrumb" aria-label="Você está em">
        <span class="crumb">${artigo.categoria || categoria}</span>
-       <span class="sep">››</span>
+       <span class="sep"> ›› </span>
        <span class="crumb current">${artigo.titulo}</span>
      </nav>
       <h1 id="article-title">${artigo.titulo}</h1>
