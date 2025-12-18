@@ -1,0 +1,239 @@
+
+/* =========================================================
+   Dashboard - Estilos completos (com estabilização do Donut)
+   ========================================================= */
+
+:root {
+  --color-text: #1f2937;
+  --color-muted: #6b7280;
+  --color-border: #e5e7eb;
+  --color-bg: #ffffff;
+  --shadow-1: 0 1px 3px rgba(0,0,0,.08), 0 1px 2px rgba(0,0,0,.06);
+
+  /* Paleta (alinhada às flags do JS) */
+  --emissao: #16a34a;
+  --cancelado: #c0392b;
+  --evento: #2471a3;
+  --inutilizado: #d35400;
+
+  --accent-blue: #005a9e;
+  --accent-orange: #f59e0b;
+}
+
+/* Container principal */
+#dashboardView {
+  display: block;
+  background: var(--color-bg);
+  color: var(--color-text);
+  padding: 16px;
+}
+
+/* Cabeçalho */
+#dashboardHeader {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+#dashboardHeader h2 { font-size: 20px; margin: 0; font-weight: 700; }
+#dashboardHeader .subtitle { font-size: 12px; color: var(--color-muted); }
+
+/* KPIs */
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(140px, 1fr));
+  gap: 10px;
+  margin-bottom: 16px;
+}
+.kpi {
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  padding: 10px 12px;
+  box-shadow: var(--shadow-1);
+  background: #fafafa;
+}
+.kpi span { font-size: 12px; color: var(--color-muted); }
+.kpi strong { margin-top: 6px; font-size: 18px; font-weight: 700; }
+.kpi.emissao { border-left: 4px solid var(--emissao); }
+.kpi.cancelado { border-left: 4px solid var(--cancelado); }
+.kpi.evento { border-left: 4px solid var(--evento); }
+.kpi.inutilizado { border-left: 4px solid var(--inutilizado); }
+
+/* Grids */
+.grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  margin-bottom: 14px;
+}
+
+/* Cards */
+.card {
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  background: var(--color-bg);
+  box-shadow: var(--shadow-1);
+  overflow: hidden;
+}
+.card header { padding: 10px 12px; border-bottom: 1px solid var(--color-border); }
+.card header h3 { margin: 0; font-size: 16px; font-weight: 600; }
+.chart-box { padding: 8px 12px 12px 12px; overflow: hidden; } /* evita barras internas */
+
+/* Canvas em caixas padrão */
+.chart-box canvas {
+  width: 100% !important;
+  height: 100% !important;
+  display: block;
+}
+
+/* ===== Donut: layout estável (canvas + legenda lado a lado) ===== */
+.donut-box {
+  min-height: 280px;
+  display: grid;
+  grid-template-columns: minmax(240px, 1fr) 260px; /* legenda fixa */
+  gap: 12px;
+  align-items: center;
+}
+
+/* Wrapper EXCLUSIVO do canvas do donut (Chart.js mede este pai) */
+.chart-canvas-wrap {
+  position: relative;        /* requisito para responsividade do Chart.js */
+  width: 100%;
+  height: 300px;             /* altura estável do donut; ajuste conforme necessidade */
+  overflow: hidden;          /* previne scroll interno + loops de resize */
+}
+.chart-canvas-wrap > canvas {
+  width: 100% !important;
+  height: 100% !important;
+  display: block;
+}
+
+/* Legenda do Donut isolada (não afeta medidas do canvas) */
+#legendStatus {
+  width: 260px;
+  max-width: 260px;
+  flex: 0 0 260px;
+  white-space: normal;
+  contain: layout paint;      /* isola reflows do legend */
+}
+
+/* Legenda HTML (com estado oculto) */
+.legend-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  padding: 6px 4px;
+  border-radius: 6px;
+  user-select: none;
+  outline: none;
+}
+.legend-item:hover { background: #f7fafc; }
+.legend-item:focus-visible {
+  outline: 2px solid rgba(0,90,158,.25);
+  background: #f0f7ff;
+}
+.legend-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  flex: 0 0 14px;
+  box-shadow: inset 0 0 0 1px rgba(0,0,0,.08);
+}
+.legend-text {
+  font-size: 12px;
+  color: var(--color-text);
+}
+
+/* Estado oculto: hachura + desaturação + risco */
+.legend-item.is-hidden .legend-text {
+  color: #777;
+  text-decoration: line-through;
+}
+.legend-item.is-hidden .legend-dot {
+  background-image: repeating-linear-gradient(
+    135deg,
+    rgba(255,255,255,.6) 0 6px,
+    rgba(255,255,255,0) 6px 12px
+  );
+  filter: grayscale(0.45) brightness(1.05);
+  box-shadow: inset 0 0 0 1px rgba(0,0,0,.12);
+}
+
+/* Alturas mínimas das demais caixas de gráfico */
+.month-compare-box { min-height: 320px; }
+.lag-pareto-box   { min-height: 320px; }
+.folder-box       { min-height: 320px; }
+.cnpjs-box        { min-height: 320px; }
+
+/* Tabela Top CNPJs por atraso */
+#tableTopLag {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+#tableTopLag thead th {
+  text-align: left;
+  padding: 8px;
+  border-bottom: 1px solid var(--color-border);
+  font-weight: 600;
+  background: #f9fafb;
+}
+#tableTopLag tbody td {
+  padding: 8px;
+  border-bottom: 1px solid #f3f4f6;
+}
+#tableTopLag tbody tr:hover { background: #f9fafb; }
+
+/* Botão Dashboard */
+#btnDashboard {
+  appearance: button;
+  border: 1px solid var(--color-border);
+  background: #f9fafb;
+  color: var(--color-text);
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: 12px;
+  cursor: pointer;
+  box-shadow: var(--shadow-1);
+}
+#btnDashboard:hover { background: #f3f4f6; }
+#btnDashboard.is-dashboard-open { background: #e6f2ff; border-color: #cfe1f7; }
+
+/* Responsividade */
+@media (max-width: 1200px) {
+  .kpi-grid { grid-template-columns: repeat(3, minmax(140px, 1fr)); }
+}
+@media (max-width: 900px) {
+  .grid-2 { grid-template-columns: 1fr; }
+
+  /* Donut em coluna única: legenda abaixo, canvas mantém altura menor */
+  .donut-box {
+    grid-template-columns: 1fr;
+    min-height: 280px;
+  }
+  #legendStatus {
+    width: 100%;
+    max-width: 100%;
+    flex: 1 1 auto;
+  }
+  .chart-canvas-wrap { height: 260px; } /* altura reduzida no mobile */
+}
+@media (max-width: 600px) {
+  #dashboardHeader h2 { font-size: 18px; }
+  .kpi strong { font-size: 16px; }
+  .legend-text { font-size:  .legend-text { font-size: 11px; }
+  }
+  
+/* Tornar a tabela rolável sem mexer no layout */
+.top-lag-box {
+  min-height: 320px;
+  max-height: 360px;    max-height: 360px;   /* ajuste conforme sua página */
+  overflow: auto;      /* caso a lista tenha muitas linhas */
+}

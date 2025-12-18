@@ -1,0 +1,374 @@
+  // ===== Render =====
+  async function renderDashboard(){
+    const view = ensureContainer();
+    view.classList.add('active');
+    setDashboardButtonState(true);
+	toggleToolbarButtons(false);
+
+    const data = getCurrentDataset();
+
+    const st        = countStatuses(data);
+    const monthCmp  = aggregateMonthCompare(data);
+    const lagPareto = aggregateLagPareto(data);
+    const topLag    = aggregateLagByCNPJ(data);
+    const byFolder  = groupByFolder(data).slice(0,10);
+    const byCNPJ    = groupByCNPJ(data).slice(0,10);
+
+
+
+	const html = `
+	  <link rel="stylesheet" href="dashboard.css">
+	  <div id="dashboardHeader">
+		<div>
+		  <h2>Dashboard de Documentos</h2>
+		  <span class="subtitle">Visão geral por pasta, status, mês/ano e CNPJ (de acordo com as pastas selecionadas)</span>
+		</div>
+	  </div>
+
+	  <div class="kpi-grid">
+		<div class="kpi total"><span>Total de documentos</span><strong>${st.total}</strong></div>
+		<div class="kpi emissao"><span>Status: Emissão</span><strong>${st.Emissao}</strong></div>
+		<div class="kpi cancelado"><span>Status: Cancelado</span><strong>${st.Cancelado}</strong></div>
+		<div class="kpi evento"><span>Status: Evento</span><strong>${st.Evento}</strong></div>
+		<div class="kpi inutilizado"><span>Status: Inutilizado</span><strong>${st.Inutilizado}</strong></div>
+	  </div>
+
+	  <!-- 1ª linha: Donut + Emissão × Modificação -->
+	  <div class="grid-2">
+		<div class="card donut">
+		  <header><h3>Distribuição por status</h3></header>
+		  <div class="chart-box donut-box">
+			<div class="chart-canvas-wrap">
+			  <canvas id="chartStatus" aria-label="Distribuição por status"></canvas>
+			</div>
+			<div class="legend-box" id="legendStatus" aria-label="Legenda de distribuição por status"></div>
+		  </div>
+		</div>
+
+		<div class="card month-compare">
+		  <header><h3>Emissão × Modificação (últimos 12 meses)</h3></header>
+		  <div class="chart-box month-compare-box">
+			<canvas id="chartMonthCompare" aria-label="Emissão × Modificação"></canvas>
+		  </div>
+		</div>
+	  </div>
+
+	  <!-- 2ª linha: Por pasta + Top CNPJs -->
+	  <div class="grid-2">
+		<div class="card folder">
+		  <header><h3>Por pasta</h3></header>
+		  <div class="chart-box folder-box">
+			<canvas id="chartFolder" aria-label="Documentos por pasta"></canvas>
+		  </div>
+		</div>
+
+		<div class="card cnpjs">
+		  <header><h3>Top CNPJs</h3></header>
+		  <div class="chart-box cnpjs-box">
+			<canvas id="chartCNPJ" aria-label="Top CNPJs"></canvas>
+		  </div>
+		</div>
+	  </div>
+
+	  <!-- 3ª linha (unificada): Pareto + Top CNPJs por atraso -->
+	  <div class="grid-2">
+		<div class="card lag-pareto">
+		  <header><h3>Pareto de atraso (dias)</h3></header>
+		  <div class="chart-box lag-pareto-box">
+			<canvas id="chartLagPareto" aria-label="Pareto de atraso"></canvas>
+		  </div>
+		</div>
+
+		<div class="card top-lag">
+		  <header><h3>Top CNPJs por atraso</h3></header>
+		  <div class="chart-box top-lag-box">
+			<table id="tableTopLag" aria-label="Top CNPJs por atraso">
+			  <thead>
+				<tr>
+				  <th>CNPJ</th>
+				  <th>Qtd</th>
+				  <th>Lag médio (dias)</th>
+				  <th>P95 (dias)</th>
+				  <th>% > 30d</th>
+				</tr>
+			  </thead>
+			  <tbody></tbody>
+			</table>
+		  </div>
+		   </div>
+	  </div>
+	`;
+	view.innerHTML = html;
+
+    // Esconde a lista enquanto o dash está ativo
+    const listContainer = document.querySelector('.list-container') || document.querySelector('.list-scroll');
+    if(listContainer) listContainer.style.display = 'none';
+
+    // Chart.js
+    try { await loadChartJS(); } catch(e){ console.error(e); return; }
+    destroyCharts();
+
+    // Paleta alinhada às flags do style.css
+    const flags = {
+      emissao:      '#16a34a', // verde
+      cancelado:    '#c0392b', // vermelho
+      evento:       '#2471a3', // azul
+      inutilizado:  '#d35400', // laranja
+      accentBlue:   '#005a9e', // azul forte para gráficos adicionais
+      accentOrange: '#f59e0b'  // laranja UI (se precisar)
+    };
+
+	// ===== Donut Status com legenda HTML e visual para itens ocultos
+	const statusOrder = ['Emissao', 'Cancelado', 'Evento', 'Inutilizado'];
+	const statusCounts = statusOrder.map(k => st[k] ?? 0);
+	const statusColors = [flags.emissao, flags.cancelado, flags.evento, flags.inutilizado];
+	const nf = new Intl.NumberFormat('pt-BR');
+
+	// Plugin de legenda HTML com estilo/estado "oculto" e porcentagens dinâmicas
+	const htmlLegendPlugin = {
+	  id: 'htmlLegend',
+	  afterUpdate(chart, args, opts) {
+		const container = document.getElementById(opts.containerID);
+		if (!container) return;
+
+		while (container.firstChild) container.firstChild.remove();
+
+		const ul = document.createElement('ul');
+		ul.setAttribute('role', 'list');
+		ul.className = 'legend-list';
+
+		const labels = chart.data.labels ?? [];
+		const dataset = chart.data.datasets[0];
+
+		const totalVisible = dataset.data.reduce((sum, v, idx) =>
+		  chart.getDataVisibility(idx) ? sum + (v || 0) : sum, 0);
+
+		let clickLock = false;
+		const safeUpdate = () => {
+		  if (clickLock) return;
+		  clickLock = true;
+		  chart.update('none');           // sem animação = sem tremor
+		  setTimeout(() => { clickLock = false; }, 50);
+		};
+
+		labels.forEach((label, i) => {
+		  const li = document.createElement('li');
+		  li.className = 'legend-item';
+		  li.setAttribute('role', 'button');
+		  li.setAttribute('tabindex', '0');
+
+		  const isVisible = chart.getDataVisibility(i);
+		  const isHidden = !isVisible;
+
+		  const dot = document.createElement('span');
+		  dot.className = 'legend-dot';
+		  dot.style.background = dataset.backgroundColor[i];
+
+		  const nice = label === 'Emissao' ? 'Emissão' : label;
+		  const value = dataset.data[i] ?? 0;
+		  const pct = totalVisible ? Math.round((value / totalVisible) * 100) : 0;
+
+		  const text = document.createElement('span');
+		  text.className = 'legend-text';
+		  text.textContent = `${nice} — ${nf.format(value)} (${pct}%)`;
+
+		  if (isHidden) {
+			li.classList.add('is-hidden');
+			text.style.textDecoration = 'line-through';
+		  }
+		  li.setAttribute('aria-pressed', String(isVisible));
+
+		  const toggle = () => { chart.toggleDataVisibility(i); safeUpdate(); };
+		  li.addEventListener('click', toggle);
+		  li.addEventListener('keydown', (ev) => {
+			if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); toggle(); }
+		  });
+
+		  li.appendChild(dot);
+		  li.appendChild(text);
+		  ul.appendChild(li);
+		});
+
+		container.appendChild(ul);
+	  }
+	};
+
+
+	// Instanciação do gráfico de status (mantendo sua configuração original)
+	const chartStatus = new Chart(view.querySelector('#chartStatus'), {
+	  type: 'doughnut',
+	  data: {
+		labels: statusOrder,
+		datasets: [{
+		  data: statusCounts,
+		  backgroundColor: statusColors,
+		  borderWidth: 0,
+		  borderRadius: 6,
+		  hoverOffset: 6
+		}]
+	  },
+	  options: {
+		responsive: true,
+		maintainAspectRatio: false,   // importante p/ altura controlada via CSS
+		resizeDelay: 200,             // debouncing do resize
+		interaction: { mode: 'nearest', intersect: false },
+		transitions: { resize: { animation: { duration: 0 } } },
+		plugins: {
+		  legend: { display: false },
+		  tooltip: {
+			callbacks: {
+			  label(ctx) {
+				const v = ctx.parsed ?? 0;
+				const nm = ctx.label === 'Emissao' ? 'Emissão' : ctx.label;
+				const ds = ctx.chart.data.datasets[0];
+				const totalVisible = ds.data.reduce((sum, val, idx) =>
+				  ctx.chart.getDataVisibility(idx) ? sum + (val || 0) : sum, 0);
+				const pct = totalVisible ? Math.round((v / totalVisible) * 100) : 0;
+				return `${nm}: ${nf.format(v)} (${pct}%)`;
+			  }
+			}
+		  },
+		  htmlLegend: { containerID: 'legendStatus' }
+		},
+		cutout: '62%',
+		spacing: 2,
+		rotation: -90
+	  },
+	  plugins: [htmlLegendPlugin]
+	});
+    registerChart(chartStatus);
+
+    // ===== Emissão × Modificação (últimos 12 meses) — barras comparativas
+    const chartMonthCompare = new Chart(view.querySelector('#chartMonthCompare'), {
+      type: 'bar',
+      data: {
+        labels: monthCmp.labels,
+        datasets: [
+          { label: 'Emissão',     data: monthCmp.emissaos,  backgroundColor: flags.emissao },
+          { label: 'Modificação', data: monthCmp.modifics,  backgroundColor: flags.accentBlue }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { position: 'bottom' } },
+        scales: {
+          x: { grid: { display: false } },
+          y: { beginAtZero: true, grid: { color: '#eef2f7' } }
+        }
+      }
+    });
+    registerChart(chartMonthCompare);
+
+    // ===== Pareto de atraso (barras + linha cumulativa)
+    const chartLagPareto = new Chart(view.querySelector('#chartLagPareto'), {
+      type: 'bar',
+      data: {
+        labels: lagPareto.labels,
+        datasets: [
+          { type: 'bar',  label: 'Qtd', data: lagPareto.counts, backgroundColor: flags.cancelado, yAxisID: 'y' },
+          { type: 'line', label: 'Cumulativa (%)', data: lagPareto.cumulative, borderColor: flags.accentBlue, backgroundColor: flags.accentBlue, yAxisID: 'yr', tension: 0.25, fill: false }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { position: 'bottom' } },
+        scales: {
+          y:  { beginAtZero: true, grid: { color: '#eef2f7' } },
+          yr: { beginAtZero: true, grid: { display: false }, min: 0, max: 100, ticks: { callback: (v)=> `${v}%` } }
+        }
+      }
+    });
+    registerChart(chartLagPareto);
+
+
+
+// ===== Tabela Top CNPJs por atraso
+const tbody = view.querySelector('#tableTopLag tbody');
+const nfInt = new Intl.NumberFormat('pt-BR');
+const nfPct = new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 0 });
+
+tbody.innerHTML = topLag.map(row => `
+  <tr>
+    <td>${row.cnpj}</td>
+    <td>${nfInt.format(row.qtdDocs)}</td>
+    <td>${nfInt.format(row.lagMedio)}</td>
+    <td>${nfInt.format(row.p95)}</td>
+    <td>${nfPct.format(row.pct30)}%</td>
+  </tr>
+`).join('');
+
+// --- Delegação: um único listener no <tbody> ---
+tbody.addEventListener('click', (ev) => {
+  const tr = ev.target.closest('tr');
+  if (!tr) return;
+
+  const cnpjMasked = tr.cells[0]?.textContent?.trim() || '';
+  const cnpjDigits = cnpjMasked.replace(/\D/g, ''); // só dígitos
+
+  // Preenche o filtro de CNPJ no painel (se existir)
+  const cnpjInput = document.getElementById('filter_CNPJ');
+  if (cnpjInput) cnpjInput.value = cnpjDigits;
+
+  // Marca que estamos em modo de busca e reseta paginação
+  window.isSearching = true;
+  window.currentPage = 1;
+  window.displayedFiles = [];
+
+  // Sai do dashboard e volta à lista
+  try { hideDashboard(); } catch (e) {}
+
+  // Executa a busca com o filtro atualizado
+  try { searchFiles(); } catch (e) { console.error('Não foi possível executar searchFiles()', e); }
+
+  // Atualiza estado visual do botão de filtros
+  try { updateFilterButtonState(); } catch (e) {}
+
+  // UX extra: levar ao topo e focar a caixa de busca
+  const listEl = document.querySelector('.list-container');
+  if (listEl) listEl.scrollTop = 0;
+
+  const accessKeyEl = document.getElementById('accessKey');
+  if (accessKeyEl) accessKeyEl.focus();
+
+    // ===== Barras por pasta (Top 10)
+    const chartFolder = new Chart(view.querySelector('#chartFolder'), {
+      type: 'bar',
+      data: {
+        labels: byFolder.map(x=>x.name),
+        datasets: [{ label: 'Docs', data: byFolder.map(x=>x.count), backgroundColor: flags.accentBlue }]
+      },
+      options: {
+        indexAxis: 'y',
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { beginAtZero: true, grid: { color: '#eef2f7' } },
+          y: { grid: { display: false } }
+        }
+      }
+    });
+    registerChart(chartFolder);
+
+    // ===== Barras Top CNPJs (Top 10)
+    const chartCNPJ = new Chart(view.querySelector('#chartCNPJ'), {
+      type: 'bar',
+      data: {
+        labels: byCNPJ.map(x=>x.cnpj),
+        datasets: [{ label: 'Docs', data: byCNPJ.map(x=>x.count), backgroundColor: flags.evento }]
+      },
+      options: {
+        indexAxis: 'y',
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { beginAtZero: true, grid: { color: '#eef2f7' } },
+          y: { grid: { display: false } }
+        }
+      }
+    });
+    registerChart(chartCNPJ);
+}

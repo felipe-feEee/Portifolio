@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Pesquisa de Notas Fiscais XML</title>
+  <link rel="icon" href="./favicon.ico" type="image/x-icon" />
+  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="dashboard.css">
+</head>
+<body>
+  <header class="topbar" role="banner">
+    <div class="topbar-row">
+      <div class="path-info">
+        <h1 id="folderHeader">Arquivos XML na pasta ...</h1>
+      </div>
+      <div class="topbar-meta">
+        <div id="last-update">Última atualização: ...</div>
+      </div>
+    </div>
+
+    <div class="controls" role="search" aria-label="Busca de notas fiscais">
+      <label for="accessKey" class="sr-only">Chave de acesso (44 dígitos)</label>
+
+      <div class="search-row">
+        <div class="search-field">
+          <input id="accessKey" type="text" placeholder="Digite a chave de acesso (44 dígitos)" maxlength="44" autocomplete="off" />
+        </div>
+
+        <div id="fileCounter" class="file-counter" aria-live="polite">Exibindo 0 arquivos</div>
+      </div>
+
+      <div class="control-row">
+        <div class="btn-group">
+          <button id="toggleSort" type="button" aria-pressed="false"><span id="sortIcon">⬇️</span> Mais novos</button>
+          <button id="exportCsv" type="button">Exportar CSV</button>
+          <button id="btnFilters" type="button" aria-expanded="false" aria-controls="filterPanel">Filtros</button>
+		  <button id="btnDashboard" type="button">Dashboard</button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- list-container: SCROLL deve ocorrer aqui (JS escuta este container) -->
+  <main class="list-container" role="main" aria-label="Lista de arquivos">
+    <ul id="fileList" aria-live="polite"></ul>
+  </main>
+
+  <!-- Overlay + painel lateral (IDs mantidos) -->
+  <div id="overlay" class="overlay hidden" aria-hidden="true"></div>
+
+  <aside id="filterPanel" class="filter-panel hidden" role="region" aria-label="Filtros avançados">
+    <div class="filter-header">
+      <h2>Filtros avançados</h2>
+      <button id="closeFilters" class="close-btn" aria-label="Fechar filtros">✕</button>
+    </div>
+
+    <form id="filterForm" aria-label="Formulário de filtros">
+      <!-- Campos serão injetados pelo seu JS (initFilters) -->
+    </form>
+  </aside>
+
+  <!-- Popup (mantido) -->
+  <div id="popup" class="popup hidden" role="dialog" aria-modal="true" aria-hidden="true">
+    <div class="popup-content"></div>
+  </div>
+
+  <!-- Seus scripts (mantidos) -->
+  <script src="script/file_data.json"></script>
+  <script src="script/base_app.js"></script>
+  <script src="script/dashboard.js" defer></script>
+</body>
+</html>
