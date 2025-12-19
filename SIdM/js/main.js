@@ -426,7 +426,7 @@ function ensureThemeSwitchDesktopOverride() {
   const style = document.createElement('style');
   style.id = 'theme-switch-overrides';
   style.textContent = css;
-  document.head  document.head.appendChild(style);
+  document.head.appendChild(style);
 }
 
 /* =========================
