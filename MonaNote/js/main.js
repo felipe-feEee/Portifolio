@@ -337,7 +337,6 @@ export function setupThemeToggle() {
 
 // Injeta (uma única vez) overrides seguros para o theme switch em desktop
 function ensureThemeSwitchDesktopOverride() {
-  // Remove a versão anterior se existir (para evitar conflito)
   const old = document.getElementById('theme-switch-overrides');
   if (old) old.remove();
 
@@ -351,6 +350,15 @@ function ensureThemeSwitchDesktopOverride() {
     width: 48px !important;
     height: 26px !important;
     vertical-align: middle;
+
+    /* >>> NOVO: borda tracejada branca e arredondada no desktop */
+    border: 1px dashed #fff !important;
+    border-radius: 999px !important;
+    box-sizing: border-box !important;
+
+    /* >>> NOVO: leve acolchoamento interno para a trilha não "colar" na borda */
+    padding: 2px !important;
+    /* Se quiser borda mais visível, aumente para 3px e ajuste os valores abaixo */
   }
 
   /* 2) Input invisível, restrito ao tamanho do label */
@@ -371,9 +379,12 @@ function ensureThemeSwitchDesktopOverride() {
   /* 3) Trilha do switch visível e no topo do label */
   .main-header .header-actions label.theme-switch .slider {
     position: absolute !important;
-    left: 0; top: 0; right: 0; bottom: 0;
+    /* ANTES: inset: 0; — isso "tampava" a borda no desktop.
+       >>> NOVO: recua 2px para respeitar a borda e padding do label */
+    inset: 0px !important;
+
     display: block !important;
-    border-radius: 999px;
+    border-radius: 999px !important;
     background: rgba(15,23,42,0.06); /* bom contraste no light; seu CSS já trata dark */
     box-shadow: inset 0 1px 0 rgba(0,0,0,0.02);
     pointer-events: none;             /* não intercepta clique (vai para o input/label) */
@@ -385,8 +396,10 @@ function ensureThemeSwitchDesktopOverride() {
     position: absolute;
     width: 20px;
     height: 20px;
-    left: 3px;
-    top: 3px;
+
+    left: 3px !important;
+    top: 3px !important;
+
     border-radius: 50%;
     background: var(--accent);
     box-shadow: 0 4px 12px rgba(0,0,0,0.28);
@@ -395,9 +408,16 @@ function ensureThemeSwitchDesktopOverride() {
 
   /* 5) Estado checked */
   .main-header .header-actions label.theme-switch input#themeToggle[type="checkbox"]:checked + .slider::before {
-    transform: translateX(22px);
+    /* ANTES: translateX(22px);
+       >>> NOVO: ajuste fino (20–21px) devido ao inset/padding; comece com 20px */
+    transform: translateX(20px) !important;
     background: var(--accent-strong);
     box-shadow: 0 6px 16px rgba(0,0,0,0.32);
+  }
+
+  /* (Opcional) Tema claro: força a cor da borda se seu tema alterar contraste */
+  body[data-theme="light"] .main-header .header-actions label.theme-switch {
+    border-color: #000 !important;
   }
 }
   `.trim();
@@ -405,7 +425,7 @@ function ensureThemeSwitchDesktopOverride() {
   const style = document.createElement('style');
   style.id = 'theme-switch-overrides';
   style.textContent = css;
-   document.head.appendChild(style);
+  document.head.appendChild(style);
 }
 
 /* =========================
