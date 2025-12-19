@@ -573,7 +573,12 @@ label.theme-switch {
   -webkit-tap-highlight-color: transparent;
   user-select: none;
   z-index: 1400;
+
+  /* Nova borda tracejada branca fina */
+  border: 1px dashed #fff;
+  border-radius: 999px; /* mantém o formato arredondado */
 }
+
 
 /* input escondido de forma acessível (mantém foco e teclado) */
 label.theme-switch input[type="checkbox"] {
