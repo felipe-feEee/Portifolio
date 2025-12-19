@@ -10,6 +10,29 @@ let currentPostId = null;
 const TITLE_MAX = 160;        // ajuste conforme sua necessidade
 const CATEGORY_MAX = 60;      // ajuste conforme sua necessidade
 
+// ===== Título dinâmico aproveitando o breadcrumb já renderizado =====
+const BASE_TITLE = 'Sistema Integrado de Manuais';
+
+/** Lê o breadcrumb já existente no DOM e devolve uma string única */
+function getBreadcrumbTextFromDOM() {
+  const nav = document.querySelector('nav.breadcrumb');
+  if (!nav) return '';
+
+  // Pega todas as partes visíveis do breadcrumb, na ordem
+  const parts = Array.from(nav.querySelectorAll('.crumb'))
+    .map(el => (el.textContent || '').trim())
+    .filter(Boolean);
+
+  // Se você usa o separador "››" no DOM, aqui padronizamos para " › "
+  return parts.join(' › ');
+}
+
+/** Atualiza o <title> usando o breadcrumb do DOM */
+function setDocTitleFromBreadcrumbDOM() {
+  const bc = getBreadcrumbTextFromDOM();
+  // Troque "—" por "+" se preferir: `${BASE_TITLE} + ${bc}`
+  document.title = bc ? `${BASE_TITLE} — ${bc}` : BASE_TITLE;
+}
 
 let _supabase = null;
 let _initializing = null;
@@ -1582,6 +1605,8 @@ function loadArticle(categoria, id) {
      <div id="content-body" contenteditable="false" data-placeholder="Digite ou cole o conteúdo aqui">${artigo.conteudo}</div>
   `;
   enableImageSplash(container);
+
+  setDocTitleFromBreadcrumbDOM();
 
   currentCategoria = categoria;
   currentId = id;
