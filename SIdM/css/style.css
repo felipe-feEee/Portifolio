@@ -745,4 +745,22 @@ body[data-theme="light"] .main-header .header-actions label.theme-switch .slider
    
 .breadcrumb {
   display: flex;
- 
+}
+
+   
+.editor-actions-fixed {
+  position: fixed;
+  top: calc(var(--header-height) + 8px);
+  right: calc(16px + env(safe-area-inset-right));
+  display: flex;
+  gap: 8px;
+  z-index: 1350;
+}
+
+.editor-actions-fixed #edit-article-link,
+.editor.editor-actions-fixed #close-edit-btn {
+  height: 40px;
+  border-radius: 8px;
+}
+
+   
