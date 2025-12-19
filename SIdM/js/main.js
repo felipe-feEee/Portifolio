@@ -1,1352 +1,1527 @@
-/* =========================
-   Supabase singleton + UI helpers (module)
-   - setSupabaseConfig({ url, key, tableName, bucketName })
-   - initializeSupabase(), getSupabase(), destroySupabase()
-   ========================= */
+// main.js — versão mesclada e final (sem suporte a idiomas)
+// Integra: processamento de imagens, UI, busca, painel, export
 
-let currentCategoria = null;
-let currentId = null;
-let currentPostId = null;
-const TITLE_MAX = 160;        // ajuste conforme sua necessidade
-const CATEGORY_MAX = 60;      // ajuste conforme sua necessidade
-
-
-let _supabase = null;
-let _initializing = null;
-let _supabaseConfig = {
-  url: null,
-  key: null,
-  tableName: 'posts',
-  bucketName: 'images'
-};
-
-setSupabaseConfig({
-  url: 'https://pwshckrmqaqymngbosgo.supabase.co',
-  key: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB3c2hja3JtcWFxeW1uZ2Jvc2dvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQzNjAwOTEsImV4cCI6MjA3OTkzNjA5MX0.f8iX0RoqrdxJmq-EgSyn_YWPgCHMoARQTT4ygtbcoLg',      // substitua pela anon key
-  tableName: 'posts',
-  bucketName: 'images'
-});
+// ------------------------ Estado global ------------------------
+let contentData = (typeof dataPT !== 'undefined') ? JSON.parse(JSON.stringify(dataPT)) : {};
+let editingCategoria = null;
+let editingId = null;
+let isEditingMode = false;
+let sessionHasSaved = false;
+window._imagesForExport = window._imagesForExport || {};
+if (typeof window.__objectUrlMap === 'undefined') window.__objectUrlMap = {};
 
 
-/**
- * Atualiza configuração em runtime.
- * IMPORTANTE: use apenas anon key no frontend.
- */
-export function setSupabaseConfig({ url, key, tableName, bucketName } = {}) {
-  if (url) _supabaseConfig.url = url;
-  if (key) _supabaseConfig.key = key;
-  if (tableName) _supabaseConfig.tableName = tableName;
-  if (bucketName) _supabaseConfig.bucketName = bucketName;
+// ===== Título dinâmico aproveitando o breadcrumb já renderizado =====
+const BASE_TITLE = 'Sistema Integrado de Manuais';
+
+/** Lê o breadcrumb já existente no DOM e devolve uma string única */
+function getBreadcrumbTextFromDOM() {
+  const nav = document.querySelector('nav.breadcrumb');
+  if (!nav) return '';
+
+  // Pega todas as partes visíveis do breadcrumb, na ordem
+  const parts = Array.from(nav.querySelectorAll('.crumb'))
+    .map(el => (el.textContent || '').trim())
+    .filter(Boolean);
+
+  // Se você usa o separador "››" no DOM, aqui padronizamos para " › "
+  return parts.join(' ›› ');
 }
 
-/** Retorna o cliente já inicializado (ou null) */
-export function getSupabase() {
-  return _supabase;
+/** Atualiza o <title> usando o breadcrumb do DOM */
+function setDocTitleFromBreadcrumbDOM() {
+  const bc = getBreadcrumbTextFromDOM();
+  // Troque "—" por "+" se preferir: `${BASE_TITLE} + ${bc}`
+  document.title = bc ? `${BASE_TITLE} — ${bc}` : BASE_TITLE;
 }
 
-/** Limpa conexões/canais (útil em dev/HMR) */
-export async function destroySupabase() {
-  try {
-    if (!_supabase) return;
-    if (typeof _supabase.removeAllChannels === 'function') {
-      _supabase.removeAllChannels();
-    }
-    // não chame signOut automaticamente aqui (pode afetar UX)
-  } catch (e) {
-    console.warn('Erro ao limpar Supabase:', e);
-  } finally {
-    _supabase = null;
-  }
-}
-
-/**
- * Inicializa o cliente Supabase com import dinâmico, retry/backoff e proteção.
- * Retorna o cliente ou null em falha.
- */
-
-
-export async function initializeSupabase({ retries = 2, retryDelay = 400, timeoutMs = 8000 } = {}) {
-  if (_supabase) return _supabase;
-  if (_initializing) return _initializing;
-
-  // Loader de script UMD com cache por id
-  const loadUmdOnce = (src, id = 'supabase-umd') =>
-    new Promise((resolve, reject) => {
-      if (document.getElementById(id)) return resolve();
-      const s = document.createElement('script');
-      s.id = id;
-      s.src = src;
-      s.async = true;
-      s.crossOrigin = 'anonymous';
-      s.onload = () => resolve();
-      s.onerror = (e) => reject(e);
-      document.head.appendChild(s);
-    });
-
-  _initializing = (async () => {
-    const { url, key } = _supabaseConfig;
-    if (!url || !key) {
-      console.warn('Supabase não configurado (url/key ausentes).');
-      _initializing = null;
-      return null;
-    }
-
-    const UMD_CANDIDATES = [
-      // Versões estáveis do bundle UMD
-      'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.33.0/dist/umd/supabase.js',
-      'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.35.0/dist/umd/supabase.js',
-      'https://unpkg.com/@supabase/supabase-js@2.33.0/dist/umd/supabase.js',
-    ];
-
-    for (let attempt = 0; attempt <= retries; attempt++) {
-      try {
-        await destroySupabase();
-
-        // Tenta carregar o UMD do Supabase
-        let lastErr = null;
-        for (const src of UMD_CANDIDATES) {
-          try {
-            await loadUmdOnce(src);
-            break;
-          } catch (e) {
-            lastErr = e;
-          }
-        }
-        // Valida se o createClient está disponível em algum namespace
-        const createClient =
-          window?.Supabase?.createClient ??
-          window?.supabase?.createClient ??
-          null;
-
-        if (!createClient) {
-          throw new Error('createClient não encontrado após carregar UMD. Último erro: ' + (lastErr && (lastErr.message || lastErr.type)));
-        }
-
-        const supabase = createClient(_supabaseConfig.url, _supabaseConfig.key, {
-          auth: { persistSession: true, autoRefreshToken: true }
-        });
-
-        // Checagem leve de sessão com timeout (não fatal)
-        const sessionCheck = (async () => {
-          try {
-            const p = supabase.auth.getSession();
-            if (timeoutMs > 0) {
-              const res = await Promise.race([
-                p,
-                new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), timeoutMs))
-              ]);
-              return res;
-            } else {
-              return await p;
-            }
-          } catch (e) {
-            console.debug('Supabase getSession (não fatal):', e);
-            return null;
-          }
-        })();
-        await sessionCheck;
-
-        _supabase = supabase;
-        // 🔧 expõe global para seus helpers
-        window.supabase = _supabase;
-        window._supabase = _supabase;
-
-        _initializing = null;
-        console.info('Supabase inicializado com sucesso (UMD).');
-        return _supabase;
-      } catch (err) {
-        console.error(`Falha ao inicializar Supabase (tentativa ${attempt + 1}):`, err);
-        if (attempt < retries) {
-          const delay = retryDelay * (attempt + 1);
-          await new Promise(r => setTimeout(r, delay));
-          continue;
-        } else {
-          _initializing = null;
-          return null;
-        }
-      }
-    }
-
-    _initializing = null;
-    return null;
-  })();
-
-  return _initializing;
-}
-
-/* =========================
-   Sidebar / Theme helpers (exportados)
-   (mantive suas implementações com pequenas melhorias)
-   ========================= */
-
-let _sidebarAutoCloseInitialized = false;
-
-export function toggleSidebar(open) {
-  const sidebar = document.querySelector('.sidebar');
-  const hamburger = document.getElementById('hamburger-btn') || document.querySelector('.hamburger');
-  if (!sidebar) return;
-  if (open) {
-    sidebar.classList.add('open');
-    document.body.classList.add('sidebar-open');
-    if (hamburger) hamburger.classList.add('open');
-  } else {
-    sidebar.classList.remove('open');
-    document.body.classList.remove('sidebar-open');
-    if (hamburger) hamburger.classList.remove('open');
-  }
-}
-
-export function setupSidebarAutoClose() {
-  if (_sidebarAutoCloseInitialized) return;
-  _sidebarAutoCloseInitialized = true;
-
-  const sidebar = document.querySelector('.sidebar');
-  const hamburger = document.getElementById('hamburger-btn') || document.querySelector('.hamburger');
-  if (!sidebar || !hamburger) return;
-
-  sidebar.addEventListener('click', (e) => e.stopPropagation());
-
-  hamburger.addEventListener('click', (e) => {
-    e.stopPropagation();
-    toggleSidebar(!sidebar.classList.contains('open'));
-  });
-
-  document.addEventListener('click', (e) => {
-    if (hamburger && (hamburger === e.target || hamburger.contains(e.target))) return;
-    if (sidebar.contains(e.target)) return;
-    if (sidebar.classList.contains('open')) toggleSidebar(false);
-  });
-
-  window.addEventListener('resize', () => {
-    if (window.innerWidth > 768 && sidebar.classList.contains('open')) toggleSidebar(false);
-  });
-
-  let touchStartX = 0;
-  document.addEventListener('touchstart', (e) => { touchStartX = e.touches[0].clientX; });
-  document.addEventListener('touchend', (e) => {
-    const touchEndX = e.changedTouches[0].clientX;
-    if (touchStartX - touchEndX > 60) toggleSidebar(false);
-    if (touchEndX - touchStartX > 60) toggleSidebar(true);
-  });
-}
-
-
-
-export function setupThemeToggle() {
-  // Localiza o input
-  let input = document.getElementById('themeToggle');
-  if (!input) return;
-
-  // Evita múltipla inicialização
-  if (input.dataset.init === '1') return;
-
-  // Garante estrutura de switch conforme o CSS (label.theme-switch + span.slider)
-  // Se o input não estiver dentro de um label.theme-switch com um span.slider, criamos.
-  const parentLabel = input.closest('label.theme-switch');
-  if (!parentLabel) {
-    const label = document.createElement('label');
-    label.className = 'theme-switch';
-
-    // Move o input para dentro do label
-    input.parentNode.insertBefore(label, input);
-    label.appendChild(input);
-
-    // Cria o trilho/knob do switch
-    const slider = document.createElement('span');
-    slider.className = 'slider';
-    label.appendChild(slider);
-  } else {
-    // Se já existe label, assegura que há um span.slider
-    if (!parentLabel.querySelector('.slider')) {
-      const slider = document.createElement('span');
-      slider.className = 'slider';
-      parentLabel.appendChild(slider);
-    }
-  }
-
-  // Acessibilidade
-  input.setAttribute('role', 'switch');
-
-  const KEY = 'sIdM_theme';
-  const applyTheme = (theme) => {
-    if (theme === 'light') document.body.setAttribute('data-theme', 'light');
-    else document.body.removeAttribute('data-theme');
-    input.setAttribute('aria-checked', theme === 'light' ? 'true' : 'false');
-  };
-
-  // Estado inicial
-  const stored = localStorage.getItem(KEY);
-  if (stored === 'light' || stored === 'dark') {
-    applyTheme(stored);
-    input.checked = stored === 'light';
-  } else {
-    const prefersLight = window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches;
-    applyTheme(prefersLight ? 'light' : 'dark');
-    input.checked = prefersLight;
-  }
-
-  // Listener de mudança
-  input.addEventListener('change', function () {
-    const theme = this.checked ? 'light' : 'dark';
-    applyTheme(theme);
-    localStorage.setItem(KEY, theme);
-  });
-
-  // Reage à mudança do sistema somente se não houver preferência salva
-  try {
-    if (window.matchMedia) {
-      const mq = window.matchMedia('(prefers-color-scheme: light)');
-      (mq.addEventListener ?? mq.addListener).call(mq, (e) => {
-        if (!localStorage.getItem(KEY)) {
-          const newTheme = e.matches ? 'light' : 'dark';
-          applyTheme(newTheme);
-          input.checked = newTheme === 'light';
-        }
-      });
-    }
-  } catch (e) { /* ignore */ }
-
-  // Marca como inicializado
-  input.dataset.init = '1';
-}
-
-
-
-// Injeta (uma única vez) overrides seguros para o theme switch em desktop
-function ensureThemeSwitchDesktopOverride() {
-  // Remove a versão anterior se existir (para evitar conflito)
-  const old = document.getElementById('theme-switch-overrides');
-  if (old) old.remove();
-
-  const css = `
-/* ===== Theme switch — override seguro para desktop ===== */
-@media (min-width: 768px) {
-  /* 1) O label É o contêiner posicionado do switch */
-  .main-header .header-actions label.theme-switch {
-    position: relative !important;   /* <-- garante contexto de posicionamento */
-    display: inline-block !important;
-    width: 48px !important;
-    height: 26px !important;
-    vertical-align: middle;
-  }
-
-  /* 2) Input invisível, restrito ao tamanho do label */
-  .main-header .header-actions label.theme-switch input#themeToggle[type="checkbox"] {
-    position: absolute !important;
-    left: 0 !important;
-    top: 0 !important;
-    width: 100% !important;          /* ocupa só o label */
-    height: 100% !important;         /* ocupa só o label */
-    opacity: 0 !important;           /* invisível */
-    margin: 0 !important;
-    padding: 0 !important;
-    border: 0 !important;
-    -webkit-appearance: none !important;
-    appearance: none !important;
-  }
-
-  /* 3) Trilha do switch visível e no topo do label */
-  .main-header .header-actions label.theme-switch .slider {
-    position: absolute !important;
-    left: 0; top: 0; right: 0; bottom: 0;
-    display: block !important;
-    border-radius: 999px;
-    background: rgba(15,23,42,0.06); /* bom contraste no light; seu CSS já trata dark */
-    box-shadow: inset 0 1px 0 rgba(0,0,0,0.02);
-    pointer-events: none;             /* não intercepta clique (vai para o input/label) */
-  }
-
-  /* 4) Knob padrão */
-  .main-header .header-actions label.theme-switch .slider::before {
-    content: "";
-    position: absolute;
-    width: 20px;
-    height: 20px;
-    left: 3px;
-    top: 3px;
-    border-radius: 50%;
-    background: var(--accent);
-    box-shadow: 0 4px 12px rgba(0,0,0,0.28);
-    transition: transform .28s var(--ease), background .28s var(--ease), box-shadow .28s var(--ease);
-  }
-
-  /* 5) Estado checked */
-  .main-header .header-actions label.theme-switch input#themeToggle[type="checkbox"]:checked + .slider::before {
-    transform: translateX(22px);
-    background: var(--accent-strong);
-    box-shadow: 0 6px 16px rgba(0,0,0,0.32);
-  }
-}
-  `.trim();
-
-  const style = document.createElement('style');
-  style.id = 'theme-switch-overrides';
-  style.textContent = css;
-   document.head.appendChild(style);
-}
-
-/* =========================
-   Pull-to-refresh (mantido)
-   ========================= */
-export function setupPullToRefresh() {
-  // Se o overlay já existe, ainda assim garante o themeToggle
-  const existing = document.querySelector('.pull-refresh');
-  if (existing) {
-    queueMicrotask(() => setupThemeToggle());
-    return;
-  }
-
-  const refreshOverlay = document.createElement('div');
-  refreshOverlay.className = 'pull-refresh';
-  refreshOverlay.innerHTML = `
-    <svg class="progress-circle" viewBox="0 0 36 36">
-      <defs>
-        <linearGradient id="spinnerGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-          <stop offset="0%" stop-color="#ff6666" />
-          <stop offset="100%" stop-color="#ffcccc" />
-        </linearGradient>
-      </defs>
-      <path class="circle-bg"
-        d="M18 2.0845
-           a 15.9155 15.9155 0 0 1 0 31.831
-           a 15.9155 15.9155 0 0 1 0 -31.831"/>
-      <path class="circle"
-        stroke-dasharray="0,100"
-        d="M18 2.0845
-           a 15.9155 15.9155 0 0 1 0 31.831
-           a 15.9155 15.9155 0 0 1 0 -31.831"/>
-    </svg>
-    <span>Atualizando...</span>
-  `;
-  document.body.appendChild(refreshOverlay);
-
-  let touchStartY = 0;
-  const onStart = (e) => { touchStartY = e.touches[0].clientY; };
-  const onMove = (e) => {
-    const deltaY = e.touches[0].clientY - touchStartY;
-    if (deltaY > 0 && window.scrollY === 0) {
-      refreshOverlay.classList.add('show');
-      const circle = refreshOverlay.querySelector('.circle');
-      const progress = Math.min(deltaY / 2, 100);
-      circle.setAttribute('stroke-dasharray', `${progress},100`);
-      if (progress >= 100) refreshOverlay.classList.add('complete');
-      else refreshOverlay.classList.remove('complete');
-    }
-  };
-  const onEnd = () => {
-    if (refreshOverlay.classList.contains('complete')) {
-      setTimeout(() => location.reload(), 800);
-    } else {
-      refreshOverlay.classList.remove('show', 'complete');
-    }
-  };
-
-  // 🔧 Usa passive listeners para não interferir em outros gestos/estilos
-  document.addEventListener('touchstart', onStart, { passive: true });
-  document.addEventListener('touchmove', onMove, { passive: true });
-  document.addEventListener('touchend', onEnd, { passive: true });
-
-  // 🔧 Garante que o theme toggle seja sempre inicializado
-  queueMicrotask(() => setupThemeToggle());
-}
-
-/* =========================
-   Carregar posts do banco (corrigido)
-   - usa getSupabase() em vez de window.supabase
-   - fallback local robusto
-   - usa _supabaseConfig.tableName
-   ========================= */
-
-
-export async function carregarPostsDoBanco() {
-  // 🔧 Garante que contentData exista antes de qualquer uso
-  if (typeof window.contentData === 'undefined') {
-    window.contentData = {};
-  }
-  // Usa a ref local para clareza
-  let contentData = window.contentData;
-
-  // garante cliente supabase
-  let supabase = getSupabase();
-  if (!supabase) {
-    console.warn('Supabase não inicializado. Tentando inicializar...');
-    supabase = await initializeSupabase();
-  }
-
-  // fallback local se supabase não estiver disponível
-  if (!supabase) {
-    console.warn('Supabase indisponível. Carregando dados locais se houver.');
-    try {
-      if (typeof window.dataPT !== 'undefined') {
-        if (Array.isArray(window.dataPT)) {
-          contentData = {};
-          window.dataPT.forEach(post => {
-            const categoria = post.categoria || 'geral';
-            const key = `${post.id || Date.now()}`;
-            if (!contentData[categoria]) contentData[categoria] = {};
-            contentData[categoria][key] = {
-              postId: post.id || Date.now(),
-              titulo: post.title || post.titulo || '(Sem título)',
-              conteudo: post.content || post.conteudo || '',
-              categoria
-            };
-          });
-        } else {
-          contentData = JSON.parse(JSON.stringify(window.dataPT));
-        }
-        window.contentData = contentData; // sincroniza
-      } else {
-        contentData = {};
-        window.contentData = contentData;
-      }
-    } catch (err) {
-      console.error('Erro ao usar dataPT como fallback:', err);
-      contentData = {};
-      window.contentData = contentData;
-    }
-
-    renderMenu();
-    renderWelcome();
-    return;
-  }
-
-  // usa a tabela configurada
-  const table = _supabaseConfig.tableName || 'posts';
-
-  try {
-    const { data, error } = await supabase
-      .from(table)
-      .select('*')
-      .order('created_at', { ascending: false });
-
-    if (error) {
-      console.error(`Erro ao buscar dados da tabela "${table}":`, error);
-      window.contentData = {};
-      renderMenu();
-      renderWelcome();
-      return;
-    }
-
-    // normaliza para contentData
-    contentData = {};
-    (data || []).forEach(post => {
-      const categoria = post.categoria || post.category || 'geral';
-      const key = `${post.id}`;
-      if (!contentData[categoria]) contentData[categoria] = {};
-      contentData[categoria][key] = {
-        postId: post.id,
-        titulo: post.title || post.titulo || '(Sem título)',
-        conteudo: post.content || post.conteudo || '',
-        categoria,
-        image_url: post.image_url || post.image || null,
-        created_at: post.created_at || null
-      };
-    });
-
-    window.contentData = contentData; // sincroniza
-    renderMenu();
-    renderWelcome();
-  } catch (err) {
-    console.error('Erro inesperado ao carregar posts:', err);
-    window.contentData = {};
-    renderMenu();
-    renderWelcome();
-  }
-}
-
-async function uploadToSupabase(file) {
-  if (!file) return '';
-
-  // Garante cliente Supabase (usa getSupabase e, se necessário, initializeSupabase)
-  let supabase = (typeof getSupabase === 'function' ? getSupabase() : null) || window.supabase;
-  if (!supabase) {
-    supabase = await initializeSupabase();
-    if (!supabase) {
-      console.warn('uploadToSupabase: Supabase não inicializado.');
-      return '';
-    }
-  }
-
-  const bucket = (_supabaseConfig && _supabaseConfig.bucketName) || 'images';
-  const filename = sanitizeFilename(file); // ex.: "paste-<timestamp>-<base>.<ext>"
-  const filePath = filename.startsWith('/') ? filename.slice(1) : filename;
-
-  try {
-    const { data, error } = await supabase
-      .storage
-      .from(bucket)
-      .upload(filePath, file, { cacheControl: '3600', upsert: true });
-
-    if (error) {
-      console.error(`Erro no upload para bucket "${bucket}":`, error);
-      return '';
-    }
-
-    const { data: urlData } = supabase.storage.from(bucket).getPublicUrl(filePath);
-    return urlData?.publicUrl || '';
-  } catch (err) {
-    console.error('uploadToSupabase erro inesperado:', err);
-    return '';
-  }
-}
-
-
-async function insertPost(payload) {
-  // Garante cliente Supabase
-  let supabase = (typeof getSupabase === 'function' ? getSupabase() : null) || window.supabase;
-  if (!supabase) supabase = await initializeSupabase();
-  if (!supabase) {
-    console.warn('insertPost: Supabase não inicializado.');
-    return null;
-  }
-
-  const table = (_supabaseConfig && _supabaseConfig.tableName) || 'posts';
-
-  try {
-       const { data, error } = await supabase.from(table).insert(payload).select().single();
-    if (error) {
-      console.error(`Erro ao inserir na tabela "${table}":`, error);
-      return null;
-    }
-    return data; // objeto da linha inserida
-  } catch (err) {
-    console.error('insertPost erro inesperado:', err);
-    return null;
-  }
-}
-
-async function updatePost(postId, payload) {
-  // Garante cliente Supabase
-  let supabase = (typeof getSupabase === 'function' ? getSupabase() : null) || window.supabase;
-  if (!supabase) supabase = await initializeSupabase();
-  if (!supabase) {
-    console.warn('updatePost: Supabase não inicializado.');
-    return { error: new Error('Supabase não inicializado') };
-  }
-
-  const table = (_supabaseConfig && _supabaseConfig.tableName) || 'posts';
-
-  try {
-    const { data, error } = await supabase
-      .from(table)
-      .update(payload)
-      .eq('id', postId)
-      .select()
-      .single();
-
-    if (error) {
-      console.error(`Erro ao atualizar na tabela "${table}":`, error);
-      return { error };
-    }
-    return { data }; // objeto da linha atualizada
-  } catch (err) {
-    console.error('updatePost erro inesperado:', err);
-    return { error: err };
-  }
-}
-
-/* ============================
-  Exemplo rápido de uso (opcional)
-  Você pode chamar isso antes do DOMContentLoaded:
-    setSupabaseConfig({ supabaseUrl: 'https://...', supabaseKey: '...', tableName: 'posts', bucketName: 'images' });
-    await initializeSupabase();
-  Ou em runtime no console:
-    window.configureSupabase({ supabaseUrl: '...', supabaseKey: '...', tableName: 'posts', bucketName: 'images' });
-  ============================ */
-
-// expõe utilitários para debug/uso externo
-window.setSupabaseConfig = setSupabaseConfig;
-window.initializeSupabase = initializeSupabase;
-window.insertPost = insertPost;
-window.updatePost = updatePost;
-window.uploadToSupabase = uploadToSupabase;
-
-/* ============================
-   Sanitização
-   ============================ */
-function sanitizePlainText(input, maxLen) {
-  let s = String(input || '').replace(/\u00A0/g, ' ');
-  s = s.replace(/<[^>]*>/g, '');
-  s = s.replace(/\s+/g, ' ').trim();
-  if (s.length > maxLen) s = s.slice(0, maxLen);
-  return s;
-}
-
-// Atualize allowedTags para incluir 'div' (substitua a declaração existente)
-const allowedTags = [
-  'div','p','br','b','strong','i','em','u',
-  'ul','ol','li',
-  'h1','h2','h3','h4','h5','h6',
-  'table','thead','tbody','tfoot','tr','td','th',
-  'a','img'
-];
-
-// Substitua a função sanitizeAttributes existente por esta versão
-function sanitizeAttributes(el) {
-  const tag = el.tagName.toLowerCase();
-  // iterar com for...of para permitir continue/skip corretamente
-  for (const attr of Array.from(el.attributes)) {
-    const name = attr.name.toLowerCase();
-
-    if (tag === 'img') {
-      // permite apenas atributos seguros para imagens
-      if (!['src', 'alt', 'width', 'height'].includes(name)) {
-        el.removeAttribute(attr.name);
-      }
-      continue;
-    }
-
-    if (tag === 'a') {
-      // permite href, target, rel, data-* e aria-*
-      if (name === 'href' || name === 'target' || name === 'rel' || name.startsWith('data-') || name.startsWith('aria-')) {
-        // preserva
-      } else {
-        el.removeAttribute(attr.name);
-      }
-      continue;
-    }
-
-    // para outras tags: preserva class, data-* e aria-*; remove o resto
-    if (name === 'class' || name.startsWith('data-') || name.startsWith('aria-')) {
-      // preserva
-    } else {
-      el.removeAttribute(attr.name);
-    }
-  }
-
-  if (tag === 'a') el.setAttribute('target', '_blank');
-}
-
-function sanitizeHtml(html) {
-  const parser = new DOMParser();
-  const doc = parser.parseFromString(html || '', 'text/html');
-
-  // Remove comentários
-  const walker = document.createTreeWalker(doc.body, NodeFilter.SHOW_COMMENT, null, false);
-  const comments = [];
-  while (walker.nextNode()) comments.push(walker.currentNode);
-  comments.forEach(c => c.parentNode?.removeChild(c));
-
-  // Remove tags não permitidas e limpa atributos
-  Array.from(doc.body.querySelectorAll('*')).forEach(el => {
-    const tag = el.tagName.toLowerCase();
-    if (!allowedTags.includes(tag)) {
-      const replacement = document.createElement('div');
-      replacement.innerHTML = el.innerHTML;
-      el.replaceWith(...replacement.childNodes);
-    } else {
-      sanitizeAttributes(el);
-    }
-  });
-
-  return doc.body.innerHTML.trim();
-}
-
-/* ============================
-   Utilitários de arquivo / nome
-   ============================ */
-function sanitizeFilename(file, prefix = 'paste') {
-  // Se vier só o nome, trata como string
-  let name = typeof file === 'string' ? file : (file?.name || 'image');
-
-  // Normaliza base name
+// ------------------------ Utilitários ------------------------
+function sanitizeFilename(name) {
+  if (!name) name = `file-${Date.now()}`;
   name = String(name).split('/').pop().split('\\').pop();
-  name = name.replace(/[^\w\-.]+/g, '_').toLowerCase();
-
-  // Garante extensão
-  let ext = 'png';
-  if (file?.type && file.type.startsWith('image/')) {
-    ext = file.type.split('/')[1];
-  } else if (name.includes('.')) {
-    ext = name.split('.').pop();
-    name = name.replace(/\.[^.]+$/, ''); // remove extensão antiga
-  }
-
-  // Timestamp único
-  const timestamp = Date.now();
-
-  // Limita tamanho
-  if (name.length > 80) name = name.slice(0, 80);
-
-  // Nome final
-  return `${prefix}-${timestamp}-${name}.${ext}`;
+  name = name.replace(/[^\w\-.]+/g, '_');
+  if (name.length > 120) name = name.slice(0, 120);
+  return name;
 }
 
-function insertHtmlAtCaret(html) {
-  const cb = document.getElementById('content-body');
-  const sel = window.getSelection();
-  if (!sel || sel.rangeCount === 0) {
-    if (cb) cb.insertAdjacentHTML('beforeend', html);
-    return;
-  }
-  const range = sel.getRangeAt(0);
-  range.deleteContents();
-  const frag = document.createRange().createContextualFragment(html);
-  range.insertNode(frag);
-  sel.removeAllRanges();
-  const newRange = document.createRange();
-  const last = frag.lastChild;
-  if (last) newRange.setStartAfter(last);
-  else { newRange.selectNodeContents(cb); newRange.collapse(false); }
-  newRange.collapse(true);
-  sel.addRange(newRange);
-}
+function escapeRegex(str) { return (str || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
+function normalizeStr(s) { return (s || '').replace(/\u00A0/g, ' ').trim(); }
 
-/* ---------- Helpers de imagem e paste (importados do MonaNote) ---------- */
-
-function extractDataUrlsFromHtml(html) {
-  const dataFiles = [];
-  const dataRegex = /src=["'](data:[^"']+)["']/ig;
-  let m;
-  while ((m = dataRegex.exec(html)) !== null) {
-    const dataurl = m[1];
-    try {
-      const arr = dataurl.split(',');
-      const mime = arr[0].match(/:(.*?);/)[1];
-      const bstr = atob(arr[1]);
-      let n = bstr.length;
-      const u8arr = new Uint8Array(n);
-      while (n--) u8arr[n] = bstr.charCodeAt(n);
-      const ext = mime.split('/')[1] || 'png';
-      const file = new File([u8arr], `inline-${Date.now()}.${ext}`, { type: mime });
-      dataFiles.push({ file, dataurl });
-    } catch (err) {
-      console.warn('Falha ao converter data: url', err);
-    }
-  }
-  return dataFiles;
-}
-
-
-
-/**
- * Converte um data:image para um File (para upload).
- */
-function dataURLtoFile(dataurl, filename) {
-  const arr  = dataurl.split(',');
-  const mime = arr[0].match(/:(.*?);/)[1];   // ex.: "data:image/png;base64"
-  const b64  = arr[1] || '';                 // parte base64 após a vírgula
-  const bstr = atob(b64);                    // decodifica base64 em string binária
-
-  let n = bstr.length;
-  const u8 = new Uint8Array(n);
-
-  // Preenche o buffer com cada byte da string binária
-  while (n--) {
-    u8[n] = bstr.charCodeAt(n);
-  }
-
-  return new File([u8], filename, { type: mime });
-}
-
-/**
- * Insere um nó na posição atual do cursor dentro do editor #content-body.
- */
-function insertNodeAtCursor(node) {
-  const editor = document.getElementById('content-body');
-  if (!editor) return;
-
-  const sel = window.getSelection();
-  if (!sel || sel.rangeCount === 0) {
-    editor.appendChild(node);
-    return;
-  }
-
-  const range = sel.getRangeAt(0);
-  range.deleteContents();
-  range.insertNode(node);
-  range.setStartAfter(node);
-  range.collapse(true);
-  sel.removeAllRanges();
-  sel.addRange(range);
-}
-
-/**
- * Detecta imagens no HTML colado do Word:
- * - ...
- * - ... (VML do Word)
- * Retorna objetos { kind: 'img'|'vml', src, tag }
- */
-function detectImgsInHtml(html) {
-  const matches = [];
-   if (!html || typeof html !== 'string') return matches;
-
-  // ...
-  const IMG_RE = /<img\b[^>]*\bsrc="'["'][^>]*>/ig;
-  let m;
-  while ((m = IMG_RE.exec(html)) !== null) {
-    matches.push({ kind: 'img', src: (m[1] || '').trim(), tag: m[0] });
-  }
-
-  // VML do Word: ...
-  const VML_RE = /<v:imagedata\b[^>]*\bsrc="'["'][^>]*>/ig;
-  while ((m = VML_RE.exec(html)) !== null) {
-    matches.push({ kind: 'vml', src: (m[1] || '').trim(), tag: m[0] });
-  }
-
-  return matches;
-}
-
-/**
- * Sinaliza presença de blocos RTF \pict (imagem codificada).
- */
-function detectPictInRtf(rtfText) {
-  if (!rtfText || typeof rtfText !== 'string') return false;
-  const PICT_RE = /\\pict[\s\S]*?\\par/gm;
-  return PICT_RE.test(rtfText);
-}
-
-function hexToBlob(hex, mime = 'image/png') {
-  const bytes = new Uint8Array(hex.length / 2);
-  for (let i = 0; i < bytes.length; i++) bytes[i] = parseInt(hex.substr(i * 2, 2), 16);
-  return new Blob([bytes], { type: mime });
-}
-
-function extractImagesFromRtf(rtfText) {
-  if (!rtfText) return [];
-  const results = [];
-  const pictRegex = /\\pict[^\n]*?((?:[0-9A-Fa-f\r\n ]{20,})+?)\\par/gm;
-  let m;
-  while ((m = pictRegex.exec(rtfText)) !== null) {
-    const hex = m[1].replace(/[\s\r\n]/g, '');
-    const contextStart = Math.max(0, m.index - 80);
-    const context = rtfText.slice(contextStart, m.index + 20).toLowerCase();
-    let mime = 'image/png';
-    if (context.includes('\\jpegblip')) mime = 'image/jpeg';
-    if (hex.length > 20) {
-      const blob = hexToBlob(hex, mime);
-      const ext = mime === 'image/jpeg' ? 'jpg' : 'png';
-      results.push(new File([blob], `rtf-extract-${Date.now()}.${ext}`, { type: mime }));
-    }
-  }
-  return results;
-}
-
-async function tryClipboardReadForImages() {
+function cleanWordHtmlAndInsert(rawHtml) {
   try {
-    if (!navigator.clipboard || !navigator.clipboard.read) return [];
-    const items = await navigator.clipboard.read();
-    const files = [];
-    for (const item of items) {
-      for (const type of item.types) {
-        if (type.startsWith('image/')) {
-          const blob = await item.getType(type);
-          const ext = type.split('/')[1] || 'png';
-          files.push(new File([blob], `clipboard-${Date.now()}.${ext}`, { type }));
-        }
-      }
-    }
-    return files;
-  } catch (err) {
-    console.warn('clipboard.read() indisponível ou sem permissão:', err);
-    return [];
-  }
-}
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(rawHtml, 'text/html');
 
-/**
- * Cria um bloco de mensagem para quando a imagem não puder ser incorporada.
- */
+    // 🔥 Remove elementos indesejados
+    const tagsToRemove = ['meta', 'link', 'style', 'script', 'xml'];
+    tagsToRemove.forEach(tag => {
+      doc.querySelectorAll(tag).forEach(el => el.remove());
+    });
 
-/**
- * Cria um bloco de mensagem quando a imagem não pode ser incorporada.
- */
-function createMissingImageMessage(message = 'Imagem colada do Word não pôde ser incorporada') {
-  const msg = document.createElement('div');
-  msg.className = 'missing-image-message';
-  msg.textContent = message;
+    // 🔥 Remove namespaces do Word (w:, o:, v:)
+    Array.from(doc.querySelectorAll('*')).forEach(el => {
+      if (/^(w:|o:|v:)/.test(el.tagName.toLowerCase())) el.remove();
+    });
 
-  // Estilos mínimos; seu CSS pode sobrescrever
-  msg.style.color = '#900';
-  msg.style.fontStyle = 'italic';
-  msg.style.padding = '0.25rem 0.5rem';
-  msg.style.margin = '0.25rem 0';
-  msg.style.backgroundColor = '#ffe0e0';
-  msg.style.border = '1px solid #ff0000';
-   msg.style.display = 'inline-block';
+    // 🔥 Remove comentários
+    const walker = document.createTreeWalker(doc.body, NodeFilter.SHOW_COMMENT, null, false);
+    const comments = [];
+    while (walker.nextNode()) comments.push(walker.currentNode);
+    comments.forEach(c => c.parentNode?.removeChild(c));
 
-  msg.setAttribute('contenteditable', 'false');
-  msg.setAttribute('tabindex', '0');
-  return msg;
-}
+    // 🔥 Remove atributos inúteis
+    Array.from(doc.querySelectorAll('*')).forEach(el => {
+      [...el.attributes].forEach(attr => {
+        if (/^(class|style|lang|data-|mso|xmlns)/i.test(attr.name)) el.removeAttribute(attr.name);
+      });
+    });
 
-function generateUniqueImageName(file, prefix = 'paste') {
-  // 1. Determina extensão
-  let ext = 'png';
-  if (file.type && file.type.startsWith('image/')) {
-    ext = file.type.split('/')[1];
-  } else if (file.name && file.name.includes('.')) {
-    ext = file.name.split('.').pop();
-  }
-
-  // 2. Base name normalizado
-  const base = (file.name ? file.name.split('.')[0] : 'image')
-    .replace(/[^a-zA-Z0-9_-]/g, '')
-    .toLowerCase();
-
-  // 3. Timestamp único
-  const timestamp = Date.now();
-
-  // 4. Nome final
-  return `${prefix}-${timestamp}-${base}.${ext}`;
-}
-
-
-
-
-/**
- * Handler de paste robusto para conteúdo colado do Word (texto + imagem).
- * Mantém nomes e fluxo do seu projeto (usa uploadToSupabase, insertNodeAtCursor, createMissingImageMessage).
- */
-async function handlePaste(e) {
-  try {
-    const clipboard = e.clipboardData || window.clipboardData;
-    if (!clipboard) return;
-
-    const editor = document.getElementById('content-body');
-    const target = e.target || document.activeElement;
-    const isEditor = editor && (target === editor || editor.contains(target));
-    if (!isEditor) return;
-
-    // bloqueia apenas dentro do editor
-    e.preventDefault();
-
-    const items = clipboard.items ? Array.from(clipboard.items) : [];
-    const plain = clipboard.getData('text/plain') || '';
-    const html  = clipboard.getData('text/html')  || '';
-    const rtf   = clipboard.getData('text/rtf')   || '';
-
-    // (1) Arquivo-imagem real (printscreen, copiar arquivo)
-    const fileItem = items.find(it => it.kind === 'file' && it.type.startsWith('image/'));
-    if (fileItem) {
-      const file = fileItem.getAsFile?.();
-      if (file) {
-        try {
-          const url = typeof uploadToSupabase === 'function'
-            ? await uploadToSupabase(file)
-            : null;
-
-          if (url) {
-            const img = document.createElement('img');
-            img.src = url; // sem atributos extras — seu CSS cuida
-            insertNodeAtCursor(img);
-          } else {
-            insertNodeAtCursor(createMissingImageMessage(`Falha ao enviar ${file.name || 'imagem'}.`));
-          }
-        } catch (err) {
-          console.error('Erro em uploadToSupabase:', err);
-          insertNodeAtCursor(createMissingImageMessage(`Erro inesperado ao enviar ${file?.name || 'imagem'}.`));
-        }
-      }
-      if (plain) document.execCommand('insertText', false, `\n${plain}\n`);
-      return;
-    }
-
-    // (2) Inspeciona HTML/RTF colados do Word
-    const refs = detectImgsInHtml(html);
-    const hasPict = detectPictInRtf(rtf);
-
-    // 2a) Se houver data:image em <img>, converter e tentar upload
-    const dataImgs = refs.filter(x => x.src.startsWith('data:image/'));
-    if (dataImgs.length > 0) {
-      for (const d of dataImgs) {
-        try {
-          const ext  = (d.src.match(/^data:image\/([^;]+)/i)?.[1] || 'png');
-          const file = dataURLtoFile(d.src, `paste-${Date.now()}.${ext}`);
-
-          const url = typeof uploadToSupabase === 'function'
-            ? await uploadToSupabase(file)
-            : null;
-
-          if (url) {
-            const img = document.createElement('img');
-            img.src = url;
-            insertNodeAtCursor(img);
-          } else {
-            insertNodeAtCursor(createMissingImageMessage('Falha ao enviar imagem inline.'));
-          }
-        } catch (err) {
-          console.warn('Falha ao processar data:image:', err);
-          insertNodeAtCursor(createMissingImageMessage('Imagem inline não pôde ser processada.'));
-        }
-      }
-      if (plain) document.execCommand('insertText', false, `\n${plain}\n`);
-      return;
-    }
-
-    // 2b) Referências incoláveis (file://, VML, RTF \pict) → mensagem + texto
-    const hasIncolavel =
-      refs.some(x => x.src.startsWith('file:') || x.src.startsWith('cid:')) || // file:// e cid:
-      refs.some(x => x.kind === 'vml') ||                                      // <v:imagedata ...>
-      hasPict;                                                                  // RTF \pict
-
-    if (hasIncolavel) {
-      insertNodeAtCursor(createMissingImageMessage('Imagem colada do Word não pôde ser incorporada'));
-      if (plain) document.execCommand('insertText', false, `\n${plain}\n`);
-      return;
-    }
-
-    // (3) Apenas texto
-    if (plain) {
-      document.execCommand('insertText', false, plain);
-    }
-   } catch (err) {
-    console.error('Erro no handlePaste:', err);
-    insertNodeAtCursor(createMissingImageMessage('Falha ao processar conteúdo colado.'));
-  }
-}
-
-// Função auxiliar para inserir texto simples
-function insertPlainTextAtCursor(plain, contentBody) {
-  const sel = window.getSelection();
-  if (sel && sel.rangeCount > 0) {
-    // Usa comando nativo para inserir texto cru → preserva undo/redo
-    document.execCommand('insertText', false, plain);
-  } else {
-    // fallback: adiciona como parágrafo no fim
-    const p = document.createElement('p');
-    p.textContent = plain;
-    contentBody.appendChild(p);
-  }
-}
-
-// Chame attachDragDropHandlers() sempre que o editor for renderizado (ex: no final de renderEditorUI)
-function attachDragDropHandlers() {
-  const editor = document.getElementById('content-body');
-  if (!editor) return;
-
-  // remove listeners antigos
-  editor.removeEventListener('dragover', onEditorDragOver);
-  editor.removeEventListener('drop', onEditorDrop);
-
-  editor.addEventListener('dragover', onEditorDragOver);
-  editor.addEventListener('drop', onEditorDrop);
-
-  function onEditorDragOver(e) {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = 'copy'; // feedback visual
-  }
-
-  async function onEditorDrop(e) {
-    e.preventDefault();
-    const files = Array.from(e.dataTransfer.files || []).filter(f => f.type.startsWith('image/'));
-
-    if (files.length === 0) {
-      insertNodeAtCursor(createMissingImageMessage('Nenhuma imagem válida foi arrastada.'));
-      return;
-    }
-
-    for (const file of files) {
-      try {
-        const publicUrl = await uploadToSupabase(file);
-        if (publicUrl) {
-          const img = document.createElement('img');
-          img.src = publicUrl;
-          img.alt = file.name;
-          img.style.maxWidth = '100%';
-          insertNodeAtCursor(img);
-        } else {
-          insertNodeAtCursor(createMissingImageMessage(`Falha ao enviar ${file.name}.`));
-        }
-      } catch (err) {
-        console.error('Erro ao enviar imagem via drag&drop:', err);
-        insertNodeAtCursor(createMissingImageMessage(`Erro inesperado ao enviar ${file.name}.`));
-      }
-    }
-  }
-}
-
-/* Instala listeners de paste/drag apenas uma vez */
-document.removeEventListener('paste', handlePaste);
-document.getElementById('content-body').addEventListener('paste', handlePaste);
-
-/* ============================
-   Toolbar (execCommand + insertImage)
-   ============================ */
-function execCmd(command, value = null) {
-  const body = document.getElementById('content-body');
-  if (!body) return;
-  body.focus();
-  switch (command) {
-  case 'insertImage': {
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = 'image/*';
-    input.style.display = 'none';
-  
-    input.addEventListener('change', async () => {
-      const file = input.files[0];
-      if (!file) return;
-  
-      try {
-        const publicUrl = await uploadToSupabase(file);
-        if (publicUrl) {
-          const img = document.createElement('img');
-          img.src = publicUrl;
-          img.alt = file.name;
-          img.style.maxWidth = '100%';
-          insertNodeAtCursor(img);
-        } else {
-          insertNodeAtCursor(createMissingImageMessage(`Falha ao enviar ${file.name}.`));
-        }
-      } catch (err) {
-        console.error('Erro ao enviar imagem via botão:', err);
-        insertNodeAtCursor(createMissingImageMessage(`Erro inesperado ao enviar ${file.name}.`));
+    // ✅ Mantém apenas texto, listas e imagens
+    const allowedTags = ['p', 'div', 'span', 'img', 'ul', 'ol', 'li', 'br', 'strong', 'em', 'b', 'i'];
+    Array.from(doc.body.querySelectorAll('*')).forEach(el => {
+      if (!allowedTags.includes(el.tagName.toLowerCase())) {
+        const replacement = document.createElement('div');
+        replacement.innerHTML = el.innerHTML;
+        el.replaceWith(...replacement.childNodes);
       }
     });
-  
-    document.body.appendChild(input);
-    input.click();
-    document.body.removeChild(input);
-    break;
-  }
-    case 'createLink': {
-      const url = prompt('URL do link:');
-      if (url) document.execCommand('createLink', false, url);
-      break;
-    }
-    case 'formatBlock': {
-      if (value) document.execCommand('formatBlock', false, value);
-      break;
-    }
-    default: {
-      document.execCommand(command, false, value);
-      break;
-    }
+
+    // ✅ Insere conteúdo limpo no ponto do cursor
+    insertHtmlAtCaret(doc.body.innerHTML);
+
+  } catch (e) {
+    console.warn('Erro ao limpar HTML colado:', e);
   }
 }
 
-/* ============================
-   Splash de imagem (ampliar)
-   ============================ */
 function enableImageSplash(containerEl) {
-  const container = containerEl || document.getElementById('article-content');
-  if (!container) return;
-  container.querySelectorAll('img').forEach(img => {
+  if (!containerEl) containerEl = document.getElementById('article-content');
+  if (!containerEl) return;
+
+  containerEl.querySelectorAll('img').forEach(img => {
     img.style.cursor = 'zoom-in';
     img.addEventListener('click', () => {
+	  console.log(`🖱️ Imagem clicada: ${img.src}`);
       const splash = document.createElement('div');
       splash.style = `
         position:fixed;top:0;left:0;right:0;bottom:0;
-        background:rgba(0,0,0,0.85);display:flex;
+        background:rgba(0,0,0,0.8);display:flex;
         align-items:center;justify-content:center;
-        z-index:9999;
+        z-index:999999;animation:fadeIn 0.3s ease;
       `;
+
       const enlarged = document.createElement('img');
       enlarged.src = img.src;
       enlarged.style = `
         max-width:90%;max-height:90%;
-        border-radius:12px;box-shadow:0 0 20px rgba(255,255,255,0.2);
+        box-shadow:0 0 20px rgba(0,0,0,0.5);
+        border-radius:8px;
       `;
+
       splash.appendChild(enlarged);
       splash.addEventListener('click', () => document.body.removeChild(splash));
       document.body.appendChild(splash);
     });
   });
+  const imgs = containerEl.querySelectorAll('img');
+  console.log(`🔍 Encontradas ${imgs.length} imagens para splash`);
+
 }
 
-/* ============================
-   Render / Menu / Busca / Artigo
-   ============================ */
+// ------------------------ Ext derivation ------------------------
+function extFromBlobOrDataUrl(blob, dataurl, fallback = 'png') {
+  if (blob?.type) {
+    const mime = blob.type.toLowerCase();
+    if (mime.includes('jpeg')) return 'jpg';
+    if (mime.includes('png')) return 'png';
+    if (mime.includes('gif')) return 'gif';
+    if (mime.includes('bmp')) return 'bmp';
+    if (mime.includes('webp')) return 'webp';
+    if (mime.includes('svg')) return 'svg';
+  }
+
+  if (dataurl?.startsWith('data:image/')) {
+    const match = dataurl.match(/^data:image\/([^;]+);base64,/);
+    if (match && match[1]) return match[1].toLowerCase();
+  }
+
+  return fallback;
+}
+
+// ------------------------ Blob / DataURL helpers ------------------------
+function blobToDataURL(blob) {
+  return new Promise((resolve, reject) => {
+    const fr = new FileReader();
+    fr.onload = () => resolve(fr.result);
+    fr.onerror = reject;
+    fr.readAsDataURL(blob);
+  });
+}
+function dataURLToBlob(dataurl) {
+  const parts = dataurl.split(',');
+  const meta = parts[0].match(/:(.*?);/);
+  const mime = meta ? meta[1] : 'application/octet-stream';
+  const binary = atob(parts[1] || '');
+  const len = binary.length;
+  const u8 = new Uint8Array(len);
+  for (let i = 0; i < len; i++) u8[i] = binary.charCodeAt(i);
+  return new Blob([u8], { type: mime });
+}
+
+// ------------------------ Storage helpers ------------------------
+function dedupeImages(images) {
+  if (!Array.isArray(images)) return [];
+  const seenDataUrls = new Set();
+  const seenBlobKeys = new Set();
+  const out = [];
+  for (const im of images) {
+    if (!im) continue;
+    const dataurl = im.dataurl || null;
+    const blob = im.blob || null;
+    if (dataurl) {
+      if (seenDataUrls.has(dataurl)) continue;
+      seenDataUrls.add(dataurl);
+      out.push(im);
+      continue;
+    }
+    if (blob) {
+      const key = `${blob.size}|${blob.type}`;
+      if (seenBlobKeys.has(key)) continue;
+      seenBlobKeys.add(key);
+      out.push(im);
+      continue;
+    }
+    if (im.name) {
+      if (out.some(x => x.name === im.name)) continue;
+      out.push(im);
+    } else {
+      out.push(im);
+    }
+  }
+  return out;
+}
+
+function storeImagesForExport(categoria, id, images) {
+  if (!categoria || !id || !images || !images.length) return;
+
+  const key = `${categoria}|${id}`;
+  window._imagesForExport = window._imagesForExport || {};
+  window._imagesForExport[key] = window._imagesForExport[key] || [];
+
+  const incoming = dedupeImages(images);
+  const existing = window._imagesForExport[key];
+
+  const existingDataUrls = new Set(existing.map(i => i.dataurl).filter(Boolean));
+  const existingBlobKeys = new Set(existing.map(i => i.blob ? `${i.blob.size}|${i.blob.type}` : null).filter(Boolean));
+  const existingNames = new Set(existing.map(i => i.name));
+
+  const allowedTypes = new Set(['image/png', 'image/jpeg', 'image/jpg', 'image/gif', 'image/bmp']);
+
+  for (const im of incoming) {
+    if (!im) continue;
+
+    // Convert dataURL to blob if needed
+    if (!im.blob && im.dataurl) {
+      try { im.blob = dataURLToBlob(im.dataurl); } catch (e) { im.blob = null; }
+    }
+
+    const blob = im.blob;
+    if (!blob || !allowedTypes.has(blob.type)) continue;
+
+    // Deduplication
+    if (im.dataurl && existingDataUrls.has(im.dataurl)) continue;
+
+    const kb = `${blob.size}|${blob.type}`;
+    if (existingBlobKeys.has(kb)) {
+      const isFinalName = !(im.name && /^pasted[-_\s]?image/i.test(im.name));
+      if (!isFinalName) continue;
+    }
+
+    // Normalize name
+    const ext = blob.type.split('/').pop().toLowerCase();
+    const baseName = sanitizeFilename(im.name || `img-${Date.now()}-${Math.floor(Math.random() * 10000)}.${ext}`);
+    const finalName = existingNames.has(baseName)
+      ? `${Date.now()}_${Math.floor(Math.random() * 10000)}_${baseName}`
+      : baseName;
+
+    const normalized = {
+      name: finalName,
+      blob,
+      dataurl: im.dataurl || null,
+      originalSrc: im.originalSrc || null
+    };
+
+    existing.push(normalized);
+
+    // Update sets
+    existingDataUrls.add(normalized.dataurl);
+    existingBlobKeys.add(kb);
+    existingNames.add(finalName);
+  }
+}
+
+function getImagesForExport(categoria, id) {
+  if (!categoria || !id) {
+    console.warn('⚠️ getImagesForExport chamado com categoria ou id inválido:', categoria, id);
+    return [];
+  }
+  window._imagesForExport = window._imagesForExport || {};
+  const key = `${categoria}|${id}`;
+  const imgs = window._imagesForExport[key] || [];
+  console.log(`📦 getImagesForExport → ${key} → ${imgs.length} imagens`);
+  return imgs;
+}
+
+
+// ------------------------ Paste handler ------------------------
+function registerPasteToDataUrlHandler() {
+  if (window.__pasteHandlerRegistered) return;
+  window.__pasteHandlerRegistered = true;
+
+  document.addEventListener('paste', (ev) => {
+    try {
+      const items = ev.clipboardData?.items || [];
+      const blobs = [];
+      for (const it of items) {
+        if (it.type?.startsWith('image/')) {
+          const blob = it.getAsFile ? it.getAsFile() : it;
+          if (blob) blobs.push(blob);
+        }
+      }
+      if (blobs.length) {
+        window.__lastPastedImages = window.__lastPastedImages || [];
+        window.__lastPastedImages.push(...blobs);
+      }
+    } catch (e) {}
+
+    // ✅ Aguarda o conteúdo ser colado no DOM
+	const panel = document.getElementById('local-image-fix-panel');
+	if (panel) panel.innerHTML = '';
+    setTimeout(() => {
+      const html = document.getElementById('content-body')?.innerHTML || '';
+      const categoria = normalizeStr(document.getElementById('new-category')?.value || '') ||
+                        normalizeStr(document.getElementById('category-select')?.value || '') ||
+                        (isEditingMode ? editingCategoria : '');
+      const id = isEditingMode ? editingId : `titulo${(Object.keys(contentData[categoria] || {}).length + 1)}`;
+    }, 100); // pequeno delay para garantir que o conteúdo foi colado
+  }, false);
+}
+registerPasteToDataUrlHandler();
+
+// ------------------------ Local src detection / prompt upload ------------------------
+function findLocalImageSrcs(html) {
+  if (!html) return [];
+  const srcs = new Set();
+  Array.from(html.matchAll(/<img[^>]+src=["']([^"']+)["']/gi)).forEach(m=>{
+    const s = m[1] || '';
+    if (/^(file:|msohtmlclip|[A-Za-z]:\\|cid:|AppData|ms-word:|v:)/i.test(s)) srcs.add(s);
+  });
+  Array.from(html.matchAll(/<v:imagedata[^>]*src=["']([^"']+)["'][^>]*>/gi)).forEach(m=>{
+    const s = m[1] || '';
+    if (s) srcs.add(s);
+  });
+  return Array.from(srcs);
+}
+
+async function replaceLocalImageSrcsWithClipboardBlobs(html, categoria, id) {
+  const pastedBlobs = window.__lastPastedImages || [];
+  if (!pastedBlobs.length) return html;
+
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+  const imgEls = Array.from(doc.querySelectorAll('img'));
+  const updatedImages = [];
+
+  for (let i = 0; i < imgEls.length; i++) {
+    const el = imgEls[i];
+    const src = el.getAttribute('src') || '';
+    if (!src.startsWith('file://')) continue;
+
+    const blob = pastedBlobs[i];
+    if (!blob) continue;
+
+    const dataurl = await blobToDataURL(blob);
+    const ext = extFromBlobOrDataUrl(blob, dataurl, null);
+    const name = sanitizeFilename(`${categoria}_${id}_img_${Date.now()}_${i}.${ext}`);
+	const storageKey = `${categoria}_${id}`; // usado para nome
+
+
+    el.setAttribute('src', dataurl);
+    updatedImages.push({ name, blob, dataurl, originalSrc: src });
+  }
+
+  if (updatedImages.length) {
+    storeImagesForExport(categoria, id, updatedImages);
+    console.log('📦 Imagens substituídas automaticamente:', updatedImages.map(im => im.name));
+  }
+
+  return doc.body.innerHTML;
+}
+
+
+// Paste handler imediato para #content-body — aplica regras e mostra toast
+function installContentBodyPasteHandler() {
+  if (window.__contentBodyPasteHandlerInstalled) return;
+  window.__contentBodyPasteHandlerInstalled = true;
+
+  const allowedTypes = new Set(['image/png', 'image/jpeg', 'image/jpg', 'image/gif', 'image/bmp']);
+  const contentBody = document.getElementById('content-body');
+  if (!contentBody) return;
+
+  contentBody.addEventListener('paste', async function (ev) {
+  try {
+    ev.preventDefault();
+
+    const clipboard = ev.clipboardData || window.clipboardData;
+    let html = clipboard?.getData?.('text/html') || '';
+    const text = clipboard?.getData?.('text/plain') || '';
+
+    if (!html && text) html = text;
+    if (html) {
+	  cleanWordHtmlAndInsert(html);
+	}
+
+
+    const items = clipboard?.items ? Array.from(clipboard.items) : [];
+    const allowedTypes = new Set(['image/png', 'image/jpeg', 'image/jpg', 'image/gif', 'image/bmp']);
+    const blobs = [];
+
+    for (const item of items) {
+      if (item.type?.startsWith('image/')) {
+        const blob = item.getAsFile?.();
+        if (blob && allowedTypes.has(blob.type)) blobs.push(blob);
+      }
+    }
+
+    // ✅ Se houver blobs, salva para processamento posterior
+    if (blobs.length) {
+      window.__lastPastedImages = blobs.slice();
+      console.log('📦 Blobs capturados do clipboard:', blobs);
+    } else {
+      window.__lastPastedImages = [];
+      console.log('⚠️ Nenhum blob de imagem detectado no clipboard.');
+    }
+
+  } catch (err) {
+    console.warn('Erro ao colar conteúdo:', err);
+  }
+}, false);
+
+}
+installContentBodyPasteHandler();
+
+function insertHtmlAtCaret(html) {
+  const sel = window.getSelection();
+  if (!sel || sel.rangeCount === 0) {
+    const cb = document.getElementById('content-body');
+    if (cb) cb.insertAdjacentHTML('beforeend', html);
+    return;
+  }
+
+  const range = sel.getRangeAt(0);
+  range.deleteContents();
+  const frag = document.createRange().createContextualFragment(html);
+  range.insertNode(frag);
+
+  sel.removeAllRanges();
+  const newRange = document.createRange();
+  newRange.setStartAfter(frag.lastChild || range.endContainer);
+  newRange.collapse(true);
+  sel.addRange(newRange);
+}
+
+
+// ------------------------ Process content for images ------------------------
+async function processContentForImages(html) {
+  if (!html) return { html: '', images: [] };
+
+  const localImgSrcs = findLocalImageSrcs(html);
+  const allowedTypes = new Set(['image/png', 'image/jpeg', 'image/jpg', 'image/gif', 'image/bmp']);
+  let clipboardBlobs = [];
+
+  try {
+    if (navigator.clipboard && navigator.clipboard.read) {
+      const items = await navigator.clipboard.read();
+      for (const item of items) {
+        for (const t of item.types || []) {
+          if (t.startsWith('image/') && allowedTypes.has(t)) {
+            try {
+              const b = await item.getType(t);
+              clipboardBlobs.push(b);
+            } catch (e) {}
+          }
+        }
+      }
+    }
+  } catch (e) {}
+
+  if ((!clipboardBlobs.length) && Array.isArray(window.__lastPastedImages) && window.__lastPastedImages.length) {
+    clipboardBlobs = Array.from(window.__lastPastedImages);
+  }
+
+  const images = [];
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+  const imgEls = Array.from(doc.querySelectorAll('img'));
+
+  if (localImgSrcs.length > 0) {
+    for (let i = 0; i < localImgSrcs.length; i++) {
+      const src = localImgSrcs[i];
+      const el = imgEls.find(img => img.getAttribute('src') === src);
+      const blob = clipboardBlobs[i] || null;
+
+      if (blob && allowedTypes.has(blob.type)) {
+        const dataurl = await blobToDataURL(blob);
+        const ext = blob.type.split('/').pop().toLowerCase();
+        const name = `pasted-image-${Date.now()}-${i}.${ext}`;
+        images.push({ name, blob, dataurl, originalSrc: src });
+        if (el) el.setAttribute('src', dataurl);
+      } else {
+        const placeholder = 'data:image/svg+xml;base64,' + btoa(
+          '<svg xmlns="http://www.w3.org/2000/svg" width="300" height="100"><rect fill="#f3f3f3" width="100%" height="100%"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="#777" font-size="14">Imagem ausente (faça upload)</text></svg>'
+        );
+        if (el) el.setAttribute('src', placeholder);
+      }
+    }
+    return { html: doc.body.innerHTML, images };
+  }
+
+  if (clipboardBlobs.length > 0) {
+    for (let i = 0; i < clipboardBlobs.length; i++) {
+      const blob = clipboardBlobs[i];
+      if (!allowedTypes.has(blob.type)) continue;
+
+      const dataurl = await blobToDataURL(blob);
+      const ext = blob.type.split('/').pop().toLowerCase();
+      const name = `pasted-image-${Date.now()}-${i}.${ext}`;
+      images.push({ name, blob, dataurl, originalSrc: null });
+    }
+
+    const hasAnyImg = imgEls.length > 0;
+    if (!hasAnyImg) {
+      const imgsHtml = images.map(im => `<img src="${im.dataurl}" alt="" />`).join('');
+      html += imgsHtml;
+    }
+
+    return { html, images };
+  }
+
+  return { html, images: [] };
+}
+
+async function promptUploadForLocalImages(html, categoria, id) {
+  const srcs = findLocalImageSrcs(html);
+  if (!srcs.length) return html;
+
+  return new Promise((resolve) => {
+    const modal = document.createElement('div');
+    modal.style = 'position:fixed;left:0;top:0;right:0;bottom:0;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;z-index:999999';
+
+    const box = document.createElement('div');
+    box.style = 'background:white;padding:16px;border-radius:6px;max-width:860px;width:92%;max-height:80%;overflow:auto;font-family:Arial,Helvetica,sans-serif';
+    box.innerHTML = `<h3 style="margin:0 0 8px 0">Imagens locais detectadas</h3>
+      <p style="margin:0 0 12px 0">Substitua cada caminho local arrastando ou escolhendo a imagem correspondente.</p>
+      <div id="local-img-list"></div>
+      <div style="margin-top:12px;text-align:right">
+        <button id="local-img-skip" style="margin-right:8px">Pular</button>
+        <button id="local-img-done">Concluir</button>
+      </div>`;
+    modal.appendChild(box);
+    document.body.appendChild(modal);
+
+    const list = box.querySelector('#local-img-list');
+    const updatedImages = [];
+
+    const doc = new DOMParser().parseFromString(html, 'text/html');
+    const imgEls = Array.from(doc.querySelectorAll('img'));
+	const blobMap = new Map(); // chave: src original, valor: { blob, dataurl, ext, name }
+
+    srcs.forEach((src, idx) => {
+      const row = document.createElement('div');
+      row.style = 'border:1px solid #eee;padding:8px;margin:8px 0;display:flex;gap:12px;align-items:center';
+      row.dataset.src = src;
+
+      const fullPath = src.startsWith('file:///') ? src.slice(8) : src;
+      const info = document.createElement('div');
+      info.style = 'flex:1';
+      info.innerHTML = `
+        <div style="font-size:12px;color:#333;word-break:break-all">
+          <strong>${extractFilenameFromPath(src)}</strong>
+        </div>
+        <div style="font-size:12px;color:#666">Caminho completo:</div>
+        <div style="font-size:12px;color:#444;margin-bottom:4px">
+          <code>${fullPath}</code>
+          <button style="margin-left:8px;font-size:11px" onclick="navigator.clipboard.writeText('${fullPath}')">Copiar caminho</button>
+        </div>
+        <div style="font-size:12px;color:#666">Arraste ou clique para escolher imagem</div>
+        <div style="margin-top:6px">
+          <img src="${src}" style="max-width:120px;max-height:80px;border:1px solid #ccc;background:#f9f9f9" onerror="this.style.opacity=0.3">
+        </div>
+      `;
+
+      const drop = document.createElement('div');
+      drop.style = 'width:160px;height:90px;border:1px dashed #ccc;display:flex;align-items:center;justify-content:center;background:#fafafa;cursor:pointer';
+      drop.textContent = 'Arraste ou escolha';
+
+      const fileInput = document.createElement('input');
+      fileInput.type = 'file';
+      fileInput.accept = 'image/*';
+      fileInput.style = 'display:none';
+
+      drop.addEventListener('click', () => fileInput.click());
+      drop.addEventListener('dragover', (e) => { e.preventDefault(); drop.style.borderColor = '#888'; });
+      drop.addEventListener('dragleave', () => { drop.style.borderColor = '#ccc'; });
+      drop.addEventListener('drop', (e) => {
+        e.preventDefault();
+        drop.style.borderColor = '#ccc';
+        handleFiles(e.dataTransfer.files);
+      });
+      fileInput.addEventListener('change', () => handleFiles(fileInput.files));
+
+      function handleFiles(files) {
+        if (!files || !files.length) return;
+        const f = files[0];
+        const allowedExtensions = /\.(jpe?g|png|gif|bmp)$/i;
+        if (!allowedExtensions.test(f.name)) {
+          alert('Formato de imagem não suportado. Use JPG, JPEG, PNG, GIF ou BMP.');
+          return;
+        }
+
+        const fr = new FileReader();
+        fr.onload = () => {
+		  drop.innerHTML = `<img src="${fr.result}" style="max-width:100%;max-height:100%"/>`;
+		  blobMap.set(src, {
+			blob: f,
+			dataurl: fr.result,
+			ext: f.name.split('.').pop().toLowerCase(),
+			name: f.name
+		  });
+		};
+	
+        fr.readAsDataURL(f);
+      }
+
+      row.appendChild(info);
+      row.appendChild(drop);
+      row.appendChild(fileInput);
+      list.appendChild(row);
+    });
+
+    function applySubstitutions() {
+	  list.querySelectorAll('div[data-src]').forEach((r, i) => {
+		const s = r.dataset.src;
+		const blobInfo = blobMap.get(s);
+		if (!blobInfo) return;
+
+		const { blob, dataurl, ext } = blobInfo;
+		const el = imgEls.find(img => img.getAttribute('src') === s);
+		const name = sanitizeFilename(`${categoria}_${id}_img_${Date.now()}_${i}.${ext}`);
+		if (el) el.setAttribute('src', `images/${name}`);
+		updatedImages.push({ name, blob, dataurl, originalSrc: s });
+	  });
+
+	  const finalHtml = doc.body.innerHTML;
+	  storeImagesForExport(categoria, id, updatedImages);
+	  downloadAllImagesForArticle(categoria, id);
+	  document.body.removeChild(modal);
+	  resolve(finalHtml);
+	}
+
+
+    box.querySelector('#local-img-skip').addEventListener('click', () => {
+      document.body.removeChild(modal);
+      resolve(html);
+    });
+
+    box.querySelector('#local-img-done').addEventListener('click', applySubstitutions);
+  });
+}
+
+function renderLocalImageFixPanel(html, categoria, id) {
+  const container = document.getElementById('local-image-fix-panel');
+  if (!container) return;
+
+  container.innerHTML = ''; // limpa painel
+
+  const srcs = findLocalImageSrcs(html);
+  if (!srcs.length) {
+    container.innerHTML = '<p style="color:green;">✅ Nenhuma imagem local detectada.</p>';
+    return;
+  }
+
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+  const imgEls = Array.from(doc.querySelectorAll('img'));
+  const matches = imgEls
+    .map((el, i) => {
+      const src = el.getAttribute('src') || '';
+      if (!srcs.includes(src)) return null;
+      return {
+        el,
+        index: i,
+        originalSrc: src,
+        filename: extractFilenameFromPath(src),
+      };
+    })
+    .filter(Boolean);
+
+  const tempImages = [];
+
+  matches.forEach((match, idx) => {
+    const wrapper = document.createElement('div');
+    wrapper.style.marginBottom = '12px';
+
+    const label = document.createElement('label');
+    label.textContent = `Imagem local detectada: ${match.filename}`;
+    label.style.display = 'block';
+    label.style.marginBottom = '4px';
+
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+
+    input.addEventListener('change', async () => {
+      const file = input.files?.[0];
+      if (!file) return;
+
+      const dataurl = await blobToDataURL(file);
+      match.el.setAttribute('src', dataurl);
+
+      const ext = extFromBlobOrDataUrl(file, dataurl, 'png');
+      const name = sanitizeFilename(`${categoria}_${id}_img_${Date.now()}_${idx}.${ext}`);
+
+      tempImages.push({ name, blob: file, dataurl, originalSrc: match.originalSrc });
+
+      // Atualiza visual
+      label.textContent = `✅ Substituída: ${match.filename} → ${name}`;
+      label.style.color = 'green';
+    });
+
+    wrapper.appendChild(label);
+    wrapper.appendChild(input);
+    container.appendChild(wrapper);
+  });
+
+  // Botão para aplicar alterações
+  const applyBtn = document.createElement('button');
+  applyBtn.textContent = 'Aplicar substituições';
+  applyBtn.style.marginTop = '16px';
+  applyBtn.onclick = () => {
+    const updatedHtml = doc.body.innerHTML;
+    storeImagesForExport(categoria, id, tempImages);
+    document.getElementById('content-body').innerHTML = updatedHtml;
+    container.innerHTML = '<p style="color:green;">✅ Substituições aplicadas com sucesso.</p>';
+  };
+
+  container.appendChild(applyBtn);
+}
+
+function extractFilenameFromPath(path) {
+  try {
+    return decodeURIComponent(path.split(/[\\/]/).pop().split('?')[0]);
+  } catch {
+    return null;
+  }
+}
+
+
+// ------------------------ Extract / Detach data URLs ------------------------
+function extractDataUrlsFromHtml(html) {
+  if (!html) return [];
+  const re = /src=["'](data:image\/[^"']+)["']/gi;
+  const out = [];
+  let m, i = 0;
+  while ((m = re.exec(html)) !== null) {
+    out.push({ dataurl: m[1], index: i++ });
+  }
+  console.log(`🧪 extractDataUrlsFromHtml → ${out.length} dataURLs encontrados`);
+  return out;
+}
+
+function detachDataUrlsFromHtml(html, categoria, id) {
+  if (!html) return { html, images: [], mapping: {} };
+
+  const re = /src=["'](data:image\/[^"']+)["']/gi;
+  const maps = [];
+  let m, idx = 0;
+
+  while ((m = re.exec(html)) !== null) {
+    maps.push({ dataurl: m[1], index: idx++ });
+  }
+
+  const images = [];
+  const mapping = {};
+  const usedNames = new Set();
+  const baseTs = Date.now();
+
+  if (!maps.length) return { html, images, mapping };
+
+  for (let i = 0; i < maps.length; i++) {
+    const d = maps[i];
+    const dataurl = d.dataurl;
+    const ext = extFromBlobOrDataUrl(null, dataurl, 'png');
+    let rawName = `${categoria}_${id}_img_${baseTs}_${i}.${ext}`;
+    let name = sanitizeFilename(rawName);
+
+    while (usedNames.has(name)) {
+      rawName = `${categoria}_${id}_img_${baseTs}_${i}_${Math.floor(Math.random() * 10000)}.${ext}`;
+      name = sanitizeFilename(rawName);
+    }
+
+    usedNames.add(name);
+    mapping[dataurl] = name;
+    const blob = dataURLToBlob(dataurl);
+    images.push({ name, blob, dataurl, originalSrc: null });
+  }
+
+  for (const durl in mapping) {
+    const ref = `images/${mapping[durl]}`;
+    html = html.split(durl).join(ref);
+  }
+
+  storeImagesForExport(categoria, id, images);
+
+  return { html, images, mapping };
+}
+
+// ------------------------ Object URL linking ------------------------
+function getImageBlobForPath(path) {
+  if (!path) return null;
+  const filename = path.split('/').pop();
+  for (const key in window._imagesForExport) {
+    const arr = window._imagesForExport[key] || [];
+    for (const im of arr) {
+      if (!im.name) continue;
+      if (im.name === filename) return im.blob || (im.dataurl ? dataURLToBlob(im.dataurl) : null);
+      if (('images/' + im.name) === path) return im.blob || (im.dataurl ? dataURLToBlob(im.dataurl) : null);
+      if (sanitizeFilename(im.name) === sanitizeFilename(filename)) return im.blob || (im.dataurl ? dataURLToBlob(im.dataurl) : null);
+      if (im.name.includes(filename) || filename.includes(im.name)) return im.blob || (im.dataurl ? dataURLToBlob(im.dataurl) : null);
+    }
+  }
+  return null;
+}
+
+function linkArticleImagesToObjectUrls(containerEl) {
+  if (!containerEl) containerEl = document.getElementById('article-content');
+  if (!containerEl) {
+    console.warn('⚠️ Nenhum container encontrado para vincular imagens.');
+    return { linked: 0, missing: [] };
+  }
+
+  const imgs = containerEl.querySelectorAll('img');
+  let linked = 0;
+  const missing = [];
+
+  window.__objectUrlMap = window.__objectUrlMap || {};
+
+  console.log(`🔗 Iniciando vinculação de ${imgs.length} imagens...`);
+
+  imgs.forEach(img => {
+    try {
+      const src = img.getAttribute('src') || '';
+      if (!src) return;
+
+      if (src.startsWith('data:') || src.startsWith('http:') || src.startsWith('https:') || src.startsWith('blob:')) {
+        console.log(`⏩ Ignorando imagem externa: ${src}`);
+        return;
+      }
+
+      const objKey = src;
+
+      if (window.__objectUrlMap[objKey]) {
+        img.src = window.__objectUrlMap[objKey];
+        console.log(`🔁 Reutilizando URL para ${objKey}`);
+        linked++;
+        return;
+      }
+
+      const blob = getImageBlobForPath(src);
+      if (blob) {
+        const url = URL.createObjectURL(blob);
+        window.__objectUrlMap[objKey] = url;
+        img.src = url;
+        console.log(`✅ Vinculado: ${objKey}`);
+        linked++;
+      } else {
+        console.warn(`❌ Blob não encontrado para ${objKey}`);
+        missing.push(src);
+      }
+    } catch (e) {
+      console.error(`💥 Erro ao vincular imagem ${src}:`, e);
+    }
+  });
+
+  console.log(`🔍 Vinculação concluída: ${linked} vinculadas, ${missing.length} ausentes`);
+  return { linked, missing };
+}
+
+
+function revokeArticleObjectUrls() {
+  if (!window.__objectUrlMap) return;
+  for (const k in window.__objectUrlMap) {
+    try { URL.revokeObjectURL(window.__objectUrlMap[k]); } catch(e){}
+  }
+  window.__objectUrlMap = {};
+}
+
+// ------------------------ Fix missing refs (heuristic clone) ------------------------
+function fixMissingImageRefs(categoria, id) {
+  try {
+    const key = `${categoria}|${id}`;
+    const html = (contentData[categoria] && contentData[categoria][id] && contentData[categoria][id].conteudo) || '';
+    if (!html) return [];
+    const refs = Array.from(html.matchAll(/<img[^>]+src=["']([^"']+)["']/gi)).map(m => m[1]).filter(Boolean);
+    const imageRefs = refs.filter(r => r.startsWith('images/')).map(r => r.split('/').pop());
+    if (!imageRefs.length) return [];
+    window._imagesForExport[key] = window._imagesForExport[key] || [];
+    const stored = window._imagesForExport[key];
+    const storedNames = new Set(stored.map(s => s.name));
+    const repairs = [];
+
+    function findBestCandidateFor(targetName) {
+      const exact = stored.find(s => s.name === targetName);
+      if (exact) return exact.blob || (exact.dataurl ? dataURLToBlob(exact.dataurl) : null);
+      const m = targetName.match(/^(.+?)_(\d+)(\.[^.]*)?$/);
+      if (m) {
+        const base = m[1];
+        let list = stored.filter(s => s.name && s.name.indexOf(base) === 0);
+        if (list.length) {
+          const prefer0 = list.find(s => {
+            const mm = s.name.match(/^(.+?)_(\d+)(\.[^.]*)?$/);
+            return mm && parseInt(mm[2], 10) === 0;
+          });
+          if (prefer0) return prefer0.blob || (prefer0.dataurl ? dataURLToBlob(prefer0.dataurl) : null);
+          list.sort((a,b) => (b.blob?.size || 0) - (a.blob?.size || 0));
+          const cand = list[0];
+          return cand.blob || (cand.dataurl ? dataURLToBlob(cand.dataurl) : null);
+        }
+      }
+      const ext = (targetName.match(/\.[^.]+$/) || [])[0] || '';
+      const sameExt = stored.find(s => s.blob && s.name && s.name.endsWith(ext));
+      if (sameExt) return sameExt.blob || (sameExt.dataurl ? dataURLToBlob(sameExt.dataurl) : null);
+      const blobs = stored.filter(s => s.blob).map(s => s.blob);
+      if (blobs.length) {
+        blobs.sort((a,b) => b.size - a.size);
+        return blobs[0];
+      }
+      return null;
+    }
+
+    for (const refName of imageRefs) {
+      if (storedNames.has(refName)) continue;
+      const candidateBlob = findBestCandidateFor(refName);
+      if (candidateBlob) {
+        const newBlob = candidateBlob.slice(0, candidateBlob.size, candidateBlob.type);
+        const newEntry = { name: refName, blob: newBlob, dataurl: null, originalSrc: null };
+        window._imagesForExport[key].push(newEntry);
+        storedNames.add(refName);
+        repairs.push(refName);
+      }
+    }
+
+    if (repairs.length) {
+      const container = document.getElementById('article-content');
+      if (container) linkArticleImagesToObjectUrls(container);
+    }
+
+    return repairs;
+  } catch (e) { return []; }
+}
+
+// ------------------------ Fallback (DOM-based) local-src -> dataURL ------------------------
+window.replaceLocalFileSrcsWithDataUrls = async function(processedHtml, categoria, id, tempImages = []) {
+  try {
+    if (!processedHtml) return processedHtml;
+    const doc = new DOMParser().parseFromString(processedHtml, 'text/html');
+    const imgEls = Array.from(doc.querySelectorAll('img'));
+    const imgSrcs = imgEls.map(el => ({ el, src: el.getAttribute('src') || '' }))
+      .filter(o => !!o.src && /^(file:|msohtmlclip|cid:|[A-Za-z]:\\|AppData|ms-word:|v:)/i.test(o.src));
+    const vmlMatches = [];
+    Array.from(doc.querySelectorAll('*')).forEach(node => {
+      try {
+        if (node.outerHTML && node.outerHTML.toLowerCase().includes('v:imagedata')) {
+          const m = node.outerHTML.match(/src=["']([^"']+)["']/i);
+          if (m && m[1]) vmlMatches.push({ node, src: m[1] });
+        }
+      } catch(e){}
+    });
+    const allMatches = imgSrcs.map(o => ({ type: 'img', src: o.src, node: o.el })).concat(
+      vmlMatches.map(o => ({ type: 'vml', src: o.src, node: o.node }))
+    );
+    if (!allMatches.length) return processedHtml;
+
+    function findBlobInStoreByOriginalSrc(src) {
+      for (const key in window._imagesForExport) {
+        const arr = window._imagesForExport[key] || [];
+        for (const it of arr) {
+          if (!it) continue;
+          if (it.originalSrc && it.originalSrc === src) return it.blob || (it.dataurl ? dataURLToBlob(it.dataurl) : null);
+          const base = src.split('/').pop();
+          if (it.name && it.name.indexOf(base) !== -1) return it.blob || (it.dataurl ? dataURLToBlob(it.dataurl) : null);
+        }
+      }
+      return null;
+    }
+    function tryLastPastedAsBlob(idx) {
+      try { return (Array.isArray(window.__lastPastedImages) && window.__lastPastedImages.length > idx) ? window.__lastPastedImages[idx] : null; } catch(e){ return null; }
+    }
+
+    for (let i = 0; i < allMatches.length; i++) {
+      const item = allMatches[i];
+      const src = item.src;
+      let replacement = null;
+      const storeBlob = findBlobInStoreByOriginalSrc(src);
+      if (storeBlob) {
+        try { replacement = await blobToDataURL(storeBlob); } catch(e){ replacement = null; }
+      }
+      if (!replacement && Array.isArray(tempImages) && tempImages[i]) {
+        try {
+          const im = tempImages[i];
+          const blob = im.blob || (im.dataurl ? dataURLToBlob(im.dataurl) : null);
+          if (blob) replacement = await blobToDataURL(blob);
+        } catch(e){}
+      }
+      if (!replacement) {
+        const lastBlob = tryLastPastedAsBlob(i);
+        if (lastBlob) {
+          try { replacement = await blobToDataURL(lastBlob); } catch(e){ replacement = null; }
+        }
+      }
+      if (!replacement) {
+        const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="400" height="120"><rect width="100%" height="100%" fill="#f7f7f7"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="#777" font-size="13">Imagem local não disponível (substitua)</text></svg>';
+        replacement = 'data:image/svg+xml;base64,' + btoa(svg);
+      }
+      try {
+        if (item.type === 'img' && item.node) {
+          item.node.setAttribute('src', replacement);
+        } else if (item.type === 'vml' && item.node) {
+          const newOuter = item.node.outerHTML.replace(src, replacement);
+          const wrapper = document.createElement('div');
+          wrapper.innerHTML = newOuter;
+          item.node.parentNode && item.node.parentNode.replaceChild(wrapper.firstChild, item.node);
+        }
+      } catch(e) {
+        processedHtml = processedHtml.split(src).join(replacement);
+      }
+    }
+
+    let outHtml;
+    try {
+      outHtml = (doc.body && doc.body.innerHTML) ? doc.body.innerHTML : processedHtml;
+    } catch(e){ outHtml = processedHtml; }
+    return outHtml;
+  } catch (err) { return processedHtml; }
+};
+
+// ------------------------ Save flow (integrado) ------------------------
+async function addNewContent() {
+  const selectEl = document.getElementById('category-select');
+  const selectedCategory = selectEl ? normalizeStr(selectEl.value || '') : '';
+  const newCategoryRaw = normalizeStr(document.getElementById('new-category').value || '');
+  const title = (document.getElementById('content-title').value || '').trim();
+  const contentBodyEl = document.getElementById('content-body');
+  let rawHtml = '';
+	if (contentBodyEl) {
+	  const isDebug = contentBodyEl.getAttribute('data-debug-mode') === '1';
+	  rawHtml = isDebug
+		? contentBodyEl.getAttribute('data-html-original') || ''
+		: contentBodyEl.innerHTML;
+	}
+
+  
+
+  const categoriaFinal = newCategoryRaw || selectedCategory || (isEditingMode ? editingCategoria : '');
+  if (!categoriaFinal) return alert('Escolha ou digite uma categoria.');
+  if (!title || (!rawHtml.trim() && !rawHtml.includes('<img'))) return alert('Título e conteúdo são obrigatórios.');
+
+  const id = isEditingMode ? editingId : `titulo${(Object.keys(contentData[categoriaFinal] || {}).length + 1)}`;
+  let processedHtml = rawHtml;
+  let tempImages = [];
+
+  try {
+    const missing = findLocalImageSrcs(processedHtml);
+    if (missing.length) {
+      console.log('⚙️ Chamando promptUploadForLocalImages...');
+      processedHtml = await promptUploadForLocalImages(processedHtml, categoriaFinal, id);
+    }
+
+    processedHtml = await replaceLocalImageSrcsWithClipboardBlobs(processedHtml, categoriaFinal, id);
+
+    const res = await processContentForImages(processedHtml);
+    processedHtml = res?.html || processedHtml;
+    tempImages = Array.isArray(res?.images) ? res.images.slice() : [];
+
+    if (!tempImages.length) {
+      const extracted = extractDataUrlsFromHtml(processedHtml);
+      const exImgs = extracted.map((d, idx) => {
+        const blob = dataURLToBlob(d.dataurl);
+        const ext = extFromBlobOrDataUrl(blob, d.dataurl, 'png');
+        const name = sanitizeFilename(`${categoriaFinal}_${id}_img_${Date.now()}_${idx}.${ext}`);
+        return { name, blob, dataurl: d.dataurl, originalSrc: null };
+      });
+      tempImages.push(...exImgs);
+    }
+
+    tempImages.forEach(im => {
+      if (!im.blob && im.dataurl) im.blob = dataURLToBlob(im.dataurl);
+    });
+
+    const detachRes = detachDataUrlsFromHtml(processedHtml, categoriaFinal, id);
+    if (detachRes?.html) processedHtml = detachRes.html;
+
+    storeImagesForExport(categoriaFinal, id, tempImages);
+    cleanupPastedImageDuplicates();
+    fixMissingImageRefs(categoriaFinal, id);
+  } catch (e) {
+    console.warn('Erro ao processar conteúdo:', e);
+  }
+
+  if (!contentData[categoriaFinal]) contentData[categoriaFinal] = {};
+  contentData[categoriaFinal][id] = { titulo: title, conteudo: processedHtml };
+
+  renderMenu();
+  
+  console.log(`Export Button TRUE`);
+  setExportButtonVisible(true); // mostra botão de exportação
+
+	if (window.__debugMode) {
+	  toggleDebugMode(false); // garante que HTML não fique visível após salvar
+	  contentBodyEl.removeAttribute('data-html-original');
+	}
+	sessionHasSaved = true;
+	loadArticle(categoriaFinal, id);
+  closeNewContentPanel();
+}
+
+// ------------------------ cleanup ------------------------
+function cleanupPastedImageDuplicates() {
+  for (const key in window._imagesForExport) {
+    const arr = window._imagesForExport[key];
+    if (!Array.isArray(arr) || arr.length <= 1) continue;
+    const keep = [];
+    for (let i = 0; i < arr.length; i++) {
+      const im = arr[i];
+      if (!im || !im.name) continue;
+      if (!/^pasted[-_\s]?image/i.test(im.name)) {
+        keep.push(im);
+        continue;
+      }
+      const hasMatch = arr.some(other => {
+        if (other === im) return false;
+        if (other.dataurl && im.dataurl && other.dataurl === im.dataurl) return true;
+        if (other.blob && im.blob && other.blob.size === im.blob.size && other.blob.type === im.blob.type) return true;
+        return false;
+      });
+      if (!hasMatch) keep.push(im);
+    }
+    window._imagesForExport[key] = keep;
+  }
+}
+
+// ------------------------ UI / Render ------------------------
 function renderWelcome() {
   const article = document.getElementById('article-content');
   if (!article) return;
   article.innerHTML = `
-    <h1 id="article-title">Bem-vindo</h1>
-    <button id="edit-article-link" style="display:none;">Editar</button>
-    <div id="content-body" contenteditable="false" data-placeholder="Digite ou cole o conteúdo aqui">
-      <p>Selecione um item no menu para ver o conteúdo.</p>
-    </div>
+    <h1>Bem-vindo</h1>
+    <p>Selecione um item no menu para ver o conteúdo.</p>
   `;
 }
 
+function getImageCountForArticle(categoria, id) {
+  const imgs = (window._imagesForExport && window._imagesForExport[`${categoria}|${id}`]) || [];
+  return imgs.filter(i => i && i.name && !/^pasted[-_\s]?image/i.test(i.name)).length;
+}
 
-function renderMenu() {
+function execCmd(command, value = null) {
+  if (command === 'insertImage') {
+    const url = prompt('URL da imagem:');
+    if (url) document.execCommand(command, false, url);
+  } else if (command === 'createLink') {
+    const url = prompt('URL do link:');
+    if (url) document.execCommand(command, false, url);
+  } else {
+    document.execCommand(command, false, value);
+  }
+}
+
+function renderMenu(openCategories = []) {
   const menu = document.getElementById('menu');
   if (!menu) return;
   menu.innerHTML = '';
-
   const ul = document.createElement('ul');
-
-  // ordenar categorias alfabeticamente
-  const categoriasOrdenadas = Object.keys(contentData).sort((a, b) =>
-    a.localeCompare(b, 'pt', { sensitivity: 'base' })
-  );
-
-  for (const categoria of categoriasOrdenadas) {
+  for (const categoria in contentData) {
     const liCategoria = document.createElement('li');
-    liCategoria.dataset.categoria = categoria; // << NOVO
     const span = document.createElement('span');
     span.textContent = categoria;
-    span.style.cursor = 'pointer';
-    span.setAttribute('tabindex', '0'); // torna focável pelo teclado
-
-    // expandir/fechar com clique
-    span.addEventListener('click', () => liCategoria.classList.toggle('active'));
-
-    // expandir/fechar também com Enter ou Espaço
-    span.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter' || e.key === ' ') {
-        e.preventDefault(); // evita scroll da página com espaço
-        liCategoria.classList.toggle('active');
-      }
-    });
-
+    if (openCategories.includes(categoria)) liCategoria.classList.add('active');
+    span.onclick = () => liCategoria.classList.toggle('active');
     liCategoria.appendChild(span);
-
     const ulTitulos = document.createElement('ul');
-
-    // ordenar títulos alfabeticamente dentro da categoria
-    const titulosOrdenados = Object.entries(contentData[categoria])
-      .sort(([, artigoA], [, artigoB]) =>
-        artigoA.titulo.localeCompare(artigoB.titulo, 'pt', { sensitivity: 'base' })
-      );
-
-    for (const [id, artigo] of titulosOrdenados) {
+    for (const id in contentData[categoria]) {
+      const artigo = contentData[categoria][id];
       const liTitulo = document.createElement('li');
       const link = document.createElement('a');
-
-      // Gera URL amigável com ?artigoID=<postId>
-      const artigoId = artigo.postId;
-      link.href = `?artigoID=${encodeURIComponent(String(artigoId))}`;
-      link.textContent = artigo.titulo;
-      link.dataset.categoria = categoria;
-      link.dataset.id = id;
-      link.dataset.postId = String(artigo.postId); // << NOVO
-
-      // Mantém SPA: ao clicar, não recarrega; atualiza URL e renderiza.
-      link.addEventListener('click', function (e) {
-        e.preventDefault();
-        const cat = this.dataset.categoria;
-        const key = this.dataset.id;
-        const a = window.contentData?.[cat]?.[key];
-        if (a && a.postId != null) {
-          updateUrlWithArticleId(a.postId);
-        }
-        loadArticle(cat, key);
-      });
-
-      // Opcional: ao focar via teclado, também atualiza SPA e URL
-      link.addEventListener('focus', function () {
-        const cat = this.dataset.categoria;
-        const key = this.dataset.id;
-        const a = window.contentData?.[cat]?.[key];
-        if (a && a.postId != null) {
-          updateUrlWithArticleId(a.postId);
-        }
-        loadArticle(cat, key);
-      });
-
+		link.href = '#';
+		link.textContent = artigo.titulo;
+		link.setAttribute('data-categoria', categoria); // 👈 Adiciona categoria
+		link.setAttribute('data-id', id);               // 👈 Adiciona id
+		link.onclick = (e) => {
+		  e.preventDefault();
+		  loadArticle(categoria, id);
+		};
       liTitulo.appendChild(link);
       ulTitulos.appendChild(liTitulo);
     }
-
     liCategoria.appendChild(ulTitulos);
     ul.appendChild(liCategoria);
   }
-
   menu.appendChild(ul);
 }
 
+function loadArticle(categoria, id) {
+  if (!contentData[categoria] || !contentData[categoria][id]) return;
+  revokeArticleObjectUrls();
+
+  const artigo = contentData[categoria][id];
+  const container = document.getElementById('article-content');
+  if (!container) return;
+
+  const wasEditing = editingCategoria !== null && editingId !== null;
+  if (wasEditing) closeNewContentPanel();
+
+  container.style.animation = 'slideOutToLeft 0.4s ease forwards';
+
+  setTimeout(() => {
+    console.log(`🧾 Renderizando artigo ${categoria}|${id}`);
+
+    const imgCount = getImageCountForArticle(categoria, id);
+    const btnText = imgCount > 0 ? `Baixar imagens (${imgCount})` : 'Nenhuma imagem';
+    const btnDisabledAttr = imgCount > 0 ? 'disabled' : 'disabled';
+
+    container.innerHTML = `
+		<div class="control-bar">
+		  <a id="edit-article-link" href="#" onclick="startEditing('${categoria}', '${id}')">Editar</a>
+		  <button id="download-images-btn" ${btnDisabledAttr}>
+			<span>${btnText}</span>
+		  </button>
+		</div>
+		<h1>${artigo.titulo}</h1>
+		<div class="article-body">${artigo.conteudo}</div>
+    `;
+
+    container.style.animation = 'slideInFromLeft 0.6s ease forwards';
+    const links = container.querySelectorAll('a:not(#edit-article-link)');
+    links.forEach(link => link.setAttribute('target', '_blank'));
+
+    editingCategoria = categoria;
+    editingId = id;
+
+    linkArticleImagesToObjectUrls(container);
+
+    const dlBtn = document.getElementById('download-images-btn');
+    if (dlBtn) {
+      dlBtn.replaceWith(dlBtn.cloneNode(true));
+      const newBtn = document.getElementById('download-images-btn');
+      if (imgCount > 0) {
+        newBtn.addEventListener('click', () => {
+          newBtn.disabled = true;
+          newBtn.style.cursor = 'progress';
+          downloadAllImagesForArticle(categoria, id).finally(() => {
+            newBtn.disabled = false;
+            newBtn.style.cursor = 'pointer';
+          });
+        });
+      }
+    }
+
+    // ✅ Agora sim: ativar splash após renderização e vinculação
+    console.log('🖼️ Ativando splash screen para imagens...');
+    enableImageSplash(container);
+	
+	// 🔴 Destaca o link ativo no menu
+	const menuLinks = document.querySelectorAll('#menu a');
+	menuLinks.forEach(link => link.classList.remove('active'));
+
+	const activeLink = document.querySelector(`#menu a[data-categoria="${categoria}"][data-id="${id}"]`);
+	if (activeLink) {
+	  activeLink.classList.add('active');
+	}
+
+
+  }, 400);
+  setDocTitleFromBreadcrumbDOM();
+}
+
+function startEditing(categoria, id) {
+  if (!categoria || !id) return;
+	  openNewContentPanel({ forEdit: true, categoria: categoria, id: id });
+	}
+
+function openNewContentPanel({ forEdit = false, categoria = null, id = null } = {}) {
+  const panel = document.getElementById('new-content-panel');
+  const overlay = document.getElementById('overlay');
+  if (!panel || !overlay) return;
+
+  const select = document.getElementById('category-select');
+  if (select) {
+    select.innerHTML = '<option value="">-- Nova Categoria --</option>';
+    for (const c in contentData) {
+      const opt = document.createElement('option');
+      opt.value = c;
+      opt.textContent = c;
+      select.appendChild(opt);
+    }
+  }
+  const wrapper = document.getElementById('new-category-wrapper');
+	if (select && wrapper) {
+	  select.addEventListener('change', function () {
+		const isNovaCategoria = this.selectedIndex === 0;
+		wrapper.style.display = isNovaCategoria ? 'block' : 'none';
+	  });
+	}
+
+  const newCatInput = document.getElementById('new-category');
+  const titleInput = document.getElementById('content-title');
+  const bodyInput = document.getElementById('content-body');
+
+  if (forEdit && categoria && id && contentData[categoria] && contentData[categoria][id]) {
+    isEditingMode = true;
+    editingCategoria = categoria;
+    editingId = id;
+    if (newCatInput) newCatInput.value = categoria;
+    if (titleInput) titleInput.value = contentData[categoria][id].titulo || '';
+    if (bodyInput) bodyInput.innerHTML = contentData[categoria][id].conteudo || '';
+  } else {
+    isEditingMode = false;
+    editingCategoria = null;
+    editingId = null;
+    if (select) select.value = '';
+    if (newCatInput) newCatInput.value = '';
+    if (titleInput) titleInput.value = '';
+    if (bodyInput) bodyInput.innerHTML = '';
+  }
+
+  // ✅ Ativa overlay
+  overlay.style.display = 'block';
+
+  // ✅ Prepara painel para entrada com animação
+  panel.style.display = 'block';
+  panel.classList.remove('hidden', 'panel-slide-out-right', 'panel-slide-out-left');
+  void panel.offsetWidth; // força reflow para reiniciar animação
+  panel.classList.add('panel-slide-in-right');
+}
+
+function closeNewContentPanel() {
+  const panel = document.getElementById('new-content-panel');
+  const overlay = document.getElementById('overlay');
+
+  if (panel) {
+    panel.classList.remove('panel-slide-in-right', 'hidden');
+    void panel.offsetWidth; // força reflow
+    panel.classList.add('panel-slide-out-right');
+
+    setTimeout(() => {
+      panel.style.display = 'none';
+      panel.classList.remove('panel-slide-out-right');
+      panel.classList.add('hidden');
+    }, 600);
+  }
+
+  if (overlay) overlay.style.display = 'none';
+
+  isEditingMode = false;
+  editingCategoria = null;
+  editingId = null;
+
+  setExportButtonVisible(sessionHasSaved);
+}
+
+// compatibility: toggle used in some HTML
+window.toggleNewContentPanel = function() {
+  const panel = document.getElementById('new-content-panel');
+  if (!panel) return;
+  const isHidden = panel.style.display === 'none' || panel.style.display === '';
+  if (isHidden) openNewContentPanel({ forEdit:false });
+  else closeNewContentPanel();
+};
+
+// edit current article (works with single-language contentData)
+function editCurrentArticle() {
+  if (!editingCategoria || !editingId) return;
+
+  isEditingMode = true;
+
+  const artigo = contentData[editingCategoria] && contentData[editingCategoria][editingId]
+    ? contentData[editingCategoria][editingId]
+    : { titulo: '', conteudo: '' };
+
+  document.getElementById('category-select').value = '';
+  document.getElementById('new-category').value = editingCategoria;
+  document.getElementById('content-title').value = artigo?.titulo || '';
+  document.getElementById('content-body').innerHTML = artigo?.conteudo || '';
+
+  document.getElementById('new-content-panel').style.display = 'block';
+  document.getElementById('overlay').style.display = 'block';
+  handleCategoryChange();
+}
+
+// ------------------------ Download / Export helpers ------------------------
+function downloadImageByName(categoria, id, filename) {
+  const imgs = getImagesForExport(categoria, id) || [];
+  const im = imgs.find(x => x.name === filename || ('images/' + x.name) === filename || sanitizeFilename(x.name) === sanitizeFilename(filename));
+  if (!im) return;
+  const blob = im.blob || (im.dataurl ? dataURLToBlob(im.dataurl) : null);
+  if (!blob) return;
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename.split('/').pop();
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url), 1000);
+}
+
+async function downloadAllImagesForArticle(categoria, id) {
+  const imgs = getImagesForExport(categoria, id) || [];
+  if (!imgs.length) {
+    console.log(`📭 Nenhuma imagem para baixar em ${categoria}|${id}`);
+    return;
+  }
+
+    const allowedExtensions = ['jpg', 'jpeg', 'png', 'gif', 'bmp'];
+	const allowedMimeTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/bmp'];
+
+	const toDownload = imgs.filter(im => {
+	  if (!im || !im.name || !im.blob) return false;
+
+	  const ext = im.name.split('.').pop().toLowerCase();
+	  const mime = im.blob.type;
+
+	  const isValidExt = allowedExtensions.includes(ext);
+	  const isValidMime = allowedMimeTypes.includes(mime);
+
+	  if (!isValidExt || !isValidMime) {
+		console.warn(`🚫 Ignorando arquivo inválido: ${im.name} (${mime})`);
+		return false;
+	  }
+
+	  return true;
+	});
+
+
+  if (!toDownload.length) {
+    console.log(`📭 Nenhuma imagem válida para baixar em ${categoria}|${id}`);
+    return;
+  }
+
+  for (const im of toDownload) {
+    const blob = im.blob || (im.dataurl ? dataURLToBlob(im.dataurl) : null);
+    if (!(blob instanceof Blob) || blob.size === 0) {
+      console.warn(`⚠️ Blob inválido para ${im.name}`);
+      continue;
+    }
+
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = im.name;
+    a.style.display = 'none';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    await new Promise(r => setTimeout(r, 150));
+  }
+
+  console.log(`✅ Todos os downloads concluídos para ${categoria}|${id}`);
+}
+
+function promptUserForImageFile(src) {
+  return new Promise(resolve => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.onchange = () => resolve(input.files[0] || null);
+    input.click();
+  });
+}
+
+
+async function exportAsZip(filename = 'conteudo_pt.zip') {
+  if (typeof JSZip === 'undefined') {
+    alert('JSZip não encontrado. Inclua a lib JSZip para gerar ZIP com imagens.');
+    return;
+  }
+  const zip = new JSZip();
+  zip.file('conteudo_pt.js', '// Dados em português\nwindow.dataPT = ' + JSON.stringify(contentData, null, 2) + ';');
+  for (const key in window._imagesForExport) {
+    const parts = key.split('|'); const categoria = parts[0] || 'cat'; const id = parts[1] || 'id';
+    const imgs = getImagesForExport(categoria, id) || [];
+    imgs.forEach(im => {
+      if (!im || !im.name) return;
+      if (/^pasted[-_\s]?image/i.test(im.name)) return;
+      let fname = im.name || `${categoria}_${id}_${Date.now()}.png`;
+      fname = sanitizeFilename(fname);
+      const zipPath = `images/${fname}`;
+      if (im.blob) zip.file(zipPath, im.blob);
+      else if (im.dataurl) zip.file(zipPath, dataURLToBlob(im.dataurl));
+    });
+  }
+  const content = await zip.generateAsync({ type: 'blob' });
+  const url = URL.createObjectURL(content);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
+// simple JSON export (user requested earlier)
+function exportContentDataSimple(filename = 'conteudo_export.json') {
+  try {
+    const payload = {
+      generatedAt: new Date().toISOString(),
+      content: contentData || {}
+    };
+    const text = JSON.stringify(payload, null, 2);
+    const blob = new Blob([text], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1500);
+  } catch (e) {
+    console.warn('exportContentDataSimple erro', e);
+  }
+}
+
+// ------------------------ Export UI helpers ------------------------
+function setExportButtonVisible(visible) {
+  const btn = document.getElementById('export-json-btn');
+  if (!btn) return;
+  if (visible) {
+    btn.style.display = 'inline-block'; // ou 'block', dependendo do layout
+    btn.classList.add('visible');
+  } else {
+    btn.classList.remove('visible');
+    btn.style.display = 'none';
+  }
+}
+
+function hasUserAddedContent() {
+  try {
+    const current = JSON.stringify(contentData || {});
+    return current !== '{}' && current !== 'null';
+  } catch (e) {
+    return true;
+  }
+}
+
+// ------------------------ Search input ------------------------
 (function attachSearchHandler() {
   const el = document.getElementById('search-input');
   if (!el) return;
@@ -1355,603 +1530,204 @@ function renderMenu() {
     const suggestions = document.getElementById('search-suggestions');
     if (!suggestions) return;
     suggestions.innerHTML = '';
+
     if (!termo) {
       suggestions.style.display = 'none';
       return;
     }
+
     const matches = [];
     for (const categoria in contentData) {
       const artigos = contentData[categoria];
       for (const id in artigos) {
         const { titulo, conteudo } = artigos[id];
-        if ((titulo && titulo.toLowerCase().includes(termo)) ||
-            (conteudo && conteudo.toLowerCase().includes(termo))) {
+        if (
+          (titulo && titulo.toLowerCase().includes(termo)) ||
+          (conteudo && conteudo.toLowerCase().includes(termo))
+        ) {
           matches.push({ categoria, id, titulo });
         }
       }
     }
+
     if (matches.length === 0) {
       suggestions.style.display = 'none';
       return;
     }
+
     matches.slice(0, 10).forEach(({ categoria, id, titulo }) => {
       const li = document.createElement('li');
       li.textContent = titulo;
-      
       li.onclick = () => {
-        // Se conseguirmos o postId, atualiza a URL
-        const a = window.contentData?.[categoria]?.[id];
-        if (a && a.postId != null) {
-          updateUrlWithArticleId(a.postId);
-        }
         loadArticle(categoria, id);
-         suggestions.style.display = 'none';
-        el.value = '';
+        suggestions.style.display = 'none';
+        document.getElementById('search-input').value = '';
       };
       suggestions.appendChild(li);
     });
+
     suggestions.style.display = 'block';
   });
 })();
 
-/**
- * Marca o item do menu correspondente ao artigo como ativo e expande sua categoria.
- * @param {string} idOrSelector - id do artigo (key usada em contentData[categoria][id]),
- *                                ou um seletor/href parcial para localizar o link.
- */
-function setActiveArticle(idOrSelector) {
-  const menu = document.getElementById('menu');
-  if (!menu) return;
+// Toggle debug mode: mostra/oculta tags HTML no content-body
+window.__debugMode = window.__debugMode || false;
+window.__debugModeStore = window.__debugModeStore || new Map();
 
-  // Remove estados ativos anteriores
-  menu.querySelectorAll('a.active').forEach(a => {
-    a.classList.remove('active');
-    a.removeAttribute('aria-current');
-  });
+// Execução de comandos Rich Text focando no #content-body
+function execCmd(command, value = null) {
+  const body = document.getElementById('content-body');
+  if (!body) return;
 
-  // Nada a marcar
-  if (!idOrSelector) return;
-  const needle = String(idOrSelector);
+  // Garante que comandos atuem no editor
+  body.focus();
 
-  // Tenta localizar o link do artigo por diferentes pistas
-  let target =
-    // 1) por data attributes comuns
-    Array.from(menu.querySelectorAll('a')).find(a => {
-      const ds = a.dataset || {};
-      return ds.id === needle ||
-             ds.articleId === needle ||
-             ds.postId === needle ||
-             ds['article-id'] === needle;
-    }) ||
-    // 2) por href contendo o "needle"
-    Array.from(menu.querySelectorAll('a')).find(a => {
-      const href = a.getAttribute('href') || '';
-      return href.includes(needle);
-    }) ||
-    // 3) interpretando como seletor CSS direto (ex.: '#meu-link')
-    (function () {
-      try { return menu.querySelector(needle); } catch { return null; }
-    })();
-
-  if (!target) {
-    // Log opcional para depuração
-    if (window && window.console && window.console.debug) {
-      console.debug('setActiveArticle: target not found for', idOrSelector);
-    }
+  if (command === 'insertImage') {
+    const url = prompt('URL da imagem:');
+    if (url) document.execCommand(command, false, url);
+    return;
+  }
+  if (command === 'createLink') {
+    const url = prompt('URL do link:');
+    if (url) document.execCommand(command, false, url);
     return;
   }
 
-  // Marca o link como ativo
-  target.classList.add('active');
-  target.setAttribute('aria-current', 'true');
-
-  // === Expande a categoria correspondente ===
-  // Estrutura esperada:
-  // liCategoria > span (nome da categoria) + ulTitulos > liTitulo > a(target)
-  const liTitulo = target.closest('li'); // li do título
-  const liCategoria = liTitulo ? liTitulo.parentElement?.closest('li') : null; // li da categoria
-
-  if (liCategoria) {
-    liCategoria.classList.add('active'); // abre a categoria
-
-    // Acessibilidade: o span (cabeçalho da categoria) pode indicar que está expandido
-    const catSpan = liCategoria.querySelector('span');
-    if (catSpan) {
-      catSpan.setAttribute('aria-expanded', 'true');
-    }
-  }
-
-  // === Rolar suavemente para garantir visibilidade do link e da categoria ===
-  const menuRect = menu.getBoundingClientRect();
-  const itemRect = target.getBoundingClientRect();
-
-  // 1) Rola o menu até o link, se ele estiver fora da viewport do menu
-  const itemOutOfView = itemRect.top < menuRect.top || itemRect.bottom > menuRect.bottom;
-  if (itemOutOfView && typeof target.scrollIntoView === 'function') {
-    target.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
-  }
-
-  // 2) (Opcional) Rola até o cabeçalho da categoria caso também esteja fora de vista
-  if (liCategoria && typeof liCategoria.scrollIntoView === 'function') {
-    const catRect = liCategoria.getBoundingClientRect();
-    const catOutOfView = catRect.top < menuRect.top || catRect.bottom > menuRect.bottom;
-    if (catOutOfView) {
-      liCategoria.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
-    }
+  // Alguns browsers exigem passarmos value quando formatBlock
+  if (command === 'formatBlock' && value) {
+    document.execCommand(command, false, value);
+  } else {
+    document.execCommand(command, false, value);
   }
 }
 
-// Localiza um artigo pelo postId (inteiro ou string), retornando { categoria, id, artigo }.
-function findArticleByPostId(postId) {
-  if (!postId && postId !== 0) return null;
-  const needle = String(postId);
-  for (const categoria in window.contentData || {}) {
-    const artigos = window.contentData[categoria] || {};
-    for (const id in artigos) {
-      const a = artigos[id];
-      if (String(a.postId) === needle) {
-        return { categoria, id, artigo: a };
-      }
-    }
-  }
-  return null;
+// Popup de debug lado a lado — não altera o content-body até Aplicar
+function openDebugPopup() {
+  const body = document.getElementById('content-body');
+  const popup = document.getElementById('debug-popup');
+  const textarea = document.getElementById('debug-code');
+  const previewFrame = document.getElementById('debug-preview-frame');
+  if (!body || !popup || !textarea || !previewFrame) return;
+
+  // Carrega HTML atual do editor
+  const isDebugEscaped = body.getAttribute('data-debug-mode') === '1';
+  const htmlSource = isDebugEscaped
+    ? (body.getAttribute('data-html-original') || '')
+    : body.innerHTML;
+
+  textarea.value = htmlSource;
+  previewFrame.srcdoc = htmlSource;
+
+  // Evita múltiplos listeners ao abrir várias vezes
+  textarea.oninput = function () {
+    previewFrame.srcdoc = textarea.value;
+  };
+
+  popup.style.display = 'flex';
 }
 
-// Atualiza a URL para ?artigoID=<postId> sem recarregar, preservando demais params (SPA).
-function updateUrlWithArticleId(postId) {
-  const url = new URL(window.location.href);
-  url.searchParams.set('artigoID', String(postId));
-  history.pushState({ artigoID: String(postId) }, '', url);
+function closeDebugPopup() {
+  const popup = document.getElementById('debug-popup');
+  if (popup) popup.style.display = 'none';
 }
 
-// Navega pela query string ao carregar/popstate.
-// Se houver ?artigoID=<id>, abre o artigo correspondente; senão mostra a Welcome.
+function applyDebugChanges() {
+  const body = document.getElementById('content-body');
+  const textarea = document.getElementById('debug-code');
+  if (!body || !textarea) return;
 
-async function navigateByQuery() {
+  // Aplica o HTML editado ao editor
+  body.innerHTML = textarea.value;
+
+  // Limpa qualquer estado de debug antigo
+  body.removeAttribute('data-debug-mode');
+  body.removeAttribute('data-html-original');
+  window.__debugMode = false;
+
+  closeDebugPopup();
+}
+
+function toggleDebugMode(force) {
   try {
-    const params = new URLSearchParams(window.location.search);
-    const idParam = params.get('artigoID');
-    if (!idParam) {
-      renderWelcome();
-      return;
-    }
-    // Garante que os dados já estejam carregados
-    if (!window.contentData || Object.keys(window.contentData).length === 0) {
-      await carregarPostsDoBanco();
-    }
-    let found = findArticleByPostId(idParam);
-    if (!found) {
-      await carregarPostsDoBanco();
-      found = findArticleByPostId(idParam);
-    }
-    if (found) {
-      loadArticle(found.categoria, found.id);
-      // Abrir sidebar para orientar o usuário (opcional)
-      if (window.innerWidth >= 768) toggleSidebar(true);
-    } else {
-      renderWelcome();
-    }
-  } catch (e) {
-    console.warn('navigateByQuery falhou:', e);
-    renderWelcome();
-   }
-}
-
-// Lida com back/forward do navegador mantendo a mesma semântica
-window.addEventListener('popstate', () => {
-  navigateByQuery();
-});
-``
-
-function scrollContentToTop({ smooth = true } = {}) {
-  // Prioriza a área central de conteúdo
-  const content = document.querySelector('.content');
-  const article = document.getElementById('article-content');
-
-  const target = content || article || document.scrollingElement || document.documentElement;
-
-  try {
-    target.scrollTo({
-      top: 0,
-      behavior: smooth ? 'smooth' : 'auto'
-    });
-  } catch (_) {
-    // Fallback para navegadores antigos
-    target.scrollTop = 0;
-  }
-}
-
-
-function loadArticle(categoria, id) {
-  if (!contentData[categoria] || !contentData[categoria][id]) return;
-  const artigo = contentData[categoria][id];
-  const container = document.getElementById('article-content');
-  if (!container) return;
-
-  // após renderizar:
-  setActiveArticle(id);
-   
-   container.innerHTML = `
-     <nav class="breadcrumb" aria-label="Você está em">
-       <span class="crumb">${artigo.categoria || categoria}</span>
-       <span class="sep"> ›› </span>
-       <span class="crumb current">${artigo.titulo}</span>
-     </nav>
-      <h1 id="article-title">${artigo.titulo}</h1>
-     <button id="edit-article-link" data-categoria="${categoria}" data-id="${id}" data-post-id="${artigo.postId}">Editar</button>
-     <div id="content-body" contenteditable="false" data-placeholder="Digite ou cole o conteúdo aqui">${artigo.conteudo}</div>
-  `;
-  enableImageSplash(container);
-
-  currentCategoria = categoria;
-  currentId = id;
-  currentPostId = artigo.postId ?? null;
-
-  // 🔗 Mantém a URL sempre alinhada ao artigo atual (SPA)
-  if (currentPostId != null) {
-    updateUrlWithArticleId(currentPostId);
-  }
-
-  const editLink = document.getElementById('edit-article-link');
-  if (editLink) {
-    editLink.addEventListener('click', (e) => {
-      e.preventDefault();
-      renderEditorUI({
-        mode: 'edit',
-        titulo: artigo.titulo,
-        conteudo: artigo.conteudo,
-        categoria: artigo.categoria
-      });
-    });
-  }
-  toggleSidebar(false);
-  scrollContentToTop({ smooth: true });
-}
-
-/* ============================
-   Editor unificado (Adicionar / Editar)
-   ============================ */
-function renderEditorUI({ mode = "add", titulo = "", conteudo = "", categoria = "" }) {
-  const container = document.getElementById("article-content");
-  if (!container) return;
-
-  container.innerHTML = `
-
-    <button id="close-edit-btn" title="Fechar">×</button>
-    
-    <div id="category-wrapper">
-      <label for="category-select">Categoria:</label>
-      <select id="category-select"><option value="">-- Nova Categoria --</option></select>
-      <input type="text" id="new-category" placeholder="Nova categoria" style="display:none;"/>
-    </div>
-
-    <input type="text" id="title-input" placeholder="Título do conteúdo" />
-
-    <div id="content-body" contenteditable="true" data-placeholder="Digite ou cole o conteúdo aqui"></div>
-
-    <div class="editor-toolbar-fixed">
-      <button class="cmd-btn" data-cmd="bold" title="Negrito"><b>B</b></button>
-      <button class="cmd-btn" data-cmd="italic" title="Itálico"><i>I</i></button>
-      <button class="cmd-btn" data-cmd="underline" title="Sublinhado"><u>U</u></button>
-      <button class="cmd-btn" data-cmd="strikeThrough" title="Tachado"><s>S</s></button>
-      <span class="sep"></span>
-      <button class="cmd-btn" data-cmd="justifyLeft" title="Esquerda">⯇</button>
-      <button class="cmd-btn" data-cmd="justifyCenter" title="Centro">≡</button>
-      <button class="cmd-btn" data-cmd="justifyRight" title="Direita">⯈</button>
-      <span class="sep"></span>
-      <button class="cmd-btn" data-cmd="insertOrderedList" title="Lista numerada">1.</button>
-      <button class="cmd-btn" data-cmd="insertUnorderedList" title="Lista">•</button>
-      <button class="cmd-btn" data-cmd="formatBlock" data-value="h2" title="Título H2">H2</button>
-      <button class="cmd-btn" data-cmd="removeFormat" title="Limpar">⨉</button>
-      <span class="sep"></span>
-      <button class="cmd-btn" data-cmd="createLink" title="Link">🔗</button>
-      <button class="cmd-btn" data-cmd="insertImage" title="Imagem">🖼️</button>
-      <span class="sep"></span>
-      <button class="save-button">${mode === "edit" ? "Salvar" : "Adicionar"}</button>
-    </div>
-  `;
-
-  // Referências
-  const titleInput = document.getElementById("title-input");
-  const contentBody = document.getElementById("content-body");
-  const select = document.getElementById("category-select");
-  const newCat = document.getElementById("new-category");
-
-  // Preencher campos
-  if (titleInput) titleInput.value = titulo || "";
-  if (contentBody) contentBody.innerHTML = conteudo || "";
-
-  // Preencher categorias existentes
-  if (select) {
-    // limpa e adiciona opção padrão
-    select.innerHTML = '<option value="">-- Nova Categoria --</option>';
-    for (const c in contentData) {
-      const opt = document.createElement("option");
-      opt.value = c;
-      opt.textContent = c;
-      select.appendChild(opt);
-    }
-
-    // Se vier uma categoria (modo edit), seleciona-a; caso contrário, em modo add mostramos newCat
-    if (categoria) {
-      const hasOption = Array.from(select.options).some(opt => opt.value === categoria);
-      if (hasOption) {
-        select.value = categoria;
-        newCat.style.display = "none";
-        newCat.value = "";
-      } else {
-        // categoria passada que não existe: preenche newCat e mostra
-        select.value = "";
-        newCat.style.display = "block";
-        newCat.value = categoria;
-      }
-    } else {
-      // sem categoria passada: se estamos em modo add, mostramos newCat por padrão
-      if (mode === "add") {
-        select.value = "";            // garante que a opção Nova Categoria esteja selecionada
-        newCat.style.display = "block";
-        newCat.value = "";
-      } else {
-        // modo edit sem categoria: mantém nova categoria visível para o usuário decidir
-        select.value = "";
-        newCat.style.display = "block";
-        newCat.value = "";
-      }
-    }
-
-    // Listener de mudança: mostra/oculta newCat conforme seleção
-    select.addEventListener("change", () => {
-      const isNova = select.value === "";
-      newCat.style.display = isNova ? "block" : "none";
-      if (!isNova) newCat.value = "";
-      // foco no campo apropriado para melhor UX
-      if (isNova) newCat.focus();
-      else titleInput && titleInput.focus();
-    });
-  }
-
-  // Foco inicial: se newCat visível, foca nele; senão foca no título
-  if (newCat && newCat.style.display !== "none") {
-    newCat.focus();
-  } else if (titleInput) {
-    titleInput.focus();
-  }
-
-  // Toolbar handlers
-  container.querySelectorAll(".cmd-btn").forEach(btn => {
-    btn.addEventListener("click", () => execCmd(btn.dataset.cmd, btn.dataset.value || null));
-  });
-
-  // Salvar
-  const saveBtn = container.querySelector(".save-button");
-  if (saveBtn) {
-    saveBtn.addEventListener("click", () => {
-      if (mode === "edit") saveContentInline();
-      else saveNewContent();
-    });
-  }
-
-  // Fechar
-  const closeBtn = document.getElementById("close-edit-btn");
-  if (closeBtn) {
-    closeBtn.addEventListener("click", () => {
-      if (mode === "edit") exitEditingInline();
-      else cancelAddingContent();
-    });
-  }
-
-  // Paste & drag&drop
-  document.removeEventListener("paste", handlePaste);
-  document.addEventListener("paste", handlePaste);
-  attachDragDropHandlers();
-}
-
-/* ============================
-   Salvar novo / salvar edição
-   ============================ */
-function showLoadingMessage(msg) {
-  const loadingEl = document.getElementById('initial-loading');
-  if (loadingEl) {
-    const p = loadingEl.querySelector('p');
-    if (p) p.textContent = msg;
-    loadingEl.style.display = 'flex'; // ou 'block', conforme seu CSS
-  }
-}
-
-function hideLoadingMessage() {
-  const loadingEl = document.getElementById('initial-loading');
-  if (loadingEl) {
-    loadingEl.style.display = 'none';
-  }
-}
-
-async function saveNewContent() {
-  try {
-    showLoadingMessage("Salvando alterações...");
-    const titleInput = document.getElementById('title-input');
     const body = document.getElementById('content-body');
-    const select = document.getElementById('category-select');
-    const newCat = document.getElementById('new-category');
+    if (!body) return false;
 
-    const titulo = sanitizePlainText(titleInput.value, TITLE_MAX);
-    const categoria = sanitizePlainText(select.value || newCat.value, CATEGORY_MAX);
+    const enable = (typeof force === 'boolean') ? force : !window.__debugMode;
 
-    if (!titulo || !categoria) {
-      alert('Título e categoria são obrigatórios.');
-      return;
-    }
+    if (enable) {
+      const originalHTML = body.innerHTML;
+      body.setAttribute('data-html-original', originalHTML);
 
-    const conteudoLimpo = sanitizeHtml(body.innerHTML);
-    const payload = { title: titulo, content: conteudoLimpo, categoria };
+      const escaped = originalHTML
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
 
-    if (!window.supabase) {
-      // fallback local
-      const key = `${Date.now()}`;
-      if (!contentData[categoria]) contentData[categoria] = {};
-      contentData[categoria][key] = { postId: Date.now(), titulo, conteudo: conteudoLimpo, categoria };
+      body.setAttribute('data-debug-mode', '1');
+      body.innerHTML = `<pre style="white-space:pre-wrap;word-break:break-word;margin:0;padding:8px;background:#0f172024;border-radius:4px;">${escaped}</pre>`;
+      window.__debugMode = true;
     } else {
-      const resp = await insertPost(payload);
-      if (!resp) {
-        alert('Erro ao adicionar conteúdo.');
-        return;
-      }
-      currentPostId = resp.id;
+      const saved = body.getAttribute('data-html-original');
+      if (typeof saved === 'string') body.innerHTML = saved;
+
+      body.removeAttribute('data-debug-mode');
+      body.removeAttribute('data-html-original');
+      window.__debugMode = false;
     }
-   await carregarPostsDoBanco();
-   const catKey = categoria;
-   const newKey = Object.keys(contentData[catKey]).find(
-     k => contentData[catKey][k].postId === currentPostId
-   ) ?? Object.keys(contentData[catKey]).pop();
-   
-   loadArticle(catKey, newKey);
-   
-   // 🔗 Garante que a URL reflita o artigo atual
-   if (currentPostId != null) {
-     updateUrlWithArticleId(currentPostId);
-   }
-   
-   //alert('Conteúdo adicionado com sucesso!');
+
+    const btn = document.getElementById('debug-toggle-btn');
+    if (btn) {
+      btn.classList.toggle('active', !!window.__debugMode);
+      btn.textContent = window.__debugMode ? 'Exibição' : 'HTML';
+    }
+
+    return !!window.__debugMode;
   } catch (e) {
-    console.error('Erro ao adicionar:', e);
-    alert('Erro ao adicionar conteúdo.');
+    console.warn('toggleDebugMode erro', e);
+    return false;
   }
-  hideLoadingMessage();
 }
 
-async function saveContentInline() {
-  try {
-    showLoadingMessage("Salvando alterações...");
-    const titleInput = document.getElementById('title-input');
-    const body = document.getElementById('content-body');
-    const select = document.getElementById('category-select');
-    const newCat = document.getElementById('new-category');
 
-    const titulo = sanitizePlainText(titleInput.value, TITLE_MAX);
-    const categoria = sanitizePlainText(select.value || newCat.value, CATEGORY_MAX);
+// Instala listener seguro no botão (se existir) — opcional, pode ficar dentro do DOMContentLoaded
+(function attachDebugToggleBtn() {
+  const btn = document.getElementById('debug-toggle-btn');
+  if (!btn) return;
+  btn.removeAttribute('onclick');
+  const newBtn = btn.cloneNode(true);
+  btn.parentNode.replaceChild(newBtn, btn);
+  newBtn.addEventListener('click', () => toggleDebugMode());
+  newBtn.textContent = window.__debugMode ? 'Exibição' : 'HTML';
+})();
 
-    if (!titulo || !categoria) {
-      alert('Título e categoria são obrigatórios.');
-      return;
-    }
 
-    const conteudoLimpo = sanitizeHtml(body.innerHTML);
-    const payload = { title: titulo, content: conteudoLimpo, categoria };
-
-    if (!window.supabase) {
-      // fallback local
-      const key = currentId || `${Date.now()}`;
-      if (!contentData[categoria]) contentData[categoria] = {};
-      contentData[categoria][key] = {
-        postId: contentData[currentCategoria]?.[currentId]?.postId || Date.now(),
-        titulo, conteudo: conteudoLimpo, categoria
-      };
-      if (currentCategoria && currentCategoria !== categoria && currentId) {
-        delete contentData[currentCategoria][currentId];
-      }
-    } else {
-      if (currentPostId) {
-        const resp = await updatePost(currentPostId, payload);
-        if (!resp || resp.error) {
-          console.warn('DBG updatePost returned error or falsy', resp);
-          if (typeof carregarPostsDoBanco === 'function') await carregarPostsDoBanco();
-      
-          const existsAfter =
-            window.contentData?.[categoria] &&
-            Object.values(window.contentData[categoria] || {}).some(x => x.postId === currentPostId);
-      
-          if (!existsAfter) {
-            alert('Erro ao salvar conteúdo.');
-            return;
-          }
-        } else {
-          const updated = resp.data; // { id, ... }
-          // Se vier id, mantém coerência com seu fluxo
-          if (updated?.id) currentPostId = updated.id;
-        }
-      } else {
-        const resp = await insertPost(payload);
-        if (!resp || resp.error) {
-          console.warn('DBG insertPost returned error or falsy', resp);
-          if (typeof carregarPostsDoBanco === 'function') await carregarPostsDoBanco();
-          const maybeId = resp && (resp.id || (resp.data && (resp.data.id || resp.data.postId)));
-          if (maybeId) {
-            currentPostId = maybeId;
-          } else {
-            alert('Erro ao salvar conteúdo.');
-            return;
-          }
-        } else {
-          currentPostId = resp.id || (resp.data && (resp.data.id || resp.data.postId)) || currentPostId;
-        }
-      }
-    }
-
-      await carregarPostsDoBanco();
-      const catKey = categoria;
-      const savedKey = Object.keys(contentData[catKey]).find(
-        k => contentData[catKey][k].postId === currentPostId
-      ) ?? Object.keys(contentData[catKey]).pop();
-      
-      loadArticle(catKey, savedKey);
-      
-      // 🔗 Garante que a URL reflita o artigo atual
-      if (currentPostId != null) {
-        updateUrlWithArticleId(currentPostId);
-      }
-  } catch (e) {
-    console.error('Erro ao salvar:', e);
-    // tenta revalidar antes de notificar o usuário
-    try { if (typeof carregarPostsDoBanco === 'function') await carregarPostsDoBanco(); } catch(e2){ console.warn('revalidação falhou', e2); }
-    alert('Erro ao salvar conteúdo.');
+// ------------------------ Init ------------------------
+window.addEventListener('DOMContentLoaded', () => {
+  setExportButtonVisible(false);
+  sessionHasSaved = false;
+  if (typeof window.dataPT !== 'undefined') {
+    try { contentData = JSON.parse(JSON.stringify(window.dataPT)); } catch (e) { contentData = window.dataPT || {}; }
   }
-  hideLoadingMessage();
-}
-
-function exitEditingInline() {
-  if (currentCategoria && currentId) loadArticle(currentCategoria, currentId);
-  else renderWelcome();
-}
-
-function cancelAddingContent() {
+  renderMenu();
   renderWelcome();
-}
 
-/* ============================
-   Inicialização do app
-   ============================ */
-window.addEventListener('DOMContentLoaded', async () => {
-  const loadingEl = document.getElementById('initial-loading');
-
-  try {
-    // cria o overlay dinamicamente
-    setupPullToRefresh();
-
-    document.addEventListener('DOMContentLoaded', setupThemeToggle);
-
-    ensureThemeSwitchDesktopOverride();
-
-    // Inicializa supabase e carrega dados
-    await initializeSupabase();
-    await carregarPostsDoBanco();
-    await navigateByQuery();
-  } catch (e) {
-    console.error('Erro na inicialização:', e);
-    // tenta carregar dados locais/fallback mesmo em erro
-    await carregarPostsDoBanco();
-  } finally {
-    // Esconde o loading uma única vez
-    if (loadingEl) loadingEl.style.display = 'none';
-  }
-
-  // Configura o sidebar/hamburger (registra listeners uma vez)
-  setupSidebarAutoClose();
-
-  // Botão adicionar (registrado uma vez)
   const addBtn = document.getElementById('add-content-btn');
-  if (addBtn) {
-    addBtn.addEventListener('click', () => {
-      renderEditorUI({ mode: 'add' });
-      setupSidebarAutoClose(); // fecha a sidebar no mobile
-    });
+  if (addBtn && !addBtn.getAttribute('onclick')) { addBtn.addEventListener('click', () => openNewContentPanel({ forEdit: false })); }
+
+  const saveBtn = document.querySelector('#new-content-panel .save-button');
+  if (saveBtn && !saveBtn.getAttribute('onclick')) { saveBtn.addEventListener('click', addNewContent); }
+
+  if (typeof registerPasteToDataUrlHandler === 'function') {
+    try { registerPasteToDataUrlHandler(); } catch (e) {}
   }
+
+  // ensure close-panel button works even if HTML used inline onclick
+  const closeBtn = document.getElementById('close-panel-btn');
+  if (closeBtn) {
+    closeBtn.removeAttribute('onclick');
+    const newBtn = closeBtn.cloneNode(true);
+    closeBtn.parentNode.replaceChild(newBtn, closeBtn);
+    newBtn.addEventListener('click', () => closeNewContentPanel());
+  }
+  
 });
