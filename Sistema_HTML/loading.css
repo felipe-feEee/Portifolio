@@ -1,0 +1,58 @@
+
+/* ===== Overlay de carregamento ===== */
+#busyOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(255, 255, 255, 0.72);
+  backdrop-filter: blur(1px);
+  z-index: 9999;
+  display: none; /* hidden por padrão */
+}
+#busyOverlay.is-visible { display: flex; }
+
+#busyOverlay .busy-box {
+  margin: auto;
+  min-width: 260px;
+  max-width: 80vw;
+  background: #ffffff;
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+  padding: 16px 20px;
+  display: grid;
+  grid-template-columns: 28px 1fr;
+  grid-gap: 12px;
+  align-items: center;
+}
+
+#busyOverlay .spinner {
+  width: 28px; height: 28px;
+  border: 3px solid #e5e7eb;
+  border-top-color: #005a9e; /* azul */
+  border-radius: 50%;
+  animation: spin 0.9s linear infinite;
+}
+#busyOverlay .busy-text {
+  font: 500 14px/1.4 system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+  color: #111827;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ===== Loader do scroll infinito (rodapé) ===== */
+#scrollLoader {
+  display: none;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  color: #374151  color: #374151;
+  padding: 8px 12px;
+  font: 500 13px/1.3 system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+}
+#scrollLoader.is-visible { display: flex; }
+#scrollLoader .spinner {
+  width: 18px; height: 18px;
+  border: 2px solid #e5e7eb;
+  border-top-color: #005a9e;
+  border-radius: 50%;
+  animation: spin 0.9s linear infinite;
+}

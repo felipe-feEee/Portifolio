@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Pesquisa de Notas Fiscais XML</title>
+  <link rel="icon" href="./favicon.ico" type="image/x-icon" />
+  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="dashboard.css">
+  <link rel="stylesheet" href="loading.css">
+  
+	<style>
+	  /* Overlay ocupa a tela toda */
+	  #busyOverlay {
+		position: fixed; inset: 0;
+		background: rgba(255,255,255,0.72);
+		backdrop-filter: blur(1px);
+		z-index: 9999;
+		display: flex; /* visível por padrão */
+	  }
+	  /* Caixa do loading */
+	  #busyOverlay .busy-box {
+		margin: auto;
+		min-width: 260px;
+		background: #fff;
+		border-radius: 10px;
+		box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+		padding: 16px 20px;
+		display: grid; grid-template-columns: 28px 1fr; gap: 12px; align-items: center;
+		font: 500 14px/1.4 system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+		color: #111827;
+	  }
+	  /* Spinner */
+	  #busyOverlay .spinner {
+		width: 28px; height: 28px;
+		border: 3px solid #e5e7eb; border-top-color: #005a9e;
+		border-radius: 50%; animation: spin .9s linear infinite;
+	  }
+	  @keyframes spin { to { transform: rotate(360deg) } }
+
+	  /* Efeito de “embaçar” por trás enquanto is-loading */
+	  body.is-loading {
+		overflow: hidden; /* opcional: evita scroll enquanto loading */
+	  }
+	</style>
+</head>
+
+<body class="is-loading" aria-busy="true">
+  <!-- Overlay de loading (aparece imediatamente) -->
+  <div id="busyOverlay" role="status" aria-live="polite" aria-hidden="false">
+    <div class="busy-box">
+      <div class="spinner" aria-hidden="true"></div>
+      <div class="busy-text">Carregando lista…</div>
+    </div>
+  </div>
+  <header class="topbar" role="banner">
+    <div class="topbar-row">
+      <div class="path-info">
+        <h1 id="folderHeader">Arquivos XML na pasta ...</h1>
+      </div>
+      <div class="topbar-meta">
+        <div id="last-update">Última atualização: ...</div>
+      </div>
+    </div>
+
+    <div class="controls" role="search" aria-label="Busca de notas fiscais">
+      <label for="accessKey" class="sr-only">Chave de acesso (44 dígitos)</label>
+
+      <div class="search-row">
+        <div class="search-field">
+          <input id="accessKey" type="text" placeholder="Digite a chave de acesso (44 dígitos)" maxlength="44" autocomplete="off" />
+        </div>
+
+        <div id="fileCounter" class="file-counter" aria-live="polite">Exibindo 0 arquivos</div>
+      </div>
+
+      <div class="control-row">
+        <div class="btn-group">
+          <button id="toggleSort" type="button" aria-pressed="false"><span id="sortIcon">⬇️</span> Mais novos</button>
+          <button id="exportCsv" type="button">Exportar CSV</button>
+          <button id="btnFilters" type="button" aria-expanded="false" aria-controls="filterPanel">Filtros</button>
+		  <button id="btnDashboard" type="button">Dashboard</button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- list-container: SCROLL deve ocorrer aqui (JS escuta este container) -->
+  <main class="list-container" role="main" aria-label="Lista de arquivos">
+    <ul id="fileList" aria-live="polite"></ul>
+  </main>
+
+  <!-- Overlay + painel lateral (IDs mantidos) -->
+  <div id="overlay" class="overlay hidden" aria-hidden="true"></div>
+
+  <aside id="filterPanel" class="filter-panel hidden" role="region" aria-label="Filtros avançados">
+    <div class="filter-header">
+      <h2>Filtros avançados</h2>
+      <button id="closeFilters" class="close-btn" aria-label="Fechar filtros">✕</button>
+    </div>
+
+    <form id="filterForm" aria-label="Formulário de filtros">
+      <!-- Campos serão injetados pelo seu JS (initFilters) -->
+    </form>
+  </aside>
+
+  <!-- Popup (mantido) -->
+  <div id="popup" class="popup hidden" role="dialog" aria-modal="true" aria-hidden="true">
+    <div class="popup-content"></div>
+  </div>
+
+<!-- Loader do scroll infinito -->
+<div id="scrollLoader">
+  <div class="spinner" aria-hidden="true"></div>
+  <span>Carregando mais…</span>
+</div>
+
+  <!-- Seus scripts (mantidos) -->
+  <script src="script/file_data.json"></script>
+  <script src="script/base_app.js"></script>
+  <script src="script/dashboard.js" defer></script>
+</body>
+</html>
