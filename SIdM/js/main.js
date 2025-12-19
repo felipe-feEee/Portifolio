@@ -10,31 +10,6 @@ let sessionHasSaved = false;
 window._imagesForExport = window._imagesForExport || {};
 if (typeof window.__objectUrlMap === 'undefined') window.__objectUrlMap = {};
 
-
-// ===== Título dinâmico aproveitando o breadcrumb já renderizado =====
-const BASE_TITLE = 'Sistema Integrado de Manuais';
-
-/** Lê o breadcrumb já existente no DOM e devolve uma string única */
-function getBreadcrumbTextFromDOM() {
-  const nav = document.querySelector('nav.breadcrumb');
-  if (!nav) return '';
-
-  // Pega todas as partes visíveis do breadcrumb, na ordem
-  const parts = Array.from(nav.querySelectorAll('.crumb'))
-    .map(el => (el.textContent || '').trim())
-    .filter(Boolean);
-
-  // Se você usa o separador "››" no DOM, aqui padronizamos para " › "
-  return parts.join(' ›› ');
-}
-
-/** Atualiza o <title> usando o breadcrumb do DOM */
-function setDocTitleFromBreadcrumbDOM() {
-  const bc = getBreadcrumbTextFromDOM();
-  // Troque "—" por "+" se preferir: `${BASE_TITLE} + ${bc}`
-  document.title = bc ? `${BASE_TITLE} — ${bc}` : BASE_TITLE;
-}
-
 // ------------------------ Utilitários ------------------------
 function sanitizeFilename(name) {
   if (!name) name = `file-${Date.now()}`;
@@ -1130,6 +1105,18 @@ function getImageCountForArticle(categoria, id) {
   return imgs.filter(i => i && i.name && !/^pasted[-_\s]?image/i.test(i.name)).length;
 }
 
+function execCmd(command, value = null) {
+  if (command === 'insertImage') {
+    const url = prompt('URL da imagem:');
+    if (url) document.execCommand(command, false, url);
+  } else if (command === 'createLink') {
+    const url = prompt('URL do link:');
+    if (url) document.execCommand(command, false, url);
+  } else {
+    document.execCommand(command, false, value);
+  }
+}
+
 function renderMenu(openCategories = []) {
   const menu = document.getElementById('menu');
   if (!menu) return;
@@ -1235,7 +1222,6 @@ function loadArticle(categoria, id) {
 
 
   }, 400);
-  setDocTitleFromBreadcrumbDOM();
 }
 
 function startEditing(categoria, id) {
