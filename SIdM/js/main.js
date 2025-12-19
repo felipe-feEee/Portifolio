@@ -381,7 +381,7 @@ function ensureThemeSwitchDesktopOverride() {
     position: absolute !important;
     /* ANTES: inset: 0; — isso "tampava" a borda no desktop.
        >>> NOVO: recua 2px para respeitar a borda e padding do label */
-    inset: 2px !important;
+    inset: 0px !important;
 
     display: block !important;
     border-radius: 999px !important;
@@ -417,7 +417,7 @@ function ensureThemeSwitchDesktopOverride() {
 
   /* (Opcional) Tema claro: força a cor da borda se seu tema alterar contraste */
   body[data-theme="light"] .main-header .header-actions label.theme-switch {
-    border-color: #fff !important;
+    border-color: #000 !important;
   }
 }
   `.trim();
