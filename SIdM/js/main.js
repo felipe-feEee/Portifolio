@@ -397,9 +397,8 @@ function ensureThemeSwitchDesktopOverride() {
     width: 20px;
     height: 20px;
 
-    /* ANTES: left/top: 3px;  >>> NOVO: 4px para acompanhar o inset/padding */
-    left: 4px !important;
-    top: 4px !important;
+    left: 3px !important;
+    top: 3px !important;
 
     border-radius: 50%;
     background: var(--accent);
