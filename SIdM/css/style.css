@@ -747,20 +747,105 @@ body[data-theme="light"] .main-header .header-actions label.theme-switch .slider
   display: flex;
 }
 
-   
-.editor-actions-fixed {
-  position: fixed;
-  top: calc(var(--header-height) + 8px);
-  right: calc(16px + env(safe-area-inset-right));
+
+/* =========================================
+   ADD CONTENT BUTTON — sempre visível
+   ========================================= */
+
+/* Sidebar em coluna: botão em cima, menu rolável */
+.sidebar {
   display: flex;
-  gap: 8px;
-  z-index: 1350;
+  flex-direction: column;
 }
 
-.editor-actions-fixed #edit-article-link,
-.editor.editor-actions-fixed #close-edit-btn {
+/* Botão como bloco fixo na sidebar (base) */
+#add-content-btn {
+  flex: 0 0 auto;
+}
+
+/* Menu ocupa o restante e tem scroll próprio */
+#menu {
+  flex: 1 1 auto;
+  overflow: auto;
+  margin-top: 0.75rem;
+}
+
+/* MOBILE (<=768px): botão "grudado" no topo da sidebar/hambúrguer */
+@media (max-width: 768px) {
+  #add-content-btn {
+    position: sticky;
+    top: 0;
+    z-index: 1100; /* acima dos itens do menu */
+    background: var(--card);
+    box-shadow: var(--shadow-sm);
+  }
+}
+
+/* DESKTOP (>=769px): botão fixo no canto superior esquerdo, ao lado da busca */
+@media (min-width: 769px) {
+  #add-content-btn {
+    position: fixed;
+    top: calc((var(--header-height) - 40px) / 2); /* centraliza verticalmente no header */
+    left: 12px;
+    height: 40px;
+    padding: 0 12px;
+    border-radius: 8px;
+    z-index: 1250; /* abaixo do dropdown de busca (1300), acima do header (1200) */
+    background: var(--accent);
+    color: #fff;
+    box-shadow: var(--shadow-sm);
+    border: none;
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  /* Evita sobreposição com a barra de busca:
+     reduz levemente a largura máxima da search para abrir espaço à esquerda */
+  .search-header .search-bar {
+    max-width: 760px; /* antes estava 820px; ajuste fino para seu layout */
+  }
+}
+
+/* =========================================
+   EDIT & CLOSE — ações sempre visíveis
+   ========================================= */
+
+/* Fixos no topo direito, logo abaixo do header,
+   sem conflitar com a toolbar fixa no rodapé em mobile */
+#close-edit-btn,
+#edit-article-link {
+  position: fixed !important;
+  top: calc(var(--header-height) + 8px);
+  z-index: 1350; /* acima do conteúdo; abaixo de overlays de debug (1600) */
+}
+
+/* Fechar no canto direito; Editar à esquerda dele */
+#close-edit-btn {
+  right: calc(16px + env(safe-area-inset-right));
+  width: 40px;
   height: 40px;
   border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
-   
+#edit-article-link {
+  right: calc(16px + env(safe-area-inset-right) + 48px); /* 40px do fechar + 8px de gap */
+  height: 40px;
+  line-height: 40px;
+  padding: 0 12px;
+  border-radius: 8px;
+  font-weight: 600;
+}
+
+/* Ajustes para telas muito pequenas */
+@media (max-width: 480px) {
+  #close-edit-btn,
+  #edit-article-link {
+    top: calc(var(--header-height) + 6px);
+  }
+  #edit-article-link {
+    right: calc(16px + env(safe-area-inset-right) + 44px);
+  }
+}
