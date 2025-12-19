@@ -1130,18 +1130,6 @@ function getImageCountForArticle(categoria, id) {
   return imgs.filter(i => i && i.name && !/^pasted[-_\s]?image/i.test(i.name)).length;
 }
 
-function execCmd(command, value = null) {
-  if (command === 'insertImage') {
-    const url = prompt('URL da imagem:');
-    if (url) document.execCommand(command, false, url);
-  } else if (command === 'createLink') {
-    const url = prompt('URL do link:');
-    if (url) document.execCommand(command, false, url);
-  } else {
-    document.execCommand(command, false, value);
-  }
-}
-
 function renderMenu(openCategories = []) {
   const menu = document.getElementById('menu');
   if (!menu) return;
