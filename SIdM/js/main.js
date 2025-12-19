@@ -24,7 +24,7 @@ function getBreadcrumbTextFromDOM() {
     .filter(Boolean);
 
   // Se você usa o separador "››" no DOM, aqui padronizamos para " › "
-  return parts.join(' › ');
+  return parts.join(' ›› ');
 }
 
 /** Atualiza o <title> usando o breadcrumb do DOM */
