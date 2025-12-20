@@ -23,7 +23,27 @@
     </div>
   </div>
 
-  <!-- Cabeçalho fixo -->
+  <!-- Layout principal -->
+  <div class="app-layout">
+    <!-- Sidebar com scroll próprio -->
+    <aside class="sidebar" role="navigation" aria-label="Menu lateral">
+      <button id="add-content-btn" type="button">+ Adicionar Conteúdo</button>
+      <nav id="menu" aria-label="Lista de artigos"></nav>
+    </aside>
+
+    <!-- Área de conteúdo com scroll independente -->
+    <main class="content" id="content" role="main">
+      <article id="article-content" aria-live="polite">
+        <!-- Categoria (visível apenas no editor) -->
+        <div id="category-wrapper" style="display: none;">
+          <label for="category-select">Categoria:</label>
+          <select id="category-select">
+            <option value="">-- Nova Categoria --</option>
+          </select>
+          <input type="text" id="new-category" placeholder="Nova categoria" style="display: none;" />
+        </div>
+		
+		<!-- Cabeçalho fixo -->
   <header class="main-header" role="banner">
     <div class="header-inner">
       <button id="hamburger-btn" class="hamburger" aria-label="Abrir menu">
@@ -44,26 +64,6 @@
       </div>
     </div>
   </header>
-
-  <!-- Layout principal -->
-  <div class="app-layout">
-    <!-- Sidebar com scroll próprio -->
-    <aside class="sidebar" role="navigation" aria-label="Menu lateral">
-      <button id="add-content-btn" type="button">+ Adicionar Conteúdo</button>
-      <nav id="menu" aria-label="Lista de artigos"></nav>
-    </aside>
-
-    <!-- Área de conteúdo com scroll independente -->
-    <main class="content" id="content" role="main">
-      <article id="article-content" aria-live="polite">
-        <!-- Categoria (visível apenas no editor) -->
-        <div id="category-wrapper" style="display: none;">
-          <label for="category-select">Categoria:</label>
-          <select id="category-select">
-            <option value="">-- Nova Categoria --</option>
-          </select>
-          <input type="text" id="new-category" placeholder="Nova categoria" style="display: none;" />
-        </div>
 
         <!-- Título -->
         <h1 id="article-title">Bem-vindo</h1>
