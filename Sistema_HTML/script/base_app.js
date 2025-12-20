@@ -645,9 +645,23 @@ function initSubfolders(header) {
  Object.keys(folderMap)
  .filter(k => k !== "0")
  .forEach(k => {
- const span = document.createElement('span');
- span.textContent = folderMap[k].split(/[\\/]+/).pop();
- span.dataset.folderIndex = k;
+
+const span = document.createElement('span');
+const label = folderMap[k].split(/[\\/]+/).pop();
+
+span.textContent = label;
+span.dataset.folderIndex = k;
+
+// tooltip nativa e acessibilidade
+span.setAttribute('title', label);            // mostra tooltip ao hover
+span.setAttribute('aria-label', label);       // leitores de tela
+span.setAttribute('role', 'button');          // como é clicável, ajuda a semântica
+
+// manter truncamento visual no chip
+span.style.whiteSpace = 'nowrap';
+span.style.overflow = 'hidden';
+span.style.textOverflow = 'ellipsis';
+
  // Se já estiver selecionado no estado, aplica classe
  if (selectedFolders.includes(String(k))) span.classList.add('active');
  span.addEventListener('click', () => {
