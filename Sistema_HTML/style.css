@@ -86,15 +86,20 @@ body {
 
 .search-field { flex:1; display:flex; align-items:center; gap:8px; }
 
-#accessKey {
-  width:100%;
+
+#accessKey{
+  width: 100%;
   padding: 12px 14px;
-  font-size: 15px;
+  font-size: 16px;               /* 16px: evita zoom automático no iOS */
   border-radius: 8px;
   border: 1px solid var(--border);
   background: #fff;
   box-shadow: 0 2px 6px rgba(0,0,0,0.03);
-  transition: box-shadow .18s var(--ease), border-color .18s var(--ease);
+}
+button{
+  padding: 10px 14px;
+  min-height: 44px;              /* alvo de toque recomendado */
+  border-radius: 10px;
 }
 
 #accessKey:focus {
@@ -301,29 +306,31 @@ body[data-theme="light"] .status-flag.with-border {
 .info-top { font-size: 16px; font-weight:700; color: #2c3e50; margin:0; }
 .info-bottom { font-size: 13px; color: #4b5563; word-break: break-word; margin:0; }
 
-/* Actions */
-.actions {
-  display:flex;
-  gap:8px;
-  margin-top:8px;
-  justify-content:flex-start;
+
+/* Substitui .actions existente no mobile */
+.actions{
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 8px;
+  margin-top: 8px;
+  justify-content: start;
 }
 
-.actions a {
-  display:inline-flex;
-  align-items:center;
-  gap:8px;
-  text-decoration:none;
-  padding:8px 10px;
-  border-radius:6px;
+.actions a{
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 12px;            /* toque confortável */
+  border-radius: 8px;
   background: var(--accent);
-  color:#fff;
-  font-weight:600;
-  border:none;
+  color: #fff;
+  font-weight: 600;
+  border: none;
+  min-height: 44px;              /* acessibilidade */
+  text-decoration: none;
   transition: background .12s var(--ease);
 }
-
-.actions a:hover { background: var(--accent-strong); }
+.actions a:hover{ background: var(--accent-strong); }
 
 /* Desktop: ações aparecem no hover; Mobile: sempre visíveis */
 @media (min-width: 769px) {
@@ -359,38 +366,45 @@ li.old-file .chave-acesso {
    Subpastas selecionáveis
    =========================== */
 /* Subpastas: grid com 5 itens por linha, responsivo e com overflow */
-.subfolders {
+
+/* Subpastas: grid adaptativo com coluna mínima > cabe 2 no mobile */
+.subfolders{
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr)); /* 5 colunas iguais */
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); /* 2 colunas cabem em ~360px */
   gap: 10px;
   margin-top: 8px;
   align-items: start;
   width: 100%;
   box-sizing: border-box;
-  /* opcional: limite de altura e scroll quando houver muitas subpastas */
-  max-height: 160px;
+  max-height: 220px;             /* altura confortável com scroll interno */
   overflow: auto;
-  padding-right: 6px; /* espaço para scrollbar sem quebrar layout */
+  padding-right: 6px;            /* espaço para scrollbar */
 }
 
-/* estilo dos chips (spans) dentro de .subfolders */
-.subfolders span {
+/* chips */
+.subfolders span{
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 6px 10px;
-  font-size: 13px;
+  padding: 8px 10px;             /* +2px no padding para toque melhor */
+  font-size: 14px;               /* +1px para legibilidade mobile */
   font-weight: 600;
   color: #005a9e;
   background: #e9f2fb;
   border: 1px solid #cce0f5;
-  border-radius: 8px;
+  border-radius: 10px;
   cursor: pointer;
   user-select: none;
+  width: 100%;                   /* ocupa toda a célula da grid */
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   transition: background .14s ease, transform .08s ease, box-shadow .14s ease;
+}
+
+/* Ajuste fino por largura muito pequena (smartphones compactos) */
+@media (max-width: 360px){
+  .subfolders{ grid-template-columns: repeat(2, minmax(140px, 1fr)); }
 }
 
 /* hover / foco */
@@ -511,6 +525,19 @@ li.old-file .chave-acesso {
   #filterPanel:not(.hidden) { transform: translateY(0); }
 }
 
+
+/* Padrão geral */
+.list-container{
+  min-height: 55svh;           /* garante ~meio da tela disponível para os cards */
+}
+
+/* Telas muito pequenas: ainda mais espaço */
+@media (max-width: 430px){
+  .list-container{
+    min-height: 60svh;
+  }
+}
+
 /* Small polish */
 a, button { -webkit-tap-highlight-color: rgba(0,0,0,0); }
 
@@ -535,4 +562,41 @@ a, button { -webkit-tap-highlight-color: rgba(0,0,0,0); }
 @media (max-width: 480px) {
   #last-update { font-size: 11px; }
   #last-update .last-update-date { font-size: 10px; }
+}
+
+
+@media (pointer: coarse){
+  ul#fileList li{ box-shadow: var(--shadow-sm); }
+  ul#fileList li:hover{ transform: none; box-shadow: var(--shadow-sm); }
+}
+
+/* Preferência do usuário: reduzir motion */
+@media (prefers-reduced-motion: reduce){
+  *{ transition: none !important; animation: none !important; }
+}
+
+
+/* Cabeçalho de pasta */
+.folderHeader,
+.path-info h1,
+.folderHeader .path,
+.path-info .path {
+  white-space: normal;          /* permite quebrar linha */
+  overflow-wrap: anywhere;      /* quebra até strings longas sem espaço */
+  word-break: break-word;       /* fallback para navegadores antigos */
+  hyphens: auto;                /* ajuda a hifenizar quando aplicável */
+}
+
+/* Se o header usar flex, permita quebra dentro */
+.folderHeader{
+  display: flex;
+  flex-wrap: wrap;              /* permite que o texto quebre e ocupe múltiplas linhas */
+  align-items: flex-start;      /* evita alongar verticalmente elementos irmãos */
+  gap: 6px;
+}
+
+/* Opcional: tipografia monoespaçada para paths longos */
+.path,
+.path-info h1 {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
 }
