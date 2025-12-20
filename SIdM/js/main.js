@@ -364,7 +364,8 @@ label.theme-switch {
   z-index: 1400;
 
   /* Nova borda tracejada branca fina */
-  border: 1px #fff;
+  border: 1px;
+  border-color: #fff;
   border-radius: 999px; /* mantém o formato arredondado */
 }
 
@@ -443,12 +444,14 @@ label.theme-switch.animate .slider::before {
 body[data-theme="light"] label.theme-switch .slider {
   background: rgba(15,23,42,0.06);
   box-shadow: inset 0 1px 0 rgba(0,0,0,0.02);
-  border: 1px #000;
+  border: 1px;
+  border-color: #000;
 }
 body[data-theme="light"] label.theme-switch .slider::before {
   background: var(--accent);
   box-shadow: 0 3px 8px rgba(0,0,0,0.12);
-  border: 1px #000;
+  border: 1px;
+  border-color: #000;
 }
 
 /* touch target mínimo e acessibilidade */
