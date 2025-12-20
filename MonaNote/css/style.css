@@ -573,7 +573,12 @@ label.theme-switch {
   -webkit-tap-highlight-color: transparent;
   user-select: none;
   z-index: 1400;
+
+  /* Nova borda tracejada branca fina */
+  border: 1px dashed #fff;
+  border-radius: 999px; /* mantém o formato arredondado */
 }
+
 
 /* input escondido de forma acessível (mantém foco e teclado) */
 label.theme-switch input[type="checkbox"] {
@@ -649,10 +654,12 @@ label.theme-switch.animate .slider::before {
 body[data-theme="light"] label.theme-switch .slider {
   background: rgba(15,23,42,0.06);
   box-shadow: inset 0 1px 0 rgba(0,0,0,0.02);
+  border: 1px dashed #000;
 }
 body[data-theme="light"] label.theme-switch .slider::before {
   background: var(--accent);
   box-shadow: 0 3px 8px rgba(0,0,0,0.12);
+  border: 1px dashed #000;
 }
 
 /* touch target mínimo e acessibilidade */
@@ -737,11 +744,117 @@ label.theme-switch input[type="checkbox"] {
 body[data-theme="light"] .main-header .header-actions label.theme-switch .slider {
   background: rgba(15,23,42,0.06);
   box-shadow: inset 0 1px 0 rgba(0,0,0,0.02);
+  border: 1px dashed #000;
 }
 body[data-theme="light"] .main-header .header-actions label.theme-switch .slider::before {
   background: var(--accent);
   box-shadow: 0 3px 8px rgba(0,0,0,  box-shadow: 0 3px 8px rgba(0,0,0,0.12);
+  border: 1px dashed #000;
 }
    
 .breadcrumb {
   display: flex;
+}
+
+
+
+/* =========================================================
+   1) Sidebar em coluna: botão em cima, menu com scroll
+   ========================================================= */
+aside.sidebar {
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+aside.sidebar #add-content-btn {
+  flex: 0 0 auto;
+}
+
+aside.sidebar #menu {
+  flex: 1 1 auto;
+  overflow: auto;
+  margin-top: 0.75rem;
+}
+
+/* =========================================================
+   2) MOBILE (<=768px): botão "grudado" no topo da sidebar
+   ========================================================= */
+@media (max-width: 768px) {
+  aside.sidebar #add-content-btn {
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 1100 !important; /* acima dos itens do menu */
+    background: var(--card) !important;
+    box-shadow: var(--shadow-sm) !important;
+  }
+}
+
+/* =========================================================
+   3) DESKTOP (>=769px): botão fixo no canto superior esquerdo,
+      alinhado ao header, sem sobrepor a busca
+   ========================================================= */
+@media (min-width: 769px) {
+  /* Botão fixo no topo-esquerdo do viewport, centrado no header */
+  aside.sidebar #add-content-btn {
+    position: fixed !important;
+    top: calc((var(--header-height) - 40px) / 2) !important;
+    left: 12px !important;
+    height: 40px !important;
+    padding: 0 12px !important;
+    border-radius: 8px !important;
+    z-index: 1250 !important; /* abaixo do dropdown de busca (1300) */
+    background: var(--accent) !important;
+    color: #fff !important;
+    box-shadow: var(--shadow-sm) !important;
+    border: none !important;
+    font-weight: 600 !important;
+    cursor: pointer !important;
+  }
+
+  /* Ajuste de largura da barra de busca para não "colidir" visualmente */
+  header.main-header .search-header .search-bar {
+    max-width: 760px; /* reduzi um pouco para abrir espaço à esquerda */
+  }
+}
+
+/* =========================================================
+   4) EDIT & CLOSE sempre visíveis (desktop e mobile)
+   ========================================================= */
+/* Mantém os botões fixos no topo direito, logo abaixo do header */
+#edit-article-link,
+#close-edit-btn {
+  position: fixed !important;
+  top: calc(var(--header-height) + 8px) !important;
+  z-index: 1350 !important;
+}
+
+/* Close: canto direito; Editar: à esquerda dele */
+#close-edit-btn {
+  right: calc(16px + env(safe-area-inset-right)) !important;
+  width: 40px !important;
+  height: 40px !important;
+  border-radius: 8px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+#edit-article-link {
+  right: calc(16px + env(safe-area-inset-right) + 48px) !important; /* 40px + 8px gap */
+  height: 40px !important;
+  line-height: 40px !important;
+  padding: 0 12px !important;
+  border-radius: 8px !important;
+  font-weight: 600 !important;
+}
+
+/* Pequeno ajuste para telas muito pequenas */
+@media (max-width: 480px) {
+  #edit-article-link,
+  #close-edit-btn {
+    top: calc(var(--header-height) + 6px    top: calc(var(--header-height) + 6px) !important;
+  }
+  #edit-article-link {
+    right: calc(16px + env(safe-area-inset-right) + 44px) !important;
+  }
+}
