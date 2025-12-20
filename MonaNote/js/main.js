@@ -11,7 +11,7 @@ const TITLE_MAX = 160;        // ajuste conforme sua necessidade
 const CATEGORY_MAX = 60;      // ajuste conforme sua necessidade
 
 // ===== Título dinâmico aproveitando o breadcrumb já renderizado =====
-const BASE_TITLE = 'Sistema Integrado de Manuais';
+const BASE_TITLE = 'Mona Note';
 
 /** Lê o breadcrumb já existente no DOM e devolve uma string única */
 function getBreadcrumbTextFromDOM() {
