@@ -341,84 +341,207 @@ function ensureThemeSwitchDesktopOverride() {
   if (old) old.remove();
 
   const css = `
-/* ===== Theme switch — override seguro para desktop ===== */
-@media (min-width: 768px) {
-  /* 1) O label É o contêiner posicionado do switch */
-  .main-header .header-actions label.theme-switch {
-    position: relative !important;   /* <-- garante contexto de posicionamento */
-    display: inline-block !important;
-    width: 48px !important;
-    height: 26px !important;
-    vertical-align: middle;
+/* =========================
+   Theme switch (consolidado)
+   - label.theme-switch
+   - input#themeToggle
+   - span.slider
+   - suporta body[data-theme="light"]
+   ========================= */
 
-    /* >>> NOVO: borda tracejada branca e arredondada no desktop */
-    border: 1px dashed #fff !important;
-    border-radius: 999px !important;
-    box-sizing: border-box !important;
+/* container do switch */
+label.theme-switch {
+  display: inline-block;
+  position: relative;
+  width: 48px;
+  height: 26px;
+  margin-left: 8px;
+  vertical-align: middle;
+  cursor: pointer;
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  z-index: 1400;
 
-    /* >>> NOVO: leve acolchoamento interno para a trilha não "colar" na borda */
-    padding: 2px !important;
-    /* Se quiser borda mais visível, aumente para 3px e ajuste os valores abaixo */
-  }
+  /* Nova borda tracejada branca fina */
+  border: 1px;
+  border-color: #fff;
+  border-radius: 999px; /* mantém o formato arredondado */
+}
 
-  /* 2) Input invisível, restrito ao tamanho do label */
-  .main-header .header-actions label.theme-switch input#themeToggle[type="checkbox"] {
-    position: absolute !important;
-    left: 0 !important;
-    top: 0 !important;
-    width: 100% !important;          /* ocupa só o label */
-    height: 100% !important;         /* ocupa só o label */
-    opacity: 0 !important;           /* invisível */
-    margin: 0 !important;
-    padding: 0 !important;
-    border: 0 !important;
-    -webkit-appearance: none !important;
-    appearance: none !important;
-  }
 
-  /* 3) Trilha do switch visível e no topo do label */
-  .main-header .header-actions label.theme-switch .slider {
-    position: absolute !important;
-    /* ANTES: inset: 0; — isso "tampava" a borda no desktop.
-       >>> NOVO: recua 2px para respeitar a borda e padding do label */
-    inset: 0px !important;
+/* input escondido de forma acessível (mantém foco e teclado) */
+label.theme-switch input[type="checkbox"] {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+  opacity: 0;
+  -webkit-appearance: none;
+  appearance: none;
+}
 
-    display: block !important;
-    border-radius: 999px !important;
-    background: rgba(15,23,42,0.06); /* bom contraste no light; seu CSS já trata dark */
-    box-shadow: inset 0 1px 0 rgba(0,0,0,0.02);
-    pointer-events: none;             /* não intercepta clique (vai para o input/label) */
-  }
+/* trilho do switch */
+label.theme-switch .slider {
+  position: absolute;
+  inset: 0;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.06);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.02);
+  transition: background .28s var(--ease), box-shadow .28s var(--ease);
+  display: block;
+}
 
-  /* 4) Knob padrão */
-  .main-header .header-actions label.theme-switch .slider::before {
-    content: "";
-    position: absolute;
-    width: 20px;
-    height: 20px;
+/* knob (bola) */
+label.theme-switch .slider::before {
+  content: "";
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  left: 3px;
+  top: 3px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.28);
+  transition: transform .28s var(--ease), background .28s var(--ease), box-shadow .28s var(--ease);
+  will-change: transform;
+}
 
-    left: 3px !important;
-    top: 3px !important;
+/* estado checked (suporta + e ~ por segurança) */
+label.theme-switch input[type="checkbox"]:checked + .slider,
+label.theme-switch input[type="checkbox"]:checked ~ .slider {
+  background: rgba(0,0,0,0.06);
+}
+label.theme-switch input[type="checkbox"]:checked + .slider::before,
+label.theme-switch input[type="checkbox"]:checked ~ .slider::before {
+  transform: translateX(22px);
+  background: var(--accent-strong);
+  box-shadow: 0 6px 16px rgba(0,0,0,0.32);
+}
 
-    border-radius: 50%;
-    background: var(--accent);
-    box-shadow: 0 4px 12px rgba(0,0,0,0.28);
-    transition: transform .28s var(--ease), background .28s var(--ease), box-shadow .28s var(--ease);
-  }
+/* foco por teclado visível */
+label.theme-switch input[type="checkbox"]:focus + .slider,
+label.theme-switch input[type="checkbox"]:focus ~ .slider {
+  box-shadow: 0 0 0 4px rgba(37,99,235,0.12);
+}
 
-  /* 5) Estado checked */
-  .main-header .header-actions label.theme-switch input#themeToggle[type="checkbox"]:checked + .slider::before {
-    /* ANTES: translateX(22px);
-       >>> NOVO: ajuste fino (20–21px) devido ao inset/padding; comece com 20px */
-    transform: translateX(20px) !important;
-    background: var(--accent-strong);
-    box-shadow: 0 6px 16px rgba(0,0,0,0.32);
-  }
+/* animação opcional: adicione classe .animate ao label para movimento sutil */
+label.theme-switch.animate .slider::before {
+  animation: flagWave 1.6s ease-in-out infinite;
+}
+@keyframes flagWave {
+  0%   { transform: translateX(0) skewX(0deg); }
+  50%  { transform: translateX(1px) skewX(2deg); }
+  100% { transform: translateX(0) skewX(0deg); }
+}
 
-  /* (Opcional) Tema claro: força a cor da borda se seu tema alterar contraste */
-  body[data-theme="light"] .main-header .header-actions label.theme-switch {
-    border-color: #000 !important;
-  }
+/* adaptações para tema claro */
+body[data-theme="light"] label.theme-switch .slider {
+  background: rgba(15,23,42,0.06);
+  box-shadow: inset 0 1px 0 rgba(0,0,0,0.02);
+  border: 1px;
+  border-color: #000;
+}
+body[data-theme="light"] label.theme-switch .slider::before {
+  background: var(--accent);
+  box-shadow: 0 3px 8px rgba(0,0,0,0.12);
+  border: 1px;
+  border-color: #000;
+}
+
+/* touch target mínimo e acessibilidade */
+label.theme-switch { touch-action: manipulation; }
+label.theme-switch .slider,
+label.theme-switch .slider::before { pointer-events: none; }
+
+/* responsivo: reduz tamanho em telas muito pequenas */
+@media (max-width: 420px) {
+  label.theme-switch { width: 42px; height: 24px; margin-left: 6px; }
+  label.theme-switch .slider::before { width: 18px; height: 18px; left: 3px; top: 3px; }
+  label.theme-switch input[type="checkbox"]:checked + .slider::before { transform: translateX(18px); }
+}
+
+/* utilitário para forçar visualização caso haja regras conflitantes */
+label.theme-switch.force-visible { display:inline-block !important; visibility:visible !important; opacity:1 !important; }
+
+
+/* ===== Override brando para o input do theme switch (acessível, invisível) ===== */
+
+label.theme-switch input[type="checkbox"] {
+  position: absolute;
+  inset: 0;                /* ocupa toda a área do label */
+  opacity: 0;              /* invisível */
+  margin: 0;
+  padding: 0;
+  border: 0;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+   
+/* ===== Theme switch — reforço desktop ===== */
+
+/* 1) Esconde o input do switch de forma acessível e clicável (DOM nested) */
+.main-header .header-actions label.theme-switch input#themeToggle[type="checkbox"] {
+  position: absolute !important; /* ocupa toda a área do label */
+  inset: 0 !important;
+  opacity: 0 !important;         /* invisível */
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+
+  -webkit-appearance: none !important;
+  appearance: none !important;
+  /* NÃO usar clip/rect ou width:1px;height:1px (isso costuma quebrar o toggle em alguns navegadores) */
+}
+
+/* 2) Garante que o trilho e o knob aparecem no desktop */
+.main-header .header-actions label.theme-switch .slider {
+  position: absolute;
+  inset: 0;
+  display: block !important;     /* força visibilidade */
+  border-radius: 999px;
+  background: rgba(255,255,255,0.06);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.02);
+  transition: background .28s var(--ease), box-shadow .28s var(--ease);
+}
+
+/* 3) Knob padrão */
+.main-header .header-actions label.theme-switch .slider::before {
+  content: "";
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  left: 3px;
+  top: 3px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.28);
+  transition: transform .28s var(--ease), background .28s var(--ease), box-shadow .28s var(--ease);
+}
+
+/* 4) Estado checked no desktop (usando adjacência +) */
+.main-header .header-actions label.theme-switch input#themeToggle[type="checkbox"]:checked + .slider::before {
+  transform: translateX(22px);
+  background: var(--accent-strong);
+  box-shadow: 0 6px 16px rgba(0,0,0,0.32);
+}
+
+/* 5) Tema claro — ajustes */
+body[data-theme="light"] .main-header .header-actions label.theme-switch .slider {
+  background: rgba(15,23,42,0.06);
+  box-shadow: inset 0 1px 0 rgba(0,0,0,0.02);
+  border: 1px #000;
+}
+body[data-theme="light"] .main-header .header-actions label.theme-switch .slider::before {
+  background: var(--accent);
+  box-shadow: 0 3px 8px rgba(0,0,0,  box-shadow: 0 3px 8px rgba(0,0,0,0.12);
+  border: 1px #000;
 }
   `.trim();
 
