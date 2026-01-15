@@ -354,7 +354,7 @@ body[data-theme="light"] #menu li.active > a {
 
 /* ---------- Editor toolbar ---------- */
 .editor-toolbar-fixed {
-  display:flex; flex-wrap:wrap; gap:8px; margin-top:12px; padding:8px; border-radius:10px; background: rgba(255,255,255,0.2);
+  display:flex; flex-wrap:wrap; gap:8px; margin-top:12px; padding:8px; border-radius:10px; background: rgba(255,255,255,0.7);
   position: sticky; bottom: 12px; z-index: 900; box-shadow: var(--shadow-sm);
 }
 .editor-toolbar-fixed button {
