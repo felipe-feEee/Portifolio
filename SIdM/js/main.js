@@ -1836,12 +1836,17 @@ function renderEditorUI({ mode = "add", titulo = "", conteudo = "", categoria = 
   if (select) {
     // limpa e adiciona opção padrão
     select.innerHTML = '<option value="">-- Nova Categoria --</option>';
-    for (const c in contentData) {
-      const opt = document.createElement("option");
-      opt.value = c;
-      opt.textContent = c;
-      select.appendChild(opt);
-    }
+    
+   const categoriasOrdenadas = Object.keys(contentData).sort(
+     (a, b) => a.localeCompare(b, "pt", { sensitivity: "base" })
+   );
+   
+   for (const c of categoriasOrdenadas) {
+     const opt = document.createElement("option");
+     opt.value = c;
+     opt.textContent = c;
+     select.appendChild(opt);
+   }
 
     // Se vier uma categoria (modo edit), seleciona-a; caso contrário, em modo add mostramos newCat
     if (categoria) {
