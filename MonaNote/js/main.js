@@ -11,7 +11,7 @@ const TITLE_MAX = 160;        // ajuste conforme sua necessidade
 const CATEGORY_MAX = 60;      // ajuste conforme sua necessidade
 
 // ===== Título dinâmico aproveitando o breadcrumb já renderizado =====
-const BASE_TITLE = 'Mona Note';
+const BASE_TITLE = 'Sistema Integrado de Manuais';
 
 /** Lê o breadcrumb já existente no DOM e devolve uma string única */
 function getBreadcrumbTextFromDOM() {
@@ -1438,26 +1438,29 @@ function renderMenu() {
     a.localeCompare(b, 'pt', { sensitivity: 'base' })
   );
 
-  for (const categoria of categoriasOrdenadas) {
-    const liCategoria = document.createElement('li');
-    liCategoria.dataset.categoria = categoria; // << NOVO
-    const span = document.createElement('span');
-    span.textContent = categoria;
-    span.style.cursor = 'pointer';
-    span.setAttribute('tabindex', '0'); // torna focável pelo teclado
+for (const categoria of categoriasOrdenadas) {
+  const liCategoria = document.createElement('li');
+  liCategoria.dataset.categoria = categoria;
 
-    // expandir/fechar com clique
-    span.addEventListener('click', () => liCategoria.classList.toggle('active'));
+  const span = document.createElement('span');
 
-    // expandir/fechar também com Enter ou Espaço
-    span.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter' || e.key === ' ') {
-        e.preventDefault(); // evita scroll da página com espaço
-        liCategoria.classList.toggle('active');
-      }
-    });
+  // quantidade de artigos da categoria
+  const qtdArtigos = Object.keys(contentData[categoria]).length;
 
-    liCategoria.appendChild(span);
+  // nome + quantidade
+  span.textContent = `(${qtdArtigos}) ${categoria}`;
+  span.style.cursor = 'pointer';
+  span.setAttribute('tabindex', '0');
+
+  span.addEventListener('click', () => liCategoria.classList.toggle('active'));
+  span.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      liCategoria.classList.toggle('active');
+    }
+  });
+
+  liCategoria.appendChild(span);
 
     const ulTitulos = document.createElement('ul');
 
@@ -1833,12 +1836,17 @@ function renderEditorUI({ mode = "add", titulo = "", conteudo = "", categoria = 
   if (select) {
     // limpa e adiciona opção padrão
     select.innerHTML = '<option value="">-- Nova Categoria --</option>';
-    for (const c in contentData) {
-      const opt = document.createElement("option");
-      opt.value = c;
-      opt.textContent = c;
-      select.appendChild(opt);
-    }
+    
+   const categoriasOrdenadas = Object.keys(contentData).sort(
+     (a, b) => a.localeCompare(b, "pt", { sensitivity: "base" })
+   );
+   
+   for (const c of categoriasOrdenadas) {
+     const opt = document.createElement("option");
+     opt.value = c;
+     opt.textContent = c;
+     select.appendChild(opt);
+   }
 
     // Se vier uma categoria (modo edit), seleciona-a; caso contrário, em modo add mostramos newCat
     if (categoria) {
