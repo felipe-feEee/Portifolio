@@ -1441,23 +1441,30 @@ function renderMenu() {
   for (const categoria of categoriasOrdenadas) {
     const liCategoria = document.createElement('li');
     liCategoria.dataset.categoria = categoria; // << NOVO
-    const span = document.createElement('span');
-    span.textContent = categoria;
-    span.style.cursor = 'pointer';
-    span.setAttribute('tabindex', '0'); // torna focável pelo teclado
 
-    // expandir/fechar com clique
-    span.addEventListener('click', () => liCategoria.classList.toggle('active'));
+for (const categoria of categoriasOrdenadas) {
+  const liCategoria = document.createElement('li');
+  liCategoria.dataset.categoria = categoria;
 
-    // expandir/fechar também com Enter ou Espaço
-    span.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter' || e.key === ' ') {
-        e.preventDefault(); // evita scroll da página com espaço
-        liCategoria.classList.toggle('active');
-      }
-    });
+  const span = document.createElement('span');
 
-    liCategoria.appendChild(span);
+  // quantidade de artigos da categoria
+  const qtdArtigos = Object.keys(contentData[categoria]).length;
+
+  // nome + quantidade
+  span.textContent = `${categoria} (${qtdArtigos})`;
+  span.style.cursor = 'pointer';
+  span.setAttribute('tabindex', '0');
+
+  span.addEventListener('click', () => liCategoria.classList.toggle('active'));
+  span.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      liCategoria.classList.toggle('active');
+    }
+  });
+
+  liCategoria.appendChild(span);
 
     const ulTitulos = document.createElement('ul');
 
