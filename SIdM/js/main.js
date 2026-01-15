@@ -1438,10 +1438,6 @@ function renderMenu() {
     a.localeCompare(b, 'pt', { sensitivity: 'base' })
   );
 
-  for (const categoria of categoriasOrdenadas) {
-    const liCategoria = document.createElement('li');
-    liCategoria.dataset.categoria = categoria; // << NOVO
-
 for (const categoria of categoriasOrdenadas) {
   const liCategoria = document.createElement('li');
   liCategoria.dataset.categoria = categoria;
