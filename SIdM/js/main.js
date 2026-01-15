@@ -1448,7 +1448,7 @@ for (const categoria of categoriasOrdenadas) {
   const qtdArtigos = Object.keys(contentData[categoria]).length;
 
   // nome + quantidade
-  span.textContent = `${categoria} (${qtdArtigos})`;
+  span.textContent = `(${qtdArtigos}) ${categoria}`;
   span.style.cursor = 'pointer';
   span.setAttribute('tabindex', '0');
 
