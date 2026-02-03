@@ -405,3 +405,236 @@
   </header>
 
   <main id="top" class="container">
+    <!-- HERO -->
+    <section class="hero">
+      <div class="hero-grid">
+        <div class="card hero-card">
+          <div class="kicker"><span class="dot" aria-hidden="true"></span> Portfólio • GitHub Pages</div>
+          <h1>Olá! Eu sou o Felipe.<br/>Construo sistemas web e automações.</h1>
+          <p class="subtitle">
+            Este é meu hub de projetos: uma landing page elegante com links para os sistemas publicados nas subpastas do repositório.
+            A seção de portfólio pode ser <strong>dinâmica</strong> (lista pastas via GitHub API) e também possui links fixos para os projetos principais.
+          </p>
+
+          <div class="cta-row">
+            <a class="btn primary" href="#portfolio" title="Ver projetos">
+              <span class="icon" aria-hidden="true">🚀</span> Ver projetos
+            </a>
+            <a class="btn" href="https://www.linkedin.com/in/felipefedev" target="_blank" rel="noopener noreferrer" title="Abrir LinkedIn">
+              <span class="icon" aria-hidden="true">in</span> LinkedIn
+            </a>
+            <a class="btn" href="https://github.com/felipe-feEee/Portifolio" target="_blank" rel="noopener noreferrer" title="Abrir repositório">
+              <span class="icon" aria-hidden="true">⌂</span> GitHub
+            </a>
+          </div>
+
+          <div class="status" id="dynStatus" aria-live="polite">
+            <span class="chip warn">Dinâmico: aguardando carregamento…</span>
+            <span class="chip">Dica: projetos abrem em subpastas (/SIdM/, /Sistema_HTML/)</span>
+          </div>
+        </div>
+
+        <aside class="card side-card" id="sobre">
+          <div class="side-title">Resumo</div>
+          <ul class="list">
+            <li class="pill">
+              <div>
+                <strong>Foco atual</strong>
+                <span>Front-end com HTML/CSS/JS e evolução contínua em arquitetura e qualidade.</span>
+              </div>
+              <span class="badge">Em progresso</span>
+            </li>
+            <li class="pill">
+              <div>
+                <strong>Objetivo</strong>
+                <span>Organizar meus sistemas em um hub com boa apresentação e fácil navegação.</span>
+              </div>
+              <span class="badge">Portfólio</span>
+            </li>
+            <li class="pill">
+              <div>
+                <strong>Onde me encontrar</strong>
+                <span>LinkedIn para networking e GitHub para código e histórico.</span>
+              </div>
+              <span class="badge">Conectar</span>
+            </li>
+          </ul>
+        </aside>
+      </div>
+    </section>
+
+    <!-- PORTFOLIO -->
+    <section id="portfolio">
+      <div class="section-head">
+        <div>
+          <h2>Portfólio</h2>
+          <p>Projetos publicados (links diretos para abrir o sistema e para ver o código no GitHub).</p>
+        </div>
+      </div>
+
+      <div class="grid" id="projectsGrid">
+        <!-- Cards fixos (sempre aparecem) -->
+        <article class="proj">
+          <h3 class="proj-title">SIdM <span class="tag">Sistema</span></h3>
+          <p class="proj-desc">
+            Sistema publicado na pasta <strong>SIdM</strong>. Link de execução aponta para o GitHub Pages e o link de código abre a árvore no GitHub.
+          </p>
+          <div class="proj-actions">
+            <a class="btn small primary" href="./SIdM/" title="Abrir SIdM (GitHub Pages)">Abrir</a>
+            <a class="btn small" href="https://github.com/felipe-feEee/Portifolio/tree/main/SIdM" target="_blank" rel="noopener noreferrer" title="Ver código no GitHub">Código</a>
+          </div>
+        </article>
+
+        <article class="proj">
+          <h3 class="proj-title">Sistema_HTML <span class="tag">Projeto</span></h3>
+          <p class="proj-desc">
+            Projeto na pasta <strong>Sistema_HTML</strong>. Mesma lógica: “Abrir” vai para o Pages e “Código” para a árvore do repositório.
+          </p>
+          <div class="proj-actions">
+            <a class="btn small primary" href="./Sistema_HTML/" title="Abrir Sistema_HTML (GitHub Pages)">Abrir</a>
+            <a class="btn small" href="https://github.com/felipe-feEee/Portifolio/tree/main/Sistema_HTML" target="_blank" rel="noopener noreferrer" title="Ver código no GitHub">Código</a>
+          </div>
+        </article>
+
+        <!-- Cards dinâmicos serão inseridos aqui -->
+      </div>
+
+      <div class="status" style="margin-top:16px;">
+        <span class="chip">🔎 A lista dinâmica procura pastas na raiz do repositório e tenta montar cards automaticamente.</span>
+      </div>
+    </section>
+
+    <!-- CONTATO -->
+    <section id="contato">
+      <div class="section-head">
+        <div>
+          <h2>Contato</h2>
+          <p>Quer trocar uma ideia sobre algum projeto ou melhoria? Me chama no LinkedIn.</p>
+        </div>
+      </div>
+
+      <div class="grid">
+        <div class="proj" style="grid-column: span 12;">
+          <h3 class="proj-title">Vamos conversar <span class="tag">Contato</span></h3>
+          <p class="proj-desc">
+            O caminho mais rápido é pelo LinkedIn. Se quiser, posso ajustar esta página para incluir currículo, e-mail ou WhatsApp também.
+          </p>
+          <div class="proj-actions">
+            <a class="btn small primary" href="https://www.linkedin.com/in/felipefedev" target="_blank" rel="noopener noreferrer">LinkedIn</a>
+            <a class="btn small" href="https://github.com/felipe-feEee" target="_blank" rel="noopener noreferrer">GitHub</a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <footer>
+      <div class="footer-inner">
+        <span>© <span id="year"></span> Felipe Costa — Portfólio</span>
+        <span>Feito com HTML/CSS/JS • GitHub Pages</span>
+      </div>
+    </footer>
+  </main>
+
+  <script>
+    // ==========================
+    // CONFIGURAÇÃO DO "MENU DINÂMICO"
+    // ==========================
+    // GitHub Pages é estático, então "ler subpastas" só é possível via GitHub API (client-side). [2](https://docs.github.com/en/rest/repos/contents)
+    // O endpoint /repos/{owner}/{repo}/contents retorna os itens (arquivos/pastas) de um caminho do repo. [2](https://docs.github.com/en/rest/repos/contents)
+    //
+    // Ajuste aqui se mudar o repositório, branch, ou se quiser ler uma pasta específica.
+    const GH_OWNER = "felipe-feEee";
+    const GH_REPO  = "Portifolio";
+    const GH_BRANCH = "main";
+    const GH_PATH = ""; // "" = raiz do repo. Ex: "Portifolio" se quiser listar uma subpasta.
+
+    // Pastas que você NÃO quer que apareçam automaticamente
+    const IGNORE_DIRS = new Set([
+      ".github", "img", "images", "css", "js", "assets", "node_modules"
+    ]);
+
+    // Pastas já exibidas como cards fixos (evita duplicar)
+    const PINNED_DIRS = new Set(["SIdM", "Sistema_HTML"]);
+
+    const grid = document.getElementById("projectsGrid");
+    const statusEl = document.getElementById("dynStatus");
+
+    // Helpers
+    const esc = (s) => String(s).replace(/[&<>"']/g, (m) => ({
+      "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
+    }[m]));
+
+    function makeCard({ name, desc, runUrl, codeUrl, tag = "Projeto" }) {
+      const el = document.createElement("article");
+      el.className = "proj";
+      el.innerHTML = `
+        <h3 class="proj-title">${esc(name)} <span class="tag">${esc(tag)}</span></h3>
+        <p class="proj-desc">${esc(desc || "Projeto publicado no GitHub Pages.")}</p>
+        <div class="proj-actions">
+          <a class="btn small primary" href="${esc(runUrl)}" title="Abrir (GitHub Pages)">Abrir</a>
+          <a class="btn small" href="${esc(codeUrl)}" target="_blank" rel="noopener noreferrer" title="Ver código no GitHub">Código</a>
+        </div>
+      `;
+      return el;
+    }
+
+    // Tenta inferir a URL de execução no Pages para um diretório
+    function getRunUrlForDir(dirName) {
+      // ./<dirName>/ funciona quando o index.html está na raiz do repo e o Pages está apontando para / (root)
+      return `./${encodeURIComponent(dirName)}/`;
+    }
+
+    function getCodeUrlForDir(dirName) {
+      return `https://github.com/${GH_OWNER}/${GH_REPO}/tree/${GH_BRANCH}/${encodeURIComponent(dirName)}`;
+    }
+
+    async function loadDynamicProjects() {
+      try {
+        // Busca o conteúdo do repo (raiz ou caminho configurado) [2](https://docs.github.com/en/rest/repos/contents)
+        const pathPart = GH_PATH ? `/${encodeURIComponent(GH_PATH)}` : "";
+        const apiUrl = `https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/contents${pathPart}?ref=${encodeURIComponent(GH_BRANCH)}`;
+
+        const res = await fetch(apiUrl, { headers: { "Accept": "application/vnd.github+json" } });
+        if (!res.ok) throw new Error(`GitHub API retornou ${res.status}`);
+
+        const items = await res.json();
+
+        // Filtra apenas diretórios (type === "dir") e remove os ignorados
+        const dirs = (Array.isArray(items) ? items : [])
+          .filter(it => it && it.type === "dir")
+          .map(it => it.name)
+          .filter(name => name && !IGNORE_DIRS.has(name) && !PINNED_DIRS.has(name));
+
+        if (!dirs.length) {
+          statusEl.innerHTML = `<span class="chip warn">Dinâmico: nenhuma pasta adicional encontrada.</span>`;
+          return;
+        }
+
+        // Monta cards simples para cada pasta
+        // (Para validar se existe index.html dentro de cada pasta, seria necessário 1 request extra por pasta.
+        // Mantive simples para evitar rate limit e excesso de chamadas.)
+        const frag = document.createDocumentFragment();
+        dirs.sort((a,b) => a.localeCompare(b, "pt-BR", { sensitivity: "base" })).forEach(dirName => {
+          frag.appendChild(makeCard({
+            name: dirName,
+            tag: "Pasta",
+            desc: "Projeto listado automaticamente a partir das pastas do repositório.",
+            runUrl: getRunUrlForDir(dirName),
+            codeUrl: getCodeUrlForDir(dirName),
+          }));
+        });
+
+        grid.appendChild(frag);
+        statusEl.innerHTML = `<span class="chip ok">Dinâmico: projetos carregados (${dirs.length}).</span>`;
+
+      } catch (err) {
+        console.warn(err);
+        statusEl.innerHTML = `<span class="chip warn">Dinâmico: falhou ao carregar (usando apenas os cards fixos).</span>`;
+      }
+    }
+
+    document.getElementById("year").textContent = new Date().getFullYear();
+    loadDynamicProjects();
+  </script>
+</body>
+</html>
