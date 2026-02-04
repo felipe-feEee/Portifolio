@@ -287,3 +287,54 @@ body.scroll-locked, .wrap.spa.scroll-locked { overflow:hidden; }
 @media (prefers-reduced-motion: reduce){
   .wrap.spa { scroll-behavior: auto; }
 }
+
+/* 1) Restaurar favicon no mark (ajuste o caminho se necessário) */
+.profile-placeholder .mark{
+  width: 100%;
+  height: 100%;
+  border-radius: 24px;
+  position: absolute;
+  background-image: url("./favicon.ico"); /* ou "../favicon.ico" conforme sua estrutura */
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: contain;
+  opacity: 0.30;
+  filter: saturate(1.05) contrast(1.05);
+  pointer-events: none;
+}
+
+/* 2) Forçar que cada .page empilhe seus blocos top e bottom verticalmente */
+.page {
+  /* mantém snap e altura, mas garante coluna */
+  display: flex;
+  flex-direction: column;
+  align-items: stretch; /* garante que filhos ocupem 100% da largura */
+  box-sizing: border-box;
+}
+
+/* 3) Mantém o layout original do hero (grid) — sobrescreve a regra acima apenas para hero */
+.hero.page {
+  display: grid;
+  grid-template-columns: minmax(260px, 420px) 1fr;
+  gap: 28px;
+  align-items: center;
+}
+
+/* 4) Garante que section-top e section-bottom ocupem largura total e fiquem empilhados */
+.section-top,
+.section-bottom {
+  width: 100%;
+  display: block;
+}
+
+/* 5) Se alguma regra anterior estiver forçando .page > div { display:inline-flex } */
+.page > * {
+  /* força cada filho direto a ser bloco (vertical) */
+  display: block !important;
+  width: 100% !important;
+}
+
+/* 6) Pequeno ajuste responsivo (opcional) */
+@media (max-width: 980px) {
+  .hero.page { grid-template-columns: 1fr; }
+}
