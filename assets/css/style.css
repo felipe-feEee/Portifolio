@@ -589,6 +589,23 @@ body.scroll-locked, .wrap.spa.scroll-locked { overflow:hidden; }
 
 .dock-btn:hover, .btn:hover { background: rgba(124,58,237,0.52); border-color: rgba(124,58,237,0.18); transform: translateY(-2px); }
 
+/* Hide dock smoothly when demo is active */
+.dock-hidden {
+  opacity: 0;
+  pointer-events: none;
+  transform: translateX(12px) scale(.98);
+  transition: opacity .22s ease, transform .22s ease;
+  will-change: opacity, transform;
+}
+
+/* For layout safety: keep space but visually hidden (if you prefer remove from flow use display:none) */
+.dock.dock-hidden { position: fixed; }
+
+/* Optional: when demo open, slightly dim the rest of the page (visual cue) */
+.demo-open .wrap {
+  filter: none; /* keep as-is or set e.g. brightness(.98) if you want subtle dim */
+}
+
 
 
 
