@@ -395,4 +395,82 @@ img{ max-width:100%; display:block; }
   #appFrame{ min-height: 520px; }
 }
 
+/* =========================
+   SPA Full-page sections
+========================= */
 
+/* O main vira o container que rola (SPA) */
+.wrap.spa{
+  height: 100vh;
+  overflow-y: auto;
+  scroll-snap-type: y mandatory;
+  scroll-behavior: smooth;
+  /* evita “corte” por causa do header fixo */
+  scroll-padding-top: 24px;
+}
+
+/* Cada section vira uma “página” */
+.page{
+  min-height: 100vh;
+  scroll-snap-align: start;
+  /* espaço vertical para ficar confortável */
+  padding: 80px 0 50px;
+  /* garante que conteúdo não fique colado no topo */
+  display: flex;
+  align-items: center;
+}
+
+/* Algumas seções têm muito conteúdo; nessas, alinhamos no topo */
+#portfolio.page,
+#contato.page,
+#sobre.page{
+  align-items: flex-start;
+}
+
+/* Hero já é uma tela */
+.hero.page{
+  padding-top: 40px;
+}
+
+/* Appframe (demo) também ocupa a tela */
+.appframe.page{
+  padding-top: 28px;
+}
+
+/* ============ Scroll lock (quando demo abre) ============ */
+body.scroll-locked{
+  overflow: hidden; /* só para garantir */
+}
+
+.wrap.spa.scroll-locked{
+  overflow: hidden;
+}
+
+/* ============ Melhorias no Dock (menu direito) ============ */
+.dock-btn{
+  position: relative;
+}
+
+/* Tooltip discreto */
+.dock-btn::after{
+  content: attr(data-tip);
+  position: absolute;
+  right: calc(var(--dock) + 10px);
+  top: 50%;
+  transform: translateY(-50%);
+  background: rgba(0,0,0,.65);
+  border: 1px solid rgba(255,255,255,.12);
+  color: rgba(255,255,255,.88);
+  padding: 6px 10px;
+  border-radius: 10px;
+  font-size: 12px;
+  letter-spacing: .2px;
+  opacity: 0;
+  pointer-events: none;
+  transition: .15s ease;
+  white-space: nowrap;
+}
+
+.dock-btn:hover::after{
+  opacity: 1;
+}
