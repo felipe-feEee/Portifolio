@@ -342,5 +342,49 @@ body.scroll-locked, .wrap.spa.scroll-locked { overflow:hidden; }
   .hero.page { grid-template-columns: 1fr; }
 }
 
+/* Footer fixo global */
+:root {
+  --footer-h: 64px; /* altura do footer; ajuste conforme necessário */
+}
 
+/* Footer visual */
+.site-footer {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: var(--footer-h);
+  display: flex;
+  align-items: center;
+  background: linear-gradient(180deg, rgba(255,255,255,.02), rgba(255,255,255,.01));
+  border-top: 1px solid rgba(255,255,255,.06);
+  color: var(--muted2);
+  z-index: 95; /* acima do conteúdo, abaixo do dock (dock z-index:90 no seu CSS) */
+  box-shadow: 0 -6px 20px rgba(0,0,0,.45);
+}
 
+/* Centraliza o conteúdo do footer com a mesma largura do .wrap */
+.site-footer .wrap {
+  padding: 0 18px;
+  display: flex;
+  align-items: center;
+  height: 100%;
+}
+
+/* Evita que o conteúdo da SPA fique escondido atrás do footer */
+.wrap.spa {
+  /* adiciona espaço inferior igual à altura do footer + margem */
+  padding-bottom: calc(var(--footer-h) + 28px);
+}
+
+/* Considera safe-area em iPhones com notch */
+.site-footer {
+  padding-bottom: env(safe-area-inset-bottom);
+  height: calc(var(--footer-h) + env(safe-area-inset-bottom));
+}
+
+/* Se quiser footer mais discreto em telas pequenas */
+@media (max-width:520px) {
+  :root { --footer-h: 56px; }
+  .site-footer .wrap { padding-left: 12px; padding-right: 12px; }
+}
