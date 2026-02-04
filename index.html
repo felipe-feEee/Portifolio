@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Felipe Costa — Portfólio</title>
+  <title>Felipe Martins Costa — Portfólio</title>
   <meta name="description" content="Portfólio de Felipe Costa — projetos, habilidades e demos." />
 
   <!-- Favicon (importante em /Portifolio/) -->
@@ -15,24 +15,17 @@
 
 <body>
   <!-- Menu vertical flutuante (estilo do modelo) -->
-  <aside class="dock" aria-label="Navegação rápida">
-    <a class="dock-btn is-active" href="#top" aria-label="Home" data-spy="top">
-      <span class="ico">⌂</span>
-    </a>
-    <a class="dock-btn" href="#sobre" aria-label="Sobre" data-spy="sobre">
-      <span class="ico">👤</span>
-    </a>
-    <a class="dock-btn" href="#portfolio" aria-label="Portfólio" data-spy="portfolio">
-      <span class="ico">🗂</span>
-    </a>
-    <a class="dock-btn" href="#contato" aria-label="Contato" data-spy="contato">
-      <span class="ico">✉</span>
-    </a>
-  </aside>
+  
+<aside class="dock" aria-label="Navegação rápida">
+  <a class="dock-btn" href="#heroSection" data-spy="heroSection" data-tip="Home" aria-label="Home"><span class="ico">⌂</span></a>
+  <a class="dock-btn" href="#sobre" data-spy="sobre" data-tip="Sobre" aria-label="Sobre"><span class="ico">👤</span></a>
+  <a class="dock-btn" href="#portfolio" data-spy="portfolio" data-tip="Portfólio" aria-label="Portfólio"><span class="ico">🗂</span></a>
+  <a class="dock-btn" href="#contato" data-spy="contato" data-tip="Contato" aria-label="Contato"><span class="ico">✉</span></a>
+</aside>
 
-  <main id="top" class="wrap">
+  <main id="app" class="wrap spa" tabindex="-1">
     <!-- HERO (layout parecido com o modelo: split image + content + CTA) -->
-    <section class="hero" id="heroSection">
+    <section class="hero page" id="heroSection">
       <div class="hero-left">
         <div class="profile-card">
           <div class="profile-media">
@@ -84,7 +77,7 @@
     </section>
 
     <!-- FRAME (invisível por padrão; aparece quando clica em “Ver demo”) -->
-    <section class="appframe is-hidden" id="appFrameSection" aria-label="Demonstração do sistema">
+    <section class="appframe page is-hidden" id="appFrameSection" aria-label="Demonstração do sistema">
       <div class="appframe-bar">
         <div class="appframe-left">
           <span class="appframe-label">DEMO</span>
@@ -114,7 +107,7 @@
     </section>
 
     <!-- SOBRE -->
-    <section id="sobre" class="section">
+    <section id="sobre" class="section page">
       <div class="section-head">
         <h2 class="h2">
           ABOUT <span class="accent">ME</span>
@@ -150,7 +143,7 @@
     </section>
 
     <!-- PORTFÓLIO -->
-    <section id="portfolio" class="section">
+    <section id="portfolio" class="section page">
       <div class="section-head center">
         <h2 class="h2 big">
           MY <span class="accent">PORTFOLIO</span>
@@ -218,7 +211,7 @@
     </section>
 
     <!-- CONTATO -->
-    <section id="contato" class="section">
+    <section id="contato" class="section page">
       <div class="section-head">
         <h2 class="h2">
           GET IN <span class="accent">TOUCH</span>
