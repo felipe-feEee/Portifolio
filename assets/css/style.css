@@ -68,11 +68,16 @@ a:focus-visible, button:focus-visible { outline: none; box-shadow: var(--focus);
   width: 38px;
   height: 38px;
   border-radius: 12px;
-  background:
-    radial-gradient(10px 10px at 30% 35%, rgba(255,255,255,.85), transparent 60%),
-    linear-gradient(135deg, rgba(124,58,237,.95), rgba(6,182,212,.95));
-  box-shadow: 0 10px 30px rgba(124,58,237,.25);
+
+  /* Usa o favicon como logo */
+  background-image: url("../../favicon.ico");
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: cover;
+
+  /* Mantém seu estilo “premium” */
   border: 1px solid rgba(255,255,255,.18);
+  box-shadow: 0 10px 30px rgba(124,58,237,.25);
 }
 
 .nav{
@@ -555,3 +560,4 @@ p, h1, h2, h3, a, span {
     min-height: 520px;
   }
 }
+
