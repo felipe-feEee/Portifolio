@@ -194,9 +194,9 @@ img{ max-width:100%; display:block; }
 .thumb-inner{ position:absolute; left:16px; bottom:16px; display:flex; flex-direction:column; gap:6px; }
 .thumb-tag{ font-size:11px; letter-spacing:2px; font-weight:900; color: rgba(255,255,255,.65); }
 .thumb-title{ font-size:18px; font-weight:900; letter-spacing:-.3px; }
-.project-body{ padding:16px; }
+.project-body{ padding:12px; }
 .project-desc{ margin:0 0 10px; color:var(--muted); line-height:1.6; }
-.actions{ display:flex; gap:10px; flex-wrap:wrap; margin-top:12px; }
+.actions{ display:flex; gap:10px; flex-wrap:wrap; margin-top:10px; }
 
 /* Appframe */
 .appframe-bar{
@@ -585,6 +585,7 @@ body.scroll-locked, .wrap.spa.scroll-locked { overflow:hidden; }
 
 /* 4) Pequeno ajuste para inputs dentro da page (acessibilidade) */
 .page :focus { outline: none; box-shadow: var(--focus); }
+
 
 
 
