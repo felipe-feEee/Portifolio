@@ -6,109 +6,94 @@
   <title>Felipe Costa — Portfólio</title>
   <meta name="description" content="Portfólio de Felipe Costa — projetos, habilidades e demos." />
 
-  <!-- Favicons (importante em project pages /Portifolio/) -->
-  <link rel="icon" type="image/x-icon" href="./favicon.ico?v=4">
-  <link rel="shortcut icon" type="image/x-icon" href="./favicon.ico?v=4">
+  <!-- Favicon (importante em /Portifolio/) -->
+  <link rel="icon" href="./favicon.ico?v=5" type="image/x-icon">
+  <link rel="shortcut icon" href="./favicon.ico?v=5" type="image/x-icon">
 
-  <!-- CSS -->
   <link rel="stylesheet" href="./assets/css/style.css">
 </head>
 
 <body>
-  <!-- Header fixo -->
-  <header class="header">
-    <div class="container header-inner">
-      <a class="brand" href="#top" aria-label="Ir para o topo">
-        <span class="logo" aria-hidden="true"></span>
-        <div class="brand-text">
-          <span class="brand-name">Felipe Costa</span>
-          <span class="brand-role">Desenvolvedor • Portfólio</span>
-        </div>
-      </a>
+  <!-- Menu vertical flutuante (estilo do modelo) -->
+  <aside class="dock" aria-label="Navegação rápida">
+    <a class="dock-btn is-active" href="#top" aria-label="Home" data-spy="top">
+      <span class="ico">⌂</span>
+    </a>
+    <a class="dock-btn" href="#sobre" aria-label="Sobre" data-spy="sobre">
+      <span class="ico">👤</span>
+    </a>
+    <a class="dock-btn" href="#portfolio" aria-label="Portfólio" data-spy="portfolio">
+      <span class="ico">🗂</span>
+    </a>
+    <a class="dock-btn" href="#contato" aria-label="Contato" data-spy="contato">
+      <span class="ico">✉</span>
+    </a>
+  </aside>
 
-      <button class="nav-toggle" id="navToggle" aria-label="Abrir menu" aria-expanded="false">
-        <span></span><span></span><span></span>
-      </button>
-
-      <nav class="nav" id="navMenu" aria-label="Navegação principal">
-        <a href="#sobre">Sobre</a>
-        <a href="#skills">Skills</a>
-        <a href="#portfolio">Portfólio</a>
-        <a href="#contato">Contato</a>
-      </nav>
-    </div>
-  </header>
-
-  <main id="top" class="container">
-    <!-- HERO (igual “vibe” do modelo: simples, direto, CTA) -->
+  <main id="top" class="wrap">
+    <!-- HERO (layout parecido com o modelo: split image + content + CTA) -->
     <section class="hero" id="heroSection">
-      <div class="hero-grid">
-        <div class="hero-left">
-          <p class="eyebrow">hi there 👋</p>
-          <h1 class="hero-title">
-            Eu sou o <span class="accent">Felipe</span>.<br>
-            Construo sistemas web e automações.
-          </h1>
-
-          <p class="hero-subtitle">
-            <!-- TODO: personalize este texto -->
-            Sou um profissional de tecnologia com foco em criar experiências limpas, responsivas e úteis.
-            Aqui você encontra meus projetos, minhas habilidades e demos rodando direto no navegador.
-          </p>
-
-          <div class="hero-actions">
-            <a class="btn primary" href="#portfolio">Ver projetos</a>
-            <a class="btn" href="https://www.linkedin.com/in/felipefedev" target="_blank" rel="noopener noreferrer">LinkedIn</a>
-            <a class="btn" href="https://github.com/felipe-feEee/Portifolio" target="_blank" rel="noopener noreferrer">GitHub</a>
+      <div class="hero-left">
+        <div class="profile-card">
+          <div class="profile-media">
+            <!-- Se tiver imagem, coloque em /assets/img/profile.jpg -->
+            <img src="./assets/img/profile.jpg" alt="Foto de perfil" onerror="this.classList.add('is-hidden'); this.parentElement.classList.add('no-img');">
+            <div class="profile-placeholder">
+              <div class="mark"></div>
+              <div class="initials">FC</div>
+            </div>
           </div>
 
-          <div class="hero-badges">
-            <span class="chip">São Paulo • Brasil</span>
-            <span class="chip">HTML • CSS • JS</span>
-            <span class="chip">UX/UI • Responsivo</span>
+          <div class="profile-badge">
+            <span class="dot"></span>
+            <span>Disponível para projetos</span>
           </div>
         </div>
+      </div>
 
-        <aside class="hero-right card">
-          <h2 class="card-title">Resumo rápido</h2>
+      <div class="hero-right">
+        <p class="kicker">HI THERE!</p>
 
-          <ul class="facts">
-            <li>
-              <span class="fact-k">Perfil</span>
-              <span class="fact-v">Desenvolvedor com foco em front-end e projetos web</span>
-            </li>
-            <li>
-              <span class="fact-k">Interesses</span>
-              <span class="fact-v">Sistemas, automações, boas práticas e design limpo</span>
-            </li>
-            <li>
-              <span class="fact-k">Contato</span>
-              <span class="fact-v">
-                <a class="link" href="https://wa.me/5511967705618" target="_blank" rel="noopener noreferrer">
-                  WhatsApp: +55 11 96770‑5618
-                </a>
-              </span>
-            </li>
-          </ul>
+        <h1 class="title">
+          I'M <span class="accent">FELIPE</span> COSTA
+        </h1>
 
-          <div class="card-note">
-            <strong>Dica:</strong> nos projetos abaixo, clique em <em>“Ver demo”</em> para abrir o sistema aqui mesmo.
+        <p class="subtitle">
+          <!-- TODO: personalize -->
+          Sou um desenvolvedor focado em criar experiências limpas e funcionais.
+          Gosto de construir soluções web com boa usabilidade, performance e organização.
+        </p>
+
+        <div class="hero-actions">
+          <a class="btn primary" href="#sobre">MORE ABOUT ME</a>
+          <a class="btn ghost" href="https://www.linkedin.com/in/felipefedev" target="_blank" rel="noopener noreferrer">LinkedIn</a>
+          <a class="btn ghost" href="https://github.com/felipe-feEee/Portifolio" target="_blank" rel="noopener noreferrer">GitHub</a>
+        </div>
+
+        <div class="mini">
+          <div class="mini-item">
+            <span class="mini-k">Stack</span>
+            <span class="mini-v">HTML • CSS • JS</span>
           </div>
-        </aside>
+          <div class="mini-item">
+            <span class="mini-k">Base</span>
+            <span class="mini-v">São Paulo • BR</span>
+          </div>
+        </div>
       </div>
     </section>
 
-    <!-- FRAME (invisível por padrão) - substitui o hero quando abrir demo -->
+    <!-- FRAME (invisível por padrão; aparece quando clica em “Ver demo”) -->
     <section class="appframe is-hidden" id="appFrameSection" aria-label="Demonstração do sistema">
       <div class="appframe-bar">
         <div class="appframe-left">
-          <span class="appframe-label">Demo:</span>
+          <span class="appframe-label">DEMO</span>
           <strong class="appframe-title" id="appFrameTitle">—</strong>
           <span class="appframe-status" id="appFrameStatus">Carregando…</span>
         </div>
 
         <div class="appframe-actions">
-          <a class="btn small" id="appOpenNewTab" href="#" target="_blank" rel="noopener noreferrer" aria-disabled="true">
+          <a class="btn small ghost" id="appOpenNewTab" href="#" target="_blank" rel="noopener noreferrer" aria-disabled="true">
             Nova aba
           </a>
           <button class="btn small primary" id="appCloseBtn" type="button">
@@ -128,210 +113,143 @@
       </div>
     </section>
 
-    <!-- SOBRE (mais conteúdo, inspirado no “about me”) -->
+    <!-- SOBRE -->
     <section id="sobre" class="section">
       <div class="section-head">
-        <h2>Sobre mim</h2>
-        <p>
+        <h2 class="h2">
+          ABOUT <span class="accent">ME</span>
+        </h2>
+        <p class="lead">
           <!-- TODO: personalize -->
-          Desenvolvedor apaixonado por criar interfaces claras, com foco em usabilidade, performance e organização de código.
+          Tenho interesse em criar produtos digitais claros e eficientes, com atenção à experiência do usuário e estrutura do código.
         </p>
       </div>
 
-      <div class="grid-2">
-        <div class="card">
-          <h3 class="card-title">O que eu entrego</h3>
-          <ul class="bullets">
-            <li>Interfaces responsivas e com boa acessibilidade</li>
-            <li>Layouts limpos com foco em UX</li>
-            <li>Integração de páginas/projetos em GitHub Pages</li>
-            <li>Organização de portfólio com demos clicáveis</li>
+      <div class="cards-2">
+        <article class="card">
+          <h3>Resumo</h3>
+          <ul class="list">
+            <li>Desenvolvimento web focado em UX e responsividade</li>
+            <li>Organização de projetos e portfólio no GitHub Pages</li>
+            <li>Interesse em automações e soluções práticas</li>
           </ul>
-        </div>
+        </article>
 
-        <div class="card">
-          <h3 class="card-title">Diferenciais</h3>
-          <ul class="bullets">
-            <li>Capricho visual (cores, contraste e espaçamento)</li>
-            <li>Foco em experiência do usuário (fluxo simples)</li>
-            <li>Prática contínua com projetos reais</li>
-            <li>Consistência: mesma identidade visual em todo o portfólio</li>
-          </ul>
-        </div>
+        <article class="card">
+          <h3>Habilidades</h3>
+          <div class="chips">
+            <span class="chip">HTML5</span>
+            <span class="chip">CSS3</span>
+            <span class="chip">JavaScript</span>
+            <span class="chip">Git/GitHub</span>
+            <span class="chip">UI/UX</span>
+            <span class="chip">Responsivo</span>
+          </div>
+        </article>
       </div>
     </section>
 
-    <!-- SKILLS (estilo semelhante à área “My Skills” do modelo) -->
-    <section id="skills" class="section">
-      <div class="section-head">
-        <h2>Skills</h2>
-        <p>Principais tecnologias e competências que utilizo no dia a dia.</p>
-      </div>
-
-      <div class="skill-grid">
-        <div class="skill card">
-          <h3 class="card-title">Front-end</h3>
-          <div class="pill-row">
-            <span class="pill">HTML5</span>
-            <span class="pill">CSS3</span>
-            <span class="pill">JavaScript</span>
-            <span class="pill">Responsivo</span>
-            <span class="pill">Acessibilidade</span>
-          </div>
-        </div>
-
-        <div class="skill card">
-          <h3 class="card-title">Ferramentas</h3>
-          <div class="pill-row">
-            <span class="pill">Git</span>
-            <span class="pill">GitHub</span>
-            <span class="pill">DevTools</span>
-            <span class="pill">Figma (básico)</span>
-          </div>
-        </div>
-
-        <div class="skill card">
-          <h3 class="card-title">Boas práticas</h3>
-          <div class="pill-row">
-            <span class="pill">Clean UI</span>
-            <span class="pill">Componentização</span>
-            <span class="pill">Performance</span>
-            <span class="pill">SEO básico</span>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- PORTFÓLIO (cards com descrição + demo no frame) -->
+    <!-- PORTFÓLIO -->
     <section id="portfolio" class="section">
-      <div class="section-head">
-        <h2>Portfólio</h2>
-        <p>Projetos com descrição, stack e opções de demo/código.</p>
+      <div class="section-head center">
+        <h2 class="h2 big">
+          MY <span class="accent">PORTFOLIO</span>
+        </h2>
+        <p class="lead">Projetos com descrição, stack e demo embutida no portfólio.</p>
       </div>
 
       <div class="projects">
         <!-- Projeto 1 -->
-        <article class="project card">
-          <div class="project-top">
-            <h3 class="project-title">SIdM</h3>
-            <div class="project-tags">
-              <span class="tag">Sistema</span>
-              <span class="tag">Web</span>
+        <article class="project">
+          <div class="thumb">
+            <div class="thumb-inner">
+              <span class="thumb-tag">SISTEMA</span>
+              <span class="thumb-title">SIdM</span>
             </div>
           </div>
 
-          <p class="project-desc">
-            <!-- TODO: personalize -->
-            Sistema publicado no GitHub Pages. Demonstração embutida no portfólio via frame.
-          </p>
+          <div class="project-body">
+            <p class="project-desc">
+              <!-- TODO: personalize -->
+              Sistema publicado no GitHub Pages. Clique em “Ver demo” para abrir aqui no frame.
+            </p>
 
-          <div class="pill-row">
-            <span class="pill">HTML</span>
-            <span class="pill">CSS</span>
-            <span class="pill">JS</span>
-          </div>
+            <div class="chips small">
+              <span class="chip">HTML</span><span class="chip">CSS</span><span class="chip">JS</span>
+            </div>
 
-          <div class="project-actions">
-            <button class="btn small primary js-open-system" data-url="./SIdM/" data-title="SIdM">
-              Ver demo
-            </button>
-            <a class="btn small" href="./SIdM/" target="_blank" rel="noopener noreferrer">Abrir</a>
-            <a class="btn small" href="https://github.com/felipe-feEee/Portifolio/tree/main/SIdM" target="_blank" rel="noopener noreferrer">Código</a>
+            <div class="actions">
+              <button class="btn small primary js-open-system" data-url="./SIdM/" data-title="SIdM">Ver demo</button>
+              <a class="btn small ghost" href="./SIdM/" target="_blank" rel="noopener noreferrer">Abrir</a>
+              <a class="btn small ghost" href="https://github.com/felipe-feEee/Portifolio/tree/main/SIdM" target="_blank" rel="noopener noreferrer">Código</a>
+            </div>
           </div>
         </article>
 
         <!-- Projeto 2 -->
-        <article class="project card">
-          <div class="project-top">
-            <h3 class="project-title">Sistema_HTML</h3>
-            <div class="project-tags">
-              <span class="tag">Projeto</span>
-              <span class="tag">Estudo</span>
+        <article class="project">
+          <div class="thumb">
+            <div class="thumb-inner">
+              <span class="thumb-tag">PROJETO</span>
+              <span class="thumb-title">Sistema_HTML</span>
             </div>
           </div>
 
-          <p class="project-desc">
-            <!-- TODO: personalize -->
-            Projeto em HTML/CSS/JS para prática e consolidação de conceitos, com navegação simples e layout responsivo.
-          </p>
+          <div class="project-body">
+            <p class="project-desc">
+              <!-- TODO: personalize -->
+              Projeto para prática de base web (estrutura, estilos e scripts), com foco em organização e layout.
+            </p>
 
-          <div class="pill-row">
-            <span class="pill">HTML</span>
-            <span class="pill">CSS</span>
-            <span class="pill">JS</span>
-          </div>
+            <div class="chips small">
+              <span class="chip">HTML</span><span class="chip">CSS</span><span class="chip">JS</span>
+            </div>
 
-          <div class="project-actions">
-            <button class="btn small primary js-open-system" data-url="./Sistema_HTML/" data-title="Sistema_HTML">
-              Ver demo
-            </button>
-            <a class="btn small" href="./Sistema_HTML/" target="_blank" rel="noopener noreferrer">Abrir</a>
-            <a class="btn small" href="https://github.com/felipe-feEee/Portifolio/tree/main/Sistema_HTML" target="_blank" rel="noopener noreferrer">Código</a>
+            <div class="actions">
+              <button class="btn small primary js-open-system" data-url="./Sistema_HTML/" data-title="Sistema_HTML">Ver demo</button>
+              <a class="btn small ghost" href="./Sistema_HTML/" target="_blank" rel="noopener noreferrer">Abrir</a>
+              <a class="btn small ghost" href="https://github.com/felipe-feEee/Portifolio/tree/main/Sistema_HTML" target="_blank" rel="noopener noreferrer">Código</a>
+            </div>
           </div>
         </article>
 
-        <!-- TODO: copie/cole mais cards aqui -->
+        <!-- TODO: duplique <article class="project"> para novos projetos -->
       </div>
     </section>
 
     <!-- CONTATO -->
     <section id="contato" class="section">
       <div class="section-head">
-        <h2>Contato</h2>
-        <p>Quer conversar sobre projetos, freelas ou oportunidades? Me chama.</p>
+        <h2 class="h2">
+          GET IN <span class="accent">TOUCH</span>
+        </h2>
+        <p class="lead">Vamos conversar? Me chama no WhatsApp ou LinkedIn.</p>
       </div>
 
-      <div class="grid-2">
-        <div class="card">
-          <h3 class="card-title">Vamos falar?</h3>
-          <p class="muted">
-            Atalho mais rápido:
-            <a class="link" href="https://wa.me/5511967705618" target="_blank" rel="noopener noreferrer">
-              WhatsApp (wa.me/5511967705618)
+      <div class="cards-2">
+        <article class="card">
+          <h3>WhatsApp</h3>
+          <p class="muted">Resposta rápida pelo WhatsApp.</p>
+          <div class="actions">
+            <a class="btn primary" href="https://wa.me/5511967705618" target="_blank" rel="noopener noreferrer">
+              Abrir conversa
             </a>
-          </p>
-
-          <div class="contact-actions">
-            <a class="btn primary" href="https://wa.me/5511967705618" target="_blank" rel="noopener noreferrer">Abrir WhatsApp</a>
-            <a class="btn" href="https://www.linkedin.com/in/felipefedev" target="_blank" rel="noopener noreferrer">LinkedIn</a>
           </div>
+        </article>
 
-          <p class="tiny muted">
-            Dica: você pode incluir um CV PDF e adicionar um botão “Download CV” aqui.
-          </p>
-        </div>
-
-        <div class="card">
-          <h3 class="card-title">
-            Mensagem rápida
-            <a class="tag tag-link" href="https://wa.me/5511967705618" target="_blank" rel="noopener noreferrer">Contato</a>
-          </h3>
-
-          <form class="form" action="mailto:seu-email@exemplo.com" method="post" enctype="text/plain">
-            <!-- TODO: troque o e-mail acima -->
-            <label>
-              Nome
-              <input type="text" name="nome" placeholder="Seu nome" />
-            </label>
-            <label>
-              Mensagem
-              <textarea name="mensagem" rows="4" placeholder="Escreva uma mensagem…"></textarea>
-            </label>
-            <button class="btn primary" type="submit">Enviar</button>
-          </form>
-
-          <p class="tiny muted">
-            (Opcional) Você pode trocar este formulário para Formspree/Netlify Forms depois.
-          </p>
-        </div>
+        <article class="card">
+          <h3>Redes</h3>
+          <p class="muted">Conecte-se comigo:</p>
+          <div class="actions">
+            <a class="btn ghost" href="https://www.linkedin.com/in/felipefedev" target="_blank" rel="noopener noreferrer">LinkedIn</a>
+            <a class="btn ghost" href="https://github.com/felipe-feEee" target="_blank" rel="noopener noreferrer">GitHub</a>
+          </div>
+        </article>
       </div>
     </section>
 
     <footer class="footer">
-      <div class="footer-inner">
-        <span>© <span id="year"></span> Felipe Costa</span>
-        <span class="muted">Feito com HTML/CSS/JS • GitHub Pages</span>
-      </div>
+      <span>© <span id="year"></span> Felipe Costa</span>
     </footer>
   </main>
 
