@@ -300,3 +300,55 @@ document.addEventListener("DOMContentLoaded", () => {
   window.addEventListener('hashchange', scrollToHashTarget);
 
 });
+
+// Detecta touch e evita hover "preso" em mobile para os botões do dock
+(function () {
+  const body = document.body;
+  const dockButtons = Array.from(document.querySelectorAll('.dock-btn'));
+
+  if (!dockButtons.length) return;
+
+  // Marca o body como touch na primeira interação touch
+  function enableTouchMode() {
+    if (!body.classList.contains('is-touch')) body.classList.add('is-touch');
+  }
+
+  // Ao tocar em um botão: adiciona classe .touched temporária e remove foco/hover depois
+  function handleTouchStart(ev) {
+    enableTouchMode();
+    const btn = ev.currentTarget;
+    // adiciona classe que ativa o estado visual em touch
+    btn.classList.add('touched');
+    // garante que o elemento não fique com :focus permanente
+    try { btn.blur(); } catch (_) {}
+  }
+
+  function handleTouchEnd(ev) {
+    const btn = ev.currentTarget;
+    // mantém o estado por um curto período para o usuário ver a label, depois remove
+    window.setTimeout(() => {
+      btn.classList.remove('touched');
+      try { btn.blur(); } catch (_) {}
+    }, 420); // ajuste o tempo se quiser mais/menos persistência
+  }
+
+  // Também remove foco ao clicar (desktop/touch híbrido)
+  function handleClick(ev) {
+    const btn = ev.currentTarget;
+    try { btn.blur(); } catch (_) {}
+    // remove qualquer classe touched remanescente
+    btn.classList.remove('touched');
+  }
+
+  // Registra listeners
+  dockButtons.forEach(btn => {
+    btn.addEventListener('touchstart', handleTouchStart, { passive: true });
+    btn.addEventListener('touchend', handleTouchEnd, { passive: true });
+    btn.addEventListener('click', handleClick, { passive: true });
+    // opcional: blur ao perder foco por teclado
+    btn.addEventListener('blur', () => btn.classList.remove('touched'));
+  });
+
+  // Detecta primeiro touch globalmente para ativar is-touch (fallback)
+  window.addEventListener('touchstart', enableTouchMode, { passive: true, once: true });
+})();
