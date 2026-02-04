@@ -369,4 +369,31 @@ section{ padding: 34px 0; }
   .hero-grid{ grid-template-columns: 1fr; }
   .proj{ grid-column: span 12; }
   .nav{ justify-content: flex-start; }
+
+}
+
+/* Melhorias mobile: evita overflow e melhora legibilidade */
+body {
+  overflow-x: hidden;
+}
+
+p, h1, h2, h3, a, span {
+  overflow-wrap: anywhere;
+}
+
+/* Ajustes mais específicos para telas pequenas */
+@media (max-width: 520px) {
+  .container { padding: 0 16px; }
+
+  .hero { padding: 28px 0 8px; }
+  .hero-card { padding: 18px; }
+  .side-card { padding: 16px; }
+
+  h1 { font-size: 28px; }
+  .subtitle { font-size: 15px; }
+
+  .nav a { padding: 8px 10px; font-size: 13px; }
+
+  .cta-row { gap: 10px; }
+  .btn { width: 100%; justify-content: center; } /* botões em coluna */
 }
