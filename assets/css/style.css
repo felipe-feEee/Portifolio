@@ -52,6 +52,83 @@ img{ max-width:100%; display:block; }
   gap: 10px;
   z-index: 90;
 }
+/* --- Dock: expand on hover, show label, active = rounded square --- */
+.dock { display:flex; flex-direction:column; gap:10px; }
+
+/* base do botão: mantém ícone sempre visível */
+.dock-btn {
+  display:inline-flex;
+  align-items:center;
+  gap:12px;
+  width: var(--dock);
+  height: var(--dock);
+  padding: 0 10px;
+  border-radius: 999px; /* default: círculo */
+  overflow: hidden;
+  transition: width .26s cubic-bezier(.2,.9,.2,1), border-radius .22s ease, background .18s;
+  white-space: nowrap;
+  box-sizing: border-box;
+}
+
+/* ícone */
+.dock-btn .ico { display:inline-block; font-size:18px; line-height:1; }
+
+/* rótulo escondido por padrão */
+.dock-label {
+  display:inline-block;
+  opacity: 0;
+  transform: translateX(-6px);
+  transition: opacity .18s ease, transform .18s ease;
+  font-weight:700;
+  font-size:13px;
+  color: rgba(255,255,255,.92);
+  pointer-events: none;
+}
+
+/* Hover / focus: expande e mostra label (não altera forma do ativo) */
+.dock-btn:hover,
+.dock-btn:focus-visible {
+  width: 180px; /* largura expandida; ajuste conforme rótulo */
+  background: rgba(255,255,255,.08);
+}
+
+/* mostra label ao expandir */
+.dock-btn:hover .dock-label,
+.dock-btn:focus-visible .dock-label {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+/* comportamento do item ativo (selecionado) */
+.dock-btn.is-active {
+  /* forma quadrada com cantos arredondados */
+  border-radius: 14px;
+  width: var(--dock); /* mantém tamanho compacto até hover */
+  background: linear-gradient(135deg, rgba(124,58,237,.95), rgba(6,182,212,.75));
+  color: #fff;
+}
+
+/* quando ativo + hover: expande mas mantém borda arredondada (não vira círculo) */
+.dock-btn.is-active:hover,
+.dock-btn.is-active:focus-visible {
+  width: 200px; /* expandido para ativo (pode ser maior que o hover normal) */
+  border-radius: 14px; /* mantém forma quadrada arredondada */
+  box-shadow: 0 16px 40px rgba(124,58,237,.18);
+}
+
+/* label do ativo sempre visível (opcional) */
+.dock-btn.is-active .dock-label {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+/* acessibilidade: foco por teclado */
+.dock-btn:focus-visible { outline: none; box-shadow: var(--focus); }
+
+/* ajuste para telas pequenas */
+@media (max-width:520px) {
+  .dock-btn:hover, .dock-btn:focus-visible, .dock-btn.is-active:hover { width: 140px; }
+}
 .dock-btn{
   width: var(--dock);
   height: var(--dock);
@@ -388,3 +465,4 @@ body.scroll-locked, .wrap.spa.scroll-locked { overflow:hidden; }
   :root { --footer-h: 56px; }
   .site-footer .wrap { padding-left: 12px; padding-right: 12px; }
 }
+
