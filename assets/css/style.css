@@ -449,15 +449,7 @@ body.scroll-locked, .wrap.spa.scroll-locked { overflow:hidden; }
 /* --- Quando o usuário estiver rolando dentro de um .scrollable, não queremos que o container capture o wheel --- */
 /* (nenhuma regra CSS necessária aqui; o JS tratará) */
 
-/* =========================
-   Dock: expansão à esquerda, rótulo só no hover do botão
-   (colar este bloco no FINAL do style.css)
-   ========================= */
-
-/* evita duplicar tooltips antigos */
-.dock-btn::after { display: none !important; }
-
-/* garante que o dock esteja posicionado como antes */
+/* Dock: expansão da esquerda para a direita (substituir regras anteriores do dock) */
 .dock {
   position: fixed;
   right: 18px;
@@ -469,7 +461,7 @@ body.scroll-locked, .wrap.spa.scroll-locked { overflow:hidden; }
   z-index: 120;
 }
 
-/* botão base: compacto, ícone alinhado à direita para expandir à esquerda */
+/* botão base: ícone alinhado à esquerda para expandir à direita */
 .dock-btn {
   --dock-size: var(--dock, 54px);
   --expand-by: 160px; /* ajuste se quiser rótulo maior/menor */
@@ -479,25 +471,25 @@ body.scroll-locked, .wrap.spa.scroll-locked { overflow:hidden; }
   height: var(--dock-size);
   display: inline-flex;
   align-items: center;
-  justify-content: flex-end; /* ícone fica no lado direito do botão */
+  justify-content: flex-start; /* ícone no lado esquerdo */
   gap: 8px;
   padding: 0 10px;
-  border-radius: 999px; /* círculo por padrão */
-  overflow: visible; /* permite rótulo fora do botão */
+  border-radius: 999px;
+  overflow: visible;
   transition: width .28s cubic-bezier(.2,.9,.2,1), background .18s ease, transform .12s ease, border-radius .18s ease;
-  transform-origin: right center; /* expande para a esquerda */
+  transform-origin: left center; /* expande para a direita */
   box-sizing: border-box;
 }
 
 /* ícone */
 .dock-btn .ico { font-size: 18px; line-height:1; display:inline-block; }
 
-/* rótulo: escondido por padrão, posicionado à esquerda do ícone dentro do botão */
+/* rótulo: escondido por padrão, posicionado à direita do ícone */
 .dock-btn .dock-label {
-  display: inline-block;
-  margin-right: 8px;
-  font-weight: 700;
-  font-size: 13px;
+  display:inline-block;
+  margin-left: 8px; /* espaço entre ícone e rótulo */
+  font-weight:700;
+  font-size:13px;
   color: rgba(255,255,255,.94);
   background: rgba(0,0,0,.72);
   border: 1px solid rgba(255,255,255,.06);
@@ -505,14 +497,14 @@ body.scroll-locked, .wrap.spa.scroll-locked { overflow:hidden; }
   border-radius: 10px;
   box-shadow: 0 8px 24px rgba(0,0,0,.45);
   opacity: 0;
-  transform: translateX(6px);
+  transform: translateX(-6px);
   transition: opacity .18s ease, transform .22s cubic-bezier(.2,.9,.2,1);
   pointer-events: none;
   user-select: none;
   white-space: nowrap;
 }
 
-/* hover/focus: expande o botão para a esquerda e revela apenas o rótulo do botão ativo no hover */
+/* hover/focus: expande para a direita e revela apenas o rótulo do botão em foco */
 .dock-btn:hover,
 .dock-btn:focus-visible {
   width: var(--expanded-width);
@@ -535,10 +527,10 @@ body.scroll-locked, .wrap.spa.scroll-locked { overflow:hidden; }
   border-color: rgba(255,255,255,.16);
   color: #fff;
   box-shadow: 0 16px 40px rgba(124,58,237,.18);
-  width: var(--dock-size); /* compacto por padrão */
+  width: var(--dock-size);
 }
 
-/* ativo + hover: expande mas mantém borda arredondada (não vira círculo) */
+/* ativo + hover: expande para a direita mantendo forma retangular */
 .dock-btn.is-active:hover,
 .dock-btn.is-active:focus-visible {
   width: var(--expanded-width);
@@ -546,15 +538,12 @@ body.scroll-locked, .wrap.spa.scroll-locked { overflow:hidden; }
   transform: translateY(-2px);
 }
 
-/* opcional: se quiser que o rótulo do ativo fique sempre visível, descomente a linha abaixo */
-/* .dock-btn.is-active .dock-label { opacity: 1; transform: translateX(0); pointer-events: auto; } */
+/* remove tooltip antigo se existir */
+.dock-btn::after { display: none !important; }
 
-/* foco por teclado */
-.dock-btn:focus-visible { outline: none; box-shadow: var(--focus); }
-
-/* telas pequenas: reduzir expansão para caber melhor */
-@media (max-width: 520px) {
+/* ajustes mobile */
+@media (max-width:520px) {
   .dock { right: 10px; }
   .dock-btn { --expand-by: 110px; }
-  .dock-btn .dock-label { padding: 7px 10px; font-size: 12px; }
+  .dock-btn .dock-label { padding: 7px 10px; font-size:12px; }
 }
