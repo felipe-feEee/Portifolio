@@ -546,4 +546,60 @@ html, body {
   .btn { padding: 10px 12px; }
 }
 
+/* === Forçar título + lead empilhados e cards abaixo === */
 
+/* Quando a seção usa .section-head.center queremos coluna */
+.section-head.center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 12px;
+  margin-bottom: 22px; /* separa do grid de cards */
+}
+
+/* Para qualquer .section-head com muito conteúdo, empilha em telas pequenas */
+.section-head {
+  gap: 12px;
+}
+@media (max-width: 980px) {
+  .section-head {
+    flex-direction: column;
+    align-items: flex-start;
+    text-align: left;
+  }
+  .section-head.center {
+    align-items: center;
+    text-align: center;
+  }
+}
+
+/* Garante que o bloco de cards fique sempre abaixo do header e ocupe 100% */
+.cards-2,
+.projects {
+  margin-top: 8px;
+  width: 100%;
+  clear: both;
+}
+
+/* Ajusta o lead para não ficar muito largo e centraliza visualmente */
+.section-head .lead {
+  max-width: 72ch;
+  margin: 0 auto;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+/* Se quiser que o título fique sempre em uma linha própria (sem dividir com o lead) */
+.section-head > .h2,
+.section-head > .h2.big {
+  width: 100%;
+  margin-bottom: 6px;
+}
+
+/* Pequeno refinamento visual para separar header dos cards */
+.section .cards-2,
+.section .projects {
+  padding-top: 6px;
+  gap: 16px;
+}
