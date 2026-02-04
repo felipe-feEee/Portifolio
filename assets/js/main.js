@@ -220,3 +220,103 @@ document.querySelectorAll('.dock-btn').forEach(btn => {
   btn.addEventListener('touchend', () => setTimeout(() => btn.classList.remove('touched'), 800));
 });
 
+document.addEventListener('DOMContentLoaded', () => {
+  const container = document.querySelector('.wrap.spa') || document.getElementById('app');
+  if (!container) return;
+
+  /* --- 1) Abrir na section do hash (se houver) --- */
+  function scrollToHashTarget() {
+    const hash = window.location.hash;
+    if (!hash) return;
+    const target = document.querySelector(hash);
+    if (!target) return;
+    // rola o container até o offset da section
+    container.scrollTo({ top: target.offsetTop, behavior: 'auto' });
+  }
+  // chama no load e também quando hash muda (ex.: link externo)
+  window.addEventListener('load', scrollToHashTarget);
+  window.addEventListener('hashchange', scrollToHashTarget);
+
+  /* --- 2) Helper: verifica se o elemento (ou algum pai) é .scrollable e tem overflow disponível --- */
+  function findScrollableAncestor(el) {
+    while (el && el !== document && el !== container) {
+      if (el.classList && el.classList.contains('scrollable')) {
+        // só considera scrollable se houver conteúdo para rolar
+        if (el.scrollHeight > el.clientHeight + 1) return el;
+      }
+      el = el.parentElement;
+    }
+    return null;
+  }
+
+  /* --- 3) Wheel handler: permite rolagem apenas quando dentro de um .scrollable com espaço --- */
+  container.addEventListener('wheel', (e) => {
+    // se o evento veio de dentro de um scrollable que pode rolar, deixa passar
+    const sc = findScrollableAncestor(e.target);
+    if (sc) {
+      // se o scroll está no topo e o delta é negativo (scroll up) e não há mais conteúdo, previne "vazar" para container
+      const delta = e.deltaY;
+      if ((delta > 0 && sc.scrollTop + sc.clientHeight >= sc.scrollHeight - 1) ||
+          (delta < 0 && sc.scrollTop <= 1)) {
+        // evita que o container role quando o scrollable atingiu o fim
+        e.preventDefault();
+      } else {
+        // permite rolar dentro do scrollable
+        return;
+      }
+    } else {
+      // não está dentro de scrollable: previne rolagem do container (não muda section)
+      e.preventDefault();
+    }
+  }, { passive: false });
+
+  /* --- 4) Touch handlers (mobile): similar ao wheel, evita que swipe mude section --- */
+  let touchStartY = 0;
+  container.addEventListener('touchstart', (e) => {
+    if (e.touches && e.touches.length) touchStartY = e.touches[0].clientY;
+  }, { passive: true });
+
+  container.addEventListener('touchmove', (e) => {
+    const touchY = (e.touches && e.touches[0]) ? e.touches[0].clientY : 0;
+    const dy = touchStartY - touchY;
+    const sc = findScrollableAncestor(e.target);
+
+    if (sc) {
+      // se o scrollable pode rolar na direção do swipe, deixa passar
+      if ((dy > 0 && sc.scrollTop + sc.clientHeight < sc.scrollHeight - 1) ||
+          (dy < 0 && sc.scrollTop > 1)) {
+        return; // permite scroll interno
+      } else {
+        // bloqueia para evitar "vazar" para o container
+        e.preventDefault();
+      }
+    } else {
+      // não está em scrollable: bloqueia para evitar mudar section
+      e.preventDefault();
+    }
+  }, { passive: false });
+
+  /* --- 5) Links com hash (dock) — rola o container até a section alvo --- */
+  document.querySelectorAll('a[href^="#"]').forEach(a => {
+    a.addEventListener('click', (ev) => {
+      const href = a.getAttribute('href');
+      if (!href || !href.startsWith('#')) return;
+      const target = document.querySelector(href);
+      if (!target) return;
+      ev.preventDefault();
+      container.scrollTo({ top: target.offsetTop, behavior: 'smooth' });
+      // atualiza hash sem pular (history)
+      history.replaceState(null, '', href);
+    });
+  });
+
+  /* --- 6) Se quiser, ao redimensionar, reposiciona para o hash atual --- */
+  let resizeTimer;
+  window.addEventListener('resize', () => {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(() => {
+      if (window.location.hash) scrollToHashTarget();
+    }, 160);
+  });
+});
+
