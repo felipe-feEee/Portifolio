@@ -414,3 +414,63 @@ document.addEventListener("DOMContentLoaded", () => {
   }, { passive: false });
 
 })();
+
+// Simple anchor-based active link (no IntersectionObserver)
+(function () {
+  const container = document.querySelector('.wrap.spa') || document.getElementById('app') || document.documentElement;
+  const spyButtons = Array.from(document.querySelectorAll('.dock-btn[data-spy]'));
+  const spySections = spyButtons
+    .map(b => document.getElementById(b.dataset.spy))
+    .filter(Boolean);
+
+  if (!spyButtons.length || !spySections.length) return;
+
+  function setActive(id) {
+    spyButtons.forEach(btn => btn.classList.toggle('is-active', btn.dataset.spy === id));
+  }
+
+  // Click handler: scroll to target and update hash
+  spyButtons.forEach(btn => {
+    btn.addEventListener('click', (ev) => {
+      ev.preventDefault();
+      const targetId = btn.dataset.spy;
+      const target = document.getElementById(targetId);
+      if (!target) return;
+
+      // Scroll the container or document to the target
+      if (container === document.documentElement || container === document.body) {
+        target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      } else {
+        const containerRect = container.getBoundingClientRect();
+        const targetRect = target.getBoundingClientRect();
+        const offset = targetRect.top - containerRect.top + container.scrollTop;
+        container.scrollTo({ top: offset, behavior: 'smooth' });
+      }
+
+      // Update URL hash without jumping
+      history.replaceState(null, '', `#${targetId}`);
+      // Immediate visual feedback
+      setActive(targetId);
+    });
+  });
+
+  // On load or hashchange: set active based on hash (or default to first)
+  function activateFromHashOrDefault() {
+    const hash = window.location.hash.replace('#', '');
+    if (hash) {
+      const target = document.getElementById(hash);
+      if (target) {
+        setActive(hash);
+        return;
+      }
+    }
+    // fallback: mark first section/button
+    const first = spySections[0];
+    if (first && first.id) setActive(first.id);
+  }
+
+  window.addEventListener('load', activateFromHashOrDefault);
+  window.addEventListener('hashchange', activateFromHashOrDefault);
+
+  // Optional: if you programmatically change sections elsewhere, call setActive(id)
+})();
