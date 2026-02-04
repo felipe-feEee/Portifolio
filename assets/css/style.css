@@ -302,8 +302,6 @@ body.scroll-locked, .wrap.spa.scroll-locked { overflow:hidden; }
   background-size: cover;
 
   /* Mantém seu estilo “premium” */
-  border: 1px solid rgba(255,255,255,.18);
-  box-shadow: 0 10px 30px rgba(124,58,237,.25);
   filter: saturate(1.05) contrast(1.05);
   pointer-events: none;
 }
@@ -343,5 +341,6 @@ body.scroll-locked, .wrap.spa.scroll-locked { overflow:hidden; }
 @media (max-width: 980px) {
   .hero.page { grid-template-columns: 1fr; }
 }
+
 
 
