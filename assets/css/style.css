@@ -41,65 +41,6 @@ img{ max-width:100%; display:block; }
   padding: 22px 18px 60px;
   position: relative;
 }
-
-/* Dock (menu vertical) */
-.dock{
-  position: fixed;
-  right: 18px;
-  top: 50%;
-  transform: translateY(-50%);
-  display: grid;
-  gap: 10px;
-  z-index: 90;
-}
-.dock-btn{
-  width: var(--dock);
-  height: var(--dock);
-  display:grid;
-  place-items:center;
-  border-radius: 999px;
-  background: rgba(255,255,255,.06);
-  border: 1px solid rgba(255,255,255,.10);
-  box-shadow: 0 12px 30px rgba(0,0,0,.35);
-  transition: .18s ease;
-  color: rgba(255,255,255,.85);
-}
-.dock-btn:hover{ transform: translateY(-1px); background: rgba(255,255,255,.09); }
-.dock-btn.is-active{
-  background: linear-gradient(135deg, rgba(124,58,237,.95), rgba(6,182,212,.75));
-  border-color: rgba(255,255,255,.16);
-}
-.dock-btn::after{
-  content: attr(data-tip);
-  position: absolute;
-  right: calc(var(--dock) + 10px);
-  top: 50%;
-  transform: translateY(-50%);
-  background: rgba(0,0,0,.65);
-  border: 1px solid rgba(255,255,255,.12);
-  color: rgba(255,255,255,.88);
-  padding: 6px 10px;
-  border-radius: 10px;
-  font-size: 12px;
-  letter-spacing: .2px;
-  opacity: 0;
-  pointer-events: none;
-  transition: .15s ease;
-  white-space: nowrap;
-}
-
-.dock-btn:hover::after{ opacity: 1; }
-.ico{ font-size: 18px; }
-
-/* HERO (split) */
-.hero{
-  min-height: 74vh;
-  display:grid;
-  grid-template-columns: minmax(260px,420px) 1fr;
-  gap: 28px;
-  align-items:center;
-  padding-right: calc(var(--dock) + 28px);
-}
 .hero-left{ display:flex; justify-content:center; }
 .profile-card{
   width:100%;
@@ -162,7 +103,15 @@ img{ max-width:100%; display:block; }
 .accent{ background: linear-gradient(135deg, var(--accent1), var(--accent2)); -webkit-background-clip:text; background-clip:text; color:transparent; }
 .subtitle{ margin:0 0 18px; color:var(--muted); font-size:15.5px; line-height:1.7; max-width:58ch; }
 .hero-actions{ display:flex; gap:12px; flex-wrap:wrap; margin-top:6px; }
-
+/* HERO (split) */
+.hero{
+  min-height: 74vh;
+  display:grid;
+  grid-template-columns: minmax(260px,420px) 1fr;
+  gap: 28px;
+  align-items:center;
+  padding-right: calc(var(--dock) + 28px);
+}
 /* Buttons */
 .btn{
   border:1px solid rgba(255,255,255,.12);
@@ -449,12 +398,20 @@ body.scroll-locked, .wrap.spa.scroll-locked { overflow:hidden; }
 /* --- Quando o usuário estiver rolando dentro de um .scrollable, não queremos que o container capture o wheel --- */
 /* (nenhuma regra CSS necessária aqui; o JS tratará) */
 
-/* --- Forçar expansão para a esquerda (colar no final do style.css) --- */
+/* =========================
+   Dock fix: expandir para a esquerda sem deslocar os outros botões
+   Cole este bloco no FINAL do seu style.css
+   ========================= */
 
-/* remove tooltip antigo se existir */
-.dock-btn::after { display: none !important; }
+/* Variáveis locais (ajuste se quiser) */
+:root {
+  --dock-size: var(--dock, 54px);
+  --dock-expand: 160px; /* quanto o botão cresce */
+  --dock-expanded-width: calc(var(--dock-size) + var(--dock-expand));
+}
 
-/* garante posição do dock */
+/* Container: garante alinhamento pela borda direita para que
+   a expansão ocorra para a esquerda sem empurrar os irmãos */
 .dock {
   position: fixed;
   right: 18px;
@@ -463,38 +420,47 @@ body.scroll-locked, .wrap.spa.scroll-locked { overflow:hidden; }
   display: flex;
   flex-direction: column;
   gap: 10px;
+  align-items: flex-end; /* <-- essencial: fixa a borda direita dos itens */
+  width: auto;           /* evita que o container se ajuste à largura do item expandido */
   z-index: 120;
 }
 
-/* botão base: ícone alinhado à direita para que a expansão ocorra à esquerda */
+/* Botão base: compacto, ícone no lado direito; expande para a esquerda */
 .dock-btn {
-  --dock-size: var(--dock, 54px);
-  --expand-by: 160px; /* ajuste quanto o botão cresce */
-  --expanded-width: calc(var(--dock-size) + var(--expand-by));
   position: relative;
   width: var(--dock-size);
   height: var(--dock-size);
+  min-width: var(--dock-size);
   display: inline-flex;
   align-items: center;
-  justify-content: flex-end;        /* ícone no lado direito */
+  justify-content: flex-end;   /* ícone fica à direita do botão */
   gap: 8px;
   padding: 0 10px;
   border-radius: 999px;
   background: rgba(255,255,255,.06);
   border: 1px solid rgba(255,255,255,.10);
+  color: rgba(255,255,255,.92);
+  box-shadow: 0 12px 30px rgba(0,0,0,.35);
   overflow: visible;
   white-space: nowrap;
-  transition: width .28s cubic-bezier(.2,.9,.2,1), background .18s ease, transform .12s ease, border-radius .18s ease;
-  transform-origin: right center;   /* ponto de origem à direita -> cresce para a esquerda */
   box-sizing: border-box;
+  transition:
+    width .28s cubic-bezier(.2,.9,.2,1),
+    background .18s ease,
+    transform .12s ease,
+    border-radius .18s ease;
+  transform-origin: right center; /* cresce para a esquerda */
 }
 
-/* rótulo posicionado à esquerda do ícone (invisível por padrão) */
+/* Ícone sempre visível */
+.dock-btn .ico { font-size: 18px; line-height:1; display:inline-block; }
+
+/* Label: escondido por padrão, posicionado à esquerda do ícone */
 .dock-btn .dock-label {
-  display: inline-block;
-  margin-right: 8px;                 /* espaço entre label e ícone */
-  font-weight: 700;
-  font-size: 13px;
+  display:inline-block;
+  margin-right: 8px;
+  font-weight:700;
+  font-size:13px;
   color: rgba(255,255,255,.94);
   background: rgba(0,0,0,.72);
   border: 1px solid rgba(255,255,255,.06);
@@ -502,22 +468,22 @@ body.scroll-locked, .wrap.spa.scroll-locked { overflow:hidden; }
   border-radius: 10px;
   box-shadow: 0 8px 24px rgba(0,0,0,.45);
   opacity: 0;
-  transform: translateX(6px);       /* leve deslocamento inicial vindo da direita */
+  transform: translateX(6px);
   transition: opacity .18s ease, transform .22s cubic-bezier(.2,.9,.2,1);
   pointer-events: none;
   user-select: none;
   white-space: nowrap;
 }
 
-/* hover/focus: expande para a esquerda e revela só o rótulo do botão em foco */
+/* Hover / focus: expande apenas o botão em foco (para a esquerda) */
 .dock-btn:hover,
 .dock-btn:focus-visible {
-  width: var(--expanded-width);
+  width: var(--dock-expanded-width);
   background: rgba(255,255,255,.09);
   transform: translateY(-2px);
 }
 
-/* mostra o rótulo apenas do botão em hover/focus */
+/* Revela somente o label do botão em hover/focus */
 .dock-btn:hover .dock-label,
 .dock-btn:focus-visible .dock-label {
   opacity: 1;
@@ -525,7 +491,7 @@ body.scroll-locked, .wrap.spa.scroll-locked { overflow:hidden; }
   pointer-events: auto;
 }
 
-/* estado ativo: retângulo arredondado; mantém forma ao expandir */
+/* Estado ativo: retângulo arredondado; mantém forma ao expandir */
 .dock-btn.is-active {
   border-radius: 14px;
   background: linear-gradient(135deg, rgba(124,58,237,.95), rgba(6,182,212,.75));
@@ -535,20 +501,23 @@ body.scroll-locked, .wrap.spa.scroll-locked { overflow:hidden; }
   width: var(--dock-size);
 }
 
-/* ativo + hover: expande para a esquerda mantendo forma retangular */
+/* Ativo + hover: expande para a esquerda mantendo a forma retangular */
 .dock-btn.is-active:hover,
 .dock-btn.is-active:focus-visible {
-  width: var(--expanded-width);
+  width: var(--dock-expanded-width);
   border-radius: 14px;
   transform: translateY(-2px);
 }
 
-/* foco por teclado */
+/* Remove tooltips antigos que possam conflitar */
+.dock-btn::after { display: none !important; }
+
+/* Acessibilidade: foco por teclado */
 .dock-btn:focus-visible { outline: none; box-shadow: var(--focus); }
 
-/* mobile: reduzir expansão */
+/* Mobile: reduzir expansão para caber melhor */
 @media (max-width:520px) {
+  :root { --dock-expand: 110px; }
   .dock { right: 10px; }
-  .dock-btn { --expand-by: 110px; }
-  .dock-btn .dock-label { padding: 7px 10px; font-size: 12px; }
+  .dock-btn .dock-label { padding: 7px 10px; font-size:12px; }
 }
