@@ -17,6 +17,7 @@
   --dock: 54px;
   --focus: 0 0 0 4px rgba(124,58,237,.22);
   --font: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji";
+  --footer-h: 64px;
 }
 
 /* Reset / base */
@@ -42,133 +43,113 @@ img{ max-width:100%; display:block; }
   position: relative;
 }
 
-/* Dock (menu vertical) */
+/* =========================
+   DOCK (menu vertical) — REESCRITO
+   - não altera largura do botão ao hover
+   - label aparece absolutamente à esquerda (abre da direita para a esquerda)
+   - item ativo é quadrado arredondado e mantém forma ao expandir
+   ========================= */
 .dock{
   position: fixed;
   right: 18px;
   top: 50%;
   transform: translateY(-50%);
-  display: grid;
+  display: flex;
+  flex-direction: column;
   gap: 10px;
-  z-index: 90;
+  z-index: 120;
 }
-/* --- Dock: expand on hover, show label, active = rounded square --- */
-.dock { display:flex; flex-direction:column; gap:10px; }
 
-/* base do botão: mantém ícone sempre visível */
-.dock-btn {
-  display:inline-flex;
-  align-items:center;
-  gap:12px;
+/* botão base: compacto, ícone centralizado */
+.dock-btn{
+  position: relative;
   width: var(--dock);
   height: var(--dock);
-  padding: 0 10px;
-  border-radius: 999px; /* default: círculo */
-  overflow: hidden;
-  transition: width .26s cubic-bezier(.2,.9,.2,1), border-radius .22s ease, background .18s;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  gap: 8px;
+  border-radius: 999px; /* círculo por padrão */
+  background: rgba(255,255,255,.06);
+  border: 1px solid rgba(255,255,255,.10);
+  color: rgba(255,255,255,.92);
+  box-shadow: 0 12px 30px rgba(0,0,0,.35);
+  transition: background .18s ease, transform .12s ease, box-shadow .18s ease;
+  overflow: visible; /* permite label fora do botão */
   white-space: nowrap;
   box-sizing: border-box;
 }
 
-/* ícone */
-.dock-btn .ico { display:inline-block; font-size:18px; line-height:1; }
+/* ícone sempre visível */
+.dock-btn .ico { font-size: 18px; line-height:1; display:inline-block; }
 
-/* rótulo escondido por padrão */
-.dock-label {
-  display:inline-block;
-  opacity: 0;
-  transform: translateX(-6px);
-  transition: opacity .18s ease, transform .18s ease;
+/* label posicionado absolutamente à esquerda do botão (invisível por padrão) */
+.dock-btn .dock-label{
+  position: absolute;
+  right: calc(100% + 12px); /* à esquerda do botão */
+  top: 50%;
+  transform: translateY(-50%) translateX(6px);
+  background: rgba(0,0,0,.72);
+  border: 1px solid rgba(255,255,255,.06);
+  color: rgba(255,255,255,.94);
+  padding: 8px 12px;
+  border-radius: 10px;
   font-weight:700;
   font-size:13px;
-  color: rgba(255,255,255,.92);
+  opacity: 0;
   pointer-events: none;
+  transition: opacity .18s ease, transform .22s cubic-bezier(.2,.9,.2,1);
+  transform-origin: right center;
+  box-shadow: 0 8px 24px rgba(0,0,0,.45);
+  z-index: 130;
+  display:inline-block;
 }
 
-/* Hover / focus: expande e mostra label (não altera forma do ativo) */
-.dock-btn:hover,
-.dock-btn:focus-visible {
-  width: 180px; /* largura expandida; ajuste conforme rótulo */
-  background: rgba(255,255,255,.08);
-}
-
-/* mostra label ao expandir */
+/* mostra label apenas ao hover / focus (abre da direita para a esquerda) */
 .dock-btn:hover .dock-label,
+.dock-btn:focus-within .dock-label,
 .dock-btn:focus-visible .dock-label {
   opacity: 1;
-  transform: translateX(0);
+  transform: translateY(-50%) translateX(0);
+  pointer-events: auto;
 }
 
-/* comportamento do item ativo (selecionado) */
-.dock-btn.is-active {
-  /* forma quadrada com cantos arredondados */
+/* hover visual leve no botão (sem alterar largura) */
+.dock-btn:hover,
+.dock-btn:focus-visible {
+  background: rgba(255,255,255,.09);
+  transform: translateY(-2px);
+}
+
+/* item ativo: quadrado arredondado */
+.dock-btn.is-active{
   border-radius: 14px;
-  width: var(--dock); /* mantém tamanho compacto até hover */
   background: linear-gradient(135deg, rgba(124,58,237,.95), rgba(6,182,212,.75));
+  border-color: rgba(255,255,255,.16);
   color: #fff;
-}
-
-/* quando ativo + hover: expande mas mantém borda arredondada (não vira círculo) */
-.dock-btn.is-active:hover,
-.dock-btn.is-active:focus-visible {
-  width: 200px; /* expandido para ativo (pode ser maior que o hover normal) */
-  border-radius: 14px; /* mantém forma quadrada arredondada */
   box-shadow: 0 16px 40px rgba(124,58,237,.18);
 }
 
-/* label do ativo sempre visível (opcional) */
-.dock-btn.is-active .dock-label {
+/* ativo + hover: mantém forma quadrada arredondada e mostra label */
+.dock-btn.is-active:hover .dock-label,
+.dock-btn.is-active:focus-within .dock-label {
   opacity: 1;
-  transform: translateX(0);
+  transform: translateY(-50%) translateX(0);
 }
 
-/* acessibilidade: foco por teclado */
+/* foco por teclado */
 .dock-btn:focus-visible { outline: none; box-shadow: var(--focus); }
 
 /* ajuste para telas pequenas */
 @media (max-width:520px) {
-  .dock-btn:hover, .dock-btn:focus-visible, .dock-btn.is-active:hover { width: 140px; }
+  .dock { right: 10px; }
+  .dock-btn .dock-label { right: calc(100% + 8px); padding: 7px 10px; font-size:12px; }
 }
-.dock-btn{
-  width: var(--dock);
-  height: var(--dock);
-  display:grid;
-  place-items:center;
-  border-radius:999px;
-  background: rgba(255,255,255,.06);
-  border: 1px solid rgba(255,255,255,.10);
-  box-shadow: 0 12px 30px rgba(0,0,0,.35);
-  transition: .18s ease;
-  color: rgba(255,255,255,.85);
-  position: relative;
-}
-.dock-btn:hover{ transform: translateY(-1px); background: rgba(255,255,255,.09); }
-.dock-btn.is-active{
-  background: linear-gradient(135deg, rgba(124,58,237,.95), rgba(6,182,212,.75));
-  border-color: rgba(255,255,255,.16);
-}
-.dock-btn::after{
-  content: attr(data-tip);
-  position: absolute;
-  right: calc(var(--dock) + 10px);
-  top: 50%;
-  transform: translateY(-50%);
-  background: rgba(0,0,0,.65);
-  border: 1px solid rgba(255,255,255,.12);
-  color: rgba(255,255,255,.88);
-  padding: 6px 10px;
-  border-radius: 10px;
-  font-size: 12px;
-  letter-spacing: .2px;
-  opacity: 0;
-  pointer-events: none;
-  transition: .15s ease;
-  white-space: nowrap;
-}
-.dock-btn:hover::after{ opacity: 1; }
-.ico{ font-size: 18px; }
 
-/* HERO (split) */
+/* =========================
+   HERO (split)
+   ========================= */
 .hero{
   min-height: 74vh;
   display:grid;
@@ -206,6 +187,20 @@ img{ max-width:100%; display:block; }
 }
 .profile-media img{ width:100%; object-fit:cover; }
 .profile-placeholder{ display:grid; place-items:center; height:320px; }
+
+/* favicon mark (restaurado) */
+.profile-placeholder .mark{
+  width: 100%;
+  height: 100%;
+  border-radius: 24px;
+  position: absolute;
+  background-image: url("./favicon.ico"); /* ajuste caminho conforme necessário */
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: contain;
+  filter: saturate(1.05) contrast(1.05);
+  pointer-events: none;
+}
 
 /* small badge */
 .profile-badge{
@@ -327,22 +322,68 @@ img{ max-width:100%; display:block; }
 /* iframe sizing */
 #appFrame{ width:100%; border:0; display:block; height: min(70vh, 820px); max-height: calc(100vh - 180px); }
 
-/* Footer */
-.footer{ padding:30px 0 40px; color:var(--muted2); font-size:13px; padding-right: calc(var(--dock) + 28px); }
+/* Footer (fixo) */
+.site-footer {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: var(--footer-h);
+  display: flex;
+  align-items: center;
+  background: linear-gradient(180deg, rgba(255,255,255,.02), rgba(255,255,255,.01));
+  border-top: 1px solid rgba(255,255,255,.06);
+  color: var(--muted2);
+  z-index: 95;
+  box-shadow: 0 -6px 20px rgba(0,0,0,.45);
+}
+.site-footer .wrap { padding: 0 18px; display:flex; align-items:center; height:100%; }
 
-/* SPA behavior */
+/* Evita que o conteúdo da SPA fique escondido atrás do footer */
+.wrap.spa { padding-bottom: calc(var(--footer-h) + 28px); }
+
+/* SPA behavior: wrapper com altura disponível e scrollbar invisível */
 .wrap.spa{
-  height:100vh; overflow-y:auto; scroll-snap-type:y mandatory; scroll-behavior:smooth; scroll-padding-top:24px;
-  scrollbar-width:none; -ms-overflow-style:none;
+  height: calc(100vh - var(--footer-h));
+  overflow-y: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  scroll-snap-type: y mandatory;
+  scroll-behavior: smooth;
+  scroll-padding-top: 24px;
 }
 .wrap.spa::-webkit-scrollbar{ display:none; }
-.page{ min-height:100vh; scroll-snap-align:start; scroll-snap-stop:always; padding:80px 0 50px; display:flex; align-items:center; box-sizing:border-box; }
+
+/* Page / snap */
+.page{
+  min-height: calc(100vh - var(--footer-h));
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
+  padding: 80px 0 50px;
+  display:flex;
+  flex-direction: column;
+  align-items: stretch;
+  box-sizing: border-box;
+}
 #portfolio.page, #contato.page, #sobre.page { align-items:flex-start; }
 .hero.page{ padding-top:40px; }
 .appframe.page{ padding-top:28px; }
 
-/* Scroll lock */
-body.scroll-locked, .wrap.spa.scroll-locked { overflow:hidden; }
+/* Sections que precisam rolar internamente (marque com .scrollable) */
+.section.scrollable {
+  max-height: calc(100vh - var(--footer-h) - 160px);
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding-right: 18px;
+}
+.section.scrollable::-webkit-scrollbar{ display:none; }
+.section.scrollable{ scrollbar-width:none; -ms-overflow-style:none; }
+
+/* Força empilhamento top/bottom dentro de cada page */
+.section-top, .section-bottom { width:100%; display:block; }
+
+/* Garante que .page filhos diretos sejam blocos (fallback) */
+.page > * { display:block !important; width:100% !important; }
 
 /* Responsive tweaks */
 @media (max-width: 980px){
@@ -364,150 +405,3 @@ body.scroll-locked, .wrap.spa.scroll-locked { overflow:hidden; }
 @media (prefers-reduced-motion: reduce){
   .wrap.spa { scroll-behavior: auto; }
 }
-
-/* 1) Restaurar favicon no mark (ajuste o caminho se necessário) */
-.profile-placeholder .mark{
-  width: 100%;
-  height: 100%;
-  border-radius: 24px;
-  position: absolute;
-  
-  /* Usa o favicon como logo */
-  background-image: url("../../favicon.ico");
-  background-repeat: no-repeat;
-  background-position: center;
-  background-size: cover;
-
-  /* Mantém seu estilo “premium” */
-  filter: saturate(1.05) contrast(1.05);
-  pointer-events: none;
-}
-
-/* 2) Forçar que cada .page empilhe seus blocos top e bottom verticalmente */
-.page {
-  /* mantém snap e altura, mas garante coluna */
-  display: flex;
-  flex-direction: column;
-  align-items: stretch; /* garante que filhos ocupem 100% da largura */
-  box-sizing: border-box;
-}
-
-/* 3) Mantém o layout original do hero (grid) — sobrescreve a regra acima apenas para hero */
-.hero.page {
-  display: grid;
-  grid-template-columns: minmax(260px, 420px) 1fr;
-  gap: 28px;
-  align-items: center;
-}
-
-/* 4) Garante que section-top e section-bottom ocupem largura total e fiquem empilhados */
-.section-top,
-.section-bottom {
-  width: 100%;
-  display: block;
-}
-
-/* 5) Se alguma regra anterior estiver forçando .page > div { display:inline-flex } */
-.page > * {
-  /* força cada filho direto a ser bloco (vertical) */
-  display: block !important;
-  width: 100% !important;
-}
-
-/* 6) Pequeno ajuste responsivo (opcional) */
-@media (max-width: 980px) {
-  .hero.page { grid-template-columns: 1fr; }
-}
-
-/* Footer fixo global */
-:root {
-  --footer-h: 64px; /* altura do footer; ajuste conforme necessário */
-}
-
-/* Footer visual */
-.site-footer {
-  position: fixed;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  height: var(--footer-h);
-  display: flex;
-  align-items: center;
-  background: linear-gradient(180deg, rgba(255,255,255,.02), rgba(255,255,255,.01));
-  border-top: 1px solid rgba(255,255,255,.06);
-  color: var(--muted2);
-  z-index: 95; /* acima do conteúdo, abaixo do dock (dock z-index:90 no seu CSS) */
-  box-shadow: 0 -6px 20px rgba(0,0,0,.45);
-}
-
-/* Centraliza o conteúdo do footer com a mesma largura do .wrap */
-.site-footer .wrap {
-  padding: 0 18px;
-  display: flex;
-  align-items: center;
-  height: 100%;
-}
-
-/* Evita que o conteúdo da SPA fique escondido atrás do footer */
-.wrap.spa {
-  /* adiciona espaço inferior igual à altura do footer + margem */
-  padding-bottom: calc(var(--footer-h) + 28px);
-}
-
-/* Considera safe-area em iPhones com notch */
-.site-footer {
-  padding-bottom: env(safe-area-inset-bottom);
-  height: calc(var(--footer-h) + env(safe-area-inset-bottom));
-}
-
-/* Se quiser footer mais discreto em telas pequenas */
-@media (max-width:520px) {
-  :root { --footer-h: 56px; }
-  .site-footer .wrap { padding-left: 12px; padding-right: 12px; }
-}
-
-/* --- Variável de altura do footer (ajuste se necessário) --- */
-:root { --footer-h: 64px; }
-
-/* --- Mantém wrapper com altura disponível e scrollbar invisível --- */
-.wrap.spa {
-  height: calc(100vh - var(--footer-h));
-  overflow-y: auto;                 /* permite rolagem do container quando necessário */
-  scrollbar-width: none;            /* Firefox */
-  -ms-overflow-style: none;         /* IE/Edge */
-  scroll-snap-type: y mandatory;
-  scroll-behavior: smooth;
-  scroll-padding-top: 24px;
-}
-.wrap.spa::-webkit-scrollbar { display: none; } /* Chrome/Safari/Edge */
-
-/* --- Cada page ocupa a área visível (ajustado para footer) --- */
-.page {
-  min-height: calc(100vh - var(--footer-h));
-  box-sizing: border-box;
-  scroll-snap-align: start;
-  scroll-snap-stop: always;
-  padding: 80px 0 50px;
-  display: flex;
-  flex-direction: column; /* garante empilhamento top/bottom */
-  align-items: stretch;
-}
-
-/* --- Sections que precisam rolar internamente (marque com .scrollable) --- */
-.section.scrollable {
-  /* limita a altura disponível dentro da section e permite rolagem interna */
-  max-height: calc(100vh - var(--footer-h) - 160px); /* 160px = padding + header estimado; ajuste se necessário */
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
-  padding-right: 18px; /* evita corte por causa do footer/dock */
-}
-
-/* scrollbar invisível para scrollables também */
-.section.scrollable::-webkit-scrollbar { display: none; }
-.section.scrollable { scrollbar-width: none; -ms-overflow-style: none; }
-
-/* --- Garante que section-top e section-bottom fiquem empilhados --- */
-.section-top, .section-bottom { width:100%; display:block; }
-
-/* --- Quando o usuário estiver rolando dentro de um .scrollable, não queremos que o container capture o wheel --- */
-/* (nenhuma regra CSS necessária aqui; o JS tratará) */
