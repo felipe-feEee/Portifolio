@@ -127,7 +127,7 @@ img{ max-width:100%; display:block; }
   border:1px solid rgba(255,255,255,.10);
   min-height: 320px;
 }
-.profile-media img{ width:100%; height:100%; object-fit:cover; }
+.profile-media img{ width:100%; object-fit:cover; }
 .profile-placeholder{ display:grid; place-items:center; height:320px; }
 
 /* small badge */
@@ -338,3 +338,4 @@ body.scroll-locked, .wrap.spa.scroll-locked { overflow:hidden; }
 @media (max-width: 980px) {
   .hero.page { grid-template-columns: 1fr; }
 }
+
