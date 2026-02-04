@@ -7,7 +7,6 @@
   --muted2: rgba(255,255,255,.52);
   --border: rgba(255,255,255,.10);
 
-  /* suas cores */
   --accent1:#7c3aed;
   --accent2:#06b6d4;
 
@@ -17,24 +16,25 @@
   --wrap: 1200px;
   --dock: 54px;
   --focus: 0 0 0 4px rgba(124,58,237,.22);
-  --font: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji";
+  --font: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji";
 }
 
-*{ box-sizing:border-box; }
-html{ scroll-behavior:smooth; }
+/* Reset / base */
+* { box-sizing: border-box; }
+html, body { width:100%; height:100%; margin:0; overflow-x:hidden; scroll-behavior:smooth; }
 body{
-  margin:0;
   font-family:var(--font);
-  background: radial-gradient(1000px 600px at 15% 10%, rgba(124,58,237,.18), transparent 60%),
-              radial-gradient(900px 520px at 85% 15%, rgba(6,182,212,.14), transparent 60%),
-              linear-gradient(180deg, #07090d, var(--bg));
+  background:
+    radial-gradient(1000px 600px at 15% 10%, rgba(124,58,237,.18), transparent 60%),
+    radial-gradient(900px 520px at 85% 15%, rgba(6,182,212,.14), transparent 60%),
+    linear-gradient(180deg, #07090d, var(--bg));
   color:var(--text);
-  overflow-x:hidden;
 }
 a{ color:inherit; text-decoration:none; }
-a:focus-visible, button:focus-visible { outline:none; box-shadow:var(--focus); border-radius:12px; }
 img{ max-width:100%; display:block; }
+:focus-visible { outline:none; box-shadow:var(--focus); border-radius:12px; }
 
+/* Layout wrapper */
 .wrap{
   max-width: var(--wrap);
   margin: 0 auto;
@@ -57,401 +57,19 @@ img{ max-width:100%; display:block; }
   height: var(--dock);
   display:grid;
   place-items:center;
-  border-radius: 999px;
+  border-radius:999px;
   background: rgba(255,255,255,.06);
   border: 1px solid rgba(255,255,255,.10);
   box-shadow: 0 12px 30px rgba(0,0,0,.35);
   transition: .18s ease;
   color: rgba(255,255,255,.85);
+  position: relative;
 }
 .dock-btn:hover{ transform: translateY(-1px); background: rgba(255,255,255,.09); }
 .dock-btn.is-active{
   background: linear-gradient(135deg, rgba(124,58,237,.95), rgba(6,182,212,.75));
   border-color: rgba(255,255,255,.16);
 }
-.ico{ font-size: 18px; }
-
-/* Hero split */
-.hero{
-  min-height: 74vh;
-  display:grid;
-  grid-template-columns: 420px 1fr;
-  gap: 36px;
-  align-items:center;
-  padding-right: calc(var(--dock) + 28px);
-}
-
-.hero-left{ display:flex; justify-content:center; }
-.profile-card{
-  width: 100%;
-  max-width: 420px;
-  background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.02));
-  border: 1px solid rgba(255,255,255,.10);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow);
-  padding: 16px;
-  position: relative;
-  overflow:hidden;
-}
-.profile-card::before{
-  content:"";
-  position:absolute;
-  left:-80px; top:-80px;
-  width: 220px; height: 220px;
-  background: linear-gradient(135deg, rgba(124,58,237,.70), rgba(6,182,212,.55));
-  filter: blur(0px);
-  opacity: .35;
-  transform: rotate(18deg);
-}
-.profile-media{
-  position: relative;
-  border-radius: calc(var(--radius) - 6px);
-  overflow:hidden;
-  background: #0c1016;
-  border: 1px solid rgba(255,255,255,.10);
-  min-height: 420px;
-}
-.profile-media img{ width:100%; height:100%; object-fit:cover; }
-.profile-media.no-img .profile-placeholder{ display:grid; }
-.profile-media img.is-hidden{ display:none; }
-.profile-placeholder{
-  display:none;
-  place-items:center;
-  height: 420px;
-  background: radial-gradient(700px 300px at 20% 10%, rgba(124,58,237,.22), transparent 55%),
-              radial-gradient(700px 300px at 80% 30%, rgba(6,182,212,.18), transparent 55%),
-              linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.01));
-}
-.profile-placeholder .mark{
-  width: 100%;
-  height: 100%;
-  border-radius: 24px;
-  position: absolute;
-
-  /* ✅ favicon no mark */
-  background-image: url("../../favicon.ico");
-  background-repeat: no-repeat;
-  background-position: center;
-  background-size: cover;
-
-  /* mantém o efeito “suave” 
-  opacity: 0.30; */
-  filter: saturate(1.05) contrast(1.05);
-}
-.profile-placeholder .initials{
-  font-weight:900;
-  letter-spacing:2px;
-  font-size: 44px;
-  opacity:.85;
-}
-
-.profile-badge{
-  margin-top: 12px;
-  display:flex;
-  gap:10px;
-  align-items:center;
-  padding: 10px 12px;
-  border-radius: 14px;
-  border: 1px solid rgba(255,255,255,.10);
-  background: rgba(0,0,0,.22);
-  color: var(--muted);
-  font-size: 13px;
-}
-.profile-badge .dot{
-  width: 10px; height:10px;
-  border-radius:999px;
-  background: #22c55e;
-  box-shadow: 0 0 0 4px rgba(34,197,94,.15);
-}
-
-/* Right side */
-.hero-right{ max-width: 720px; }
-.kicker{
-  margin:0 0 10px;
-  letter-spacing: 3px;
-  color: var(--muted2);
-  font-weight: 700;
-  font-size: 12px;
-}
-.title{
-  margin:0 0 12px;
-  font-size: clamp(34px, 4vw, 54px);
-  letter-spacing: -1px;
-  line-height:1.05;
-  font-weight: 900;
-}
-.accent{
-  background: linear-gradient(135deg, var(--accent1), var(--accent2));
-  -webkit-background-clip:text;
-  background-clip:text;
-  color:transparent;
-}
-.subtitle{
-  margin:0 0 18px;
-  color: var(--muted);
-  font-size: 15.5px;
-  line-height: 1.7;
-  max-width: 58ch;
-}
-.hero-actions{ display:flex; gap: 12px; flex-wrap:wrap; margin-top: 6px; }
-
-.btn{
-  border: 1px solid rgba(255,255,255,.12);
-  background: rgba(255,255,255,.06);
-  color: var(--text);
-  font-weight: 900;
-  letter-spacing:.4px;
-  padding: 12px 18px;
-  border-radius: 999px;
-  transition: .18s ease;
-  cursor:pointer;
-  display:inline-flex;
-  align-items:center;
-  justify-content:center;
-}
-.btn:hover{ transform: translateY(-1px); background: rgba(255,255,255,.09); }
-.btn.primary{
-  border-color: rgba(255,255,255,.16);
-  background: linear-gradient(135deg, rgba(124,58,237,.95), rgba(6,182,212,.75));
-  box-shadow: 0 16px 40px rgba(124,58,237,.18);
-}
-.btn.ghost{ background: rgba(255,255,255,.04); }
-.btn.small{ padding: 10px 14px; font-size: 13px; border-radius: 999px; }
-
-.mini{
-  margin-top: 18px;
-  display:flex;
-  gap: 14px;
-  flex-wrap: wrap;
-}
-.mini-item{
-  padding: 10px 12px;
-  border-radius: 14px;
-  border: 1px solid rgba(255,255,255,.10);
-  background: rgba(255,255,255,.03);
-}
-.mini-k{ display:block; font-size: 11px; letter-spacing:2px; color:var(--muted2); font-weight:800; }
-.mini-v{ font-size: 13px; color:var(--muted); }
-
-/* Sections */
-.section{ padding: 56px 0 10px; padding-right: calc(var(--dock) + 28px); }
-.section-head{
-  display:flex;
-  justify-content:space-between;
-  align-items:flex-end;
-  gap: 14px;
-  margin-bottom: 18px;
-}
-.section-head.center{ justify-content:center; text-align:center; }
-.h2{
-  margin:0;
-  font-size: 28px;
-  letter-spacing:-.6px;
-  font-weight: 900;
-}
-.h2.big{ font-size: clamp(34px, 4vw, 56px); }
-.lead{
-  margin:0;
-  color: var(--muted);
-  line-height:1.6;
-  max-width: 62ch;
-}
-
-.cards-2{
-  display:grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 14px;
-}
-.card{
-  background: rgba(255,255,255,.04);
-  border: 1px solid rgba(255,255,255,.10);
-  border-radius: var(--radius);
-  box-shadow: 0 18px 50px rgba(0,0,0,.35);
-  padding: 18px;
-}
-.card h3{ margin:0 0 10px; font-size:16px; letter-spacing:-.2px; }
-.list{ margin:0; padding-left: 18px; color: var(--muted); line-height: 1.75; }
-.muted{ color: var(--muted); }
-
-/* Chips */
-.chips{ display:flex; flex-wrap:wrap; gap:8px; }
-.chips.small .chip{ font-size: 11px; padding: 5px 10px; }
-.chip{
-  font-size: 12px;
-  font-weight: 900;
-  padding: 6px 12px;
-  border-radius: 999px;
-  border: 1px solid rgba(255,255,255,.12);
-  background: rgba(0,0,0,.22);
-  color: rgba(255,255,255,.82);
-}
-
-/* Portfolio grid */
-.projects{
-  display:grid;
-  grid-template-columns: repeat(2, minmax(0,1fr));
-  gap: 16px;
-}
-.project{
-  border-radius: var(--radius);
-  border: 1px solid rgba(255,255,255,.10);
-  overflow:hidden;
-  background: rgba(255,255,255,.03);
-  box-shadow: 0 18px 50px rgba(0,0,0,.35);
-}
-.thumb{
-  height: 190px;
-  background:
-    radial-gradient(700px 260px at 20% 10%, rgba(124,58,237,.22), transparent 60%),
-    radial-gradient(700px 260px at 80% 30%, rgba(6,182,212,.18), transparent 60%),
-    linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.01));
-  position: relative;
-}
-.thumb-inner{
-  position:absolute;
-  left:16px; bottom:16px;
-  display:flex;
-  flex-direction:column;
-  gap:6px;
-}
-.thumb-tag{
-  font-size:11px;
-  letter-spacing:2px;
-  font-weight:900;
-  color: rgba(255,255,255,.65);
-}
-.thumb-title{
-  font-size:18px;
-  font-weight: 900;
-  letter-spacing:-.3px;
-}
-.project-body{ padding: 16px; }
-.project-desc{ margin:0 0 10px; color: var(--muted); line-height:1.6; }
-.actions{ display:flex; gap:10px; flex-wrap:wrap; margin-top: 12px; }
-
-/* App frame */
-.is-hidden{ display:none !important; }
-.appframe{ padding-right: calc(var(--dock) + 28px); }
-.appframe-bar{
-  display:flex;
-  justify-content:space-between;
-  gap:12px;
-  padding: 12px 14px;
-  border-radius: 16px;
-  border: 1px solid rgba(255,255,255,.10);
-  background: rgba(255,255,255,.04);
-}
-.appframe-left{
-  display:flex;
-  gap:10px;
-  align-items:baseline;
-  flex-wrap:wrap;
-}
-.appframe-label{
-  letter-spacing: 3px;
-  font-size: 11px;
-  font-weight: 900;
-  color: var(--muted2);
-}
-.appframe-title{ font-size: 14px; }
-.appframe-status{ font-size: 12px; color: var(--muted); }
-
-.appframe-body{
-  margin-top: 12px;
-  border-radius: 16px;
-  overflow:hidden;
-  border: 1px solid rgba(255,255,255,.10);
-  background: rgba(0,0,0,.35);
-}
-
-#appFrame{
-  width:100%;
-  border:0;
-  display:block;
-  height: calc(100dvh - 150px);
-  min-height: 560px;
-}
-@supports not (height: 100dvh){
-  #appFrame{ height: calc(100vh - 150px); }
-}
-
-/* Footer */
-.footer{
-  padding: 30px 0 40px;
-  color: var(--muted2);
-  font-size: 13px;
-  padding-right: calc(var(--dock) + 28px);
-}
-
-/* Responsive */
-@media (max-width: 980px){
-  .dock{ right: 10px; }
-  .hero{ grid-template-columns: 1fr; min-height: auto; padding-right: calc(var(--dock) + 18px); }
-  .profile-media{ min-height: 340px; }
-  .profile-placeholder{ height: 340px; }
-  .section{ padding-right: calc(var(--dock) + 18px); }
-  .cards-2{ grid-template-columns: 1fr; }
-  .projects{ grid-template-columns: 1fr; }
-  #appFrame{ min-height: 520px; }
-}
-
-/* =========================
-   SPA Full-page sections
-========================= */
-
-/* O main vira o container que rola (SPA) */
-.wrap.spa{
-  height: 100vh;
-  overflow-y: auto;
-  scroll-snap-type: y mandatory;
-  scroll-behavior: smooth;
-  /* evita “corte” por causa do header fixo */
-  scroll-padding-top: 24px;
-}
-
-/* Cada section vira uma “página” */
-.page{
-  min-height: 100vh;
-  scroll-snap-align: start;
-  /* espaço vertical para ficar confortável */
-  padding: 80px 0 50px;
-  /* garante que conteúdo não fique colado no topo */
-  display: flex;
-  align-items: center;
-}
-
-/* Algumas seções têm muito conteúdo; nessas, alinhamos no topo */
-#portfolio.page,
-#contato.page,
-#sobre.page{
-  align-items: flex-start;
-}
-
-/* Hero já é uma tela */
-.hero.page{
-  padding-top: 40px;
-}
-
-/* Appframe (demo) também ocupa a tela */
-.appframe.page{
-  padding-top: 28px;
-}
-
-/* ============ Scroll lock (quando demo abre) ============ */
-body.scroll-locked{
-  overflow: hidden; /* só para garantir */
-}
-
-.wrap.spa.scroll-locked{
-  overflow: hidden;
-}
-
-/* ============ Melhorias no Dock (menu direito) ============ */
-.dock-btn{
-  position: relative;
-}
-
-/* Tooltip discreto */
 .dock-btn::after{
   content: attr(data-tip);
   position: absolute;
@@ -470,232 +88,202 @@ body.scroll-locked{
   transition: .15s ease;
   white-space: nowrap;
 }
+.dock-btn:hover::after{ opacity: 1; }
+.ico{ font-size: 18px; }
 
-.dock-btn:hover::after{
-  opacity: 1;
-}
-
-/* 1) Evita overflow horizontal causado por padding/fixed dock */
-html, body {
-  width: 100%;
-  height: 100%;
-  overflow-x: hidden;
-}
-
-/* 2) Esconder a barra de rolagem visualmente, mas manter a rolagem funcional */
-.wrap.spa {
-  /* mantém o comportamento SPA */
-  overflow-y: auto;
-  scrollbar-width: none;        /* Firefox */
-  -ms-overflow-style: none;     /* IE 10+ */
-}
-.wrap.spa::-webkit-scrollbar {   /* Chrome, Edge, Safari */
-  display: none;
-}
-
-/* 3) Ajustes para evitar que o dock cause overflow em telas pequenas */
-.wrap { padding-right: 18px; } /* fallback */
-@media (min-width: 980px) {
-  .wrap { padding-right: calc(var(--dock) + 28px); }
-}
-
-/* 4) Tornar o hero responsivo e evitar colunas fixas que estouram */
-.hero {
-  grid-template-columns: minmax(260px, 420px) 1fr;
+/* HERO (split) */
+.hero{
+  min-height: 74vh;
+  display:grid;
+  grid-template-columns: minmax(260px,420px) 1fr;
   gap: 28px;
-  align-items: center;
+  align-items:center;
   padding-right: calc(var(--dock) + 28px);
 }
-@media (max-width: 980px) {
-  .hero { grid-template-columns: 1fr; padding-right: calc(var(--dock) + 18px); }
-  .profile-media { min-height: 320px; }
+.hero-left{ display:flex; justify-content:center; }
+.profile-card{
+  width:100%;
+  max-width:420px;
+  background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.02));
+  border: 1px solid rgba(255,255,255,.10);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 16px;
+  position: relative;
+  overflow:hidden;
 }
-
-/* 5) Limitar larguras e usar clamp para tipografia grande */
-.title { font-size: clamp(28px, 4vw, 48px); }
-.h2.big { font-size: clamp(28px, 4vw, 44px); }
-
-/* 6) Projetos: tornar grid fluida e evitar overflow vertical desnecessário */
-.projects {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-  gap: 16px;
+.profile-card::before{
+  content:"";
+  position:absolute;
+  left:-60px; top:-60px;
+  width: 180px; height: 180px;
+  background: linear-gradient(135deg, rgba(124,58,237,.70), rgba(6,182,212,.55));
+  opacity:.35; transform: rotate(18deg);
 }
-
-/* 7) Cards e thumbs: garantir que imagens/áreas não cresçam além do container */
-.project, .card, .profile-card {
-  max-width: 100%;
-  box-sizing: border-box;
+.profile-media{
+  border-radius: calc(var(--radius) - 6px);
+  overflow:hidden;
+  background:#0c1016;
+  border:1px solid rgba(255,255,255,.10);
+  min-height: 320px;
 }
+.profile-media img{ width:100%; height:100%; object-fit:cover; }
+.profile-placeholder{ display:grid; place-items:center; height:320px; }
 
-/* 8) Iframe demo: limitar altura para não empurrar a página */
-#appFrame {
-  height: min(70vh, 820px);
-  max-height: calc(100vh - 180px);
+/* small badge */
+.profile-badge{
+  margin-top:12px;
+  display:flex; gap:10px; align-items:center;
+  padding:10px 12px; border-radius:14px;
+  border:1px solid rgba(255,255,255,.10);
+  background: rgba(0,0,0,.22);
+  color: var(--muted); font-size:13px;
 }
+.profile-badge .dot{ width:10px; height:10px; border-radius:999px; background:#22c55e; box-shadow:0 0 0 4px rgba(34,197,94,.15); }
 
-/* 9) Evitar que elementos com sombras/pseudo elementos causem overflow */
-.profile-card::before {
-  left: -60px; top: -60px; width: 180px; height: 180px; /* reduz um pouco */
+/* Hero right */
+.hero-right{ max-width:720px; }
+.kicker{ margin:0 0 10px; letter-spacing:3px; color:var(--muted2); font-weight:700; font-size:12px; }
+.title{ margin:0 0 12px; font-size: clamp(28px, 4vw, 48px); letter-spacing:-1px; line-height:1.05; font-weight:900; }
+.accent{ background: linear-gradient(135deg, var(--accent1), var(--accent2)); -webkit-background-clip:text; background-clip:text; color:transparent; }
+.subtitle{ margin:0 0 18px; color:var(--muted); font-size:15.5px; line-height:1.7; max-width:58ch; }
+.hero-actions{ display:flex; gap:12px; flex-wrap:wrap; margin-top:6px; }
+
+/* Buttons */
+.btn{
+  border:1px solid rgba(255,255,255,.12);
+  background: rgba(255,255,255,.06);
+  color:var(--text);
+  font-weight:900; letter-spacing:.4px;
+  padding:12px 18px; border-radius:999px;
+  transition:.18s ease; cursor:pointer;
+  display:inline-flex; align-items:center; justify-content:center;
 }
+.btn:hover{ transform: translateY(-1px); background: rgba(255,255,255,.09); }
+.btn.primary{ border-color: rgba(255,255,255,.16); background: linear-gradient(135deg, rgba(124,58,237,.95), rgba(6,182,212,.75)); box-shadow: 0 16px 40px rgba(124,58,237,.18); }
+.btn.ghost{ background: rgba(255,255,255,.04); }
+.btn.small{ padding:10px 14px; font-size:13px; }
 
-/* 10) Pequenos ajustes de espaçamento para telas pequenas */
-@media (max-width: 520px) {
-  .hero { gap: 18px; padding: 18px; }
-  .subtitle { font-size: 14px; }
-  .btn { padding: 10px 12px; }
+/* mini info */
+.mini{ margin-top:18px; display:flex; gap:14px; flex-wrap:wrap; }
+.mini-item{ padding:10px 12px; border-radius:14px; border:1px solid rgba(255,255,255,.10); background: rgba(255,255,255,.03); }
+.mini-k{ display:block; font-size:11px; letter-spacing:2px; color:var(--muted2); font-weight:800; }
+.mini-v{ font-size:13px; color:var(--muted); }
+
+/* Sections (top/bottom split) */
+.section{ padding:56px 0 10px; padding-right: calc(var(--dock) + 28px); box-sizing:border-box; }
+.section-top { width:100%; margin-bottom:12px; }
+.section-bottom { width:100%; }
+
+/* Section head (title + lead) */
+.section-head{
+  display:flex; flex-direction:column; gap:12px;
+  align-items:flex-start; text-align:left; margin:0 auto 8px; max-width:72ch;
 }
+.section-head.center{ align-items:center; text-align:center; }
 
-/* === Forçar título + lead empilhados e cards abaixo === */
+/* Headings / lead */
+.h2{ margin:0; font-size:28px; letter-spacing:-.6px; font-weight:900; }
+.h2.big{ font-size: clamp(28px, 3.6vw, 56px); margin-bottom:6px; }
+.lead{ margin:0; color:var(--muted); line-height:1.6; }
 
-/* Quando a seção usa .section-head.center queremos coluna */
-.section-head.center {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
-  gap: 12px;
-  margin-bottom: 22px; /* separa do grid de cards */
-}
-
-/* Para qualquer .section-head com muito conteúdo, empilha em telas pequenas */
-.section-head {
-  gap: 12px;
-}
-@media (max-width: 980px) {
-  .section-head {
-    flex-direction: column;
-    align-items: flex-start;
-    text-align: left;
-  }
-  .section-head.center {
-    align-items: center;
-    text-align: center;
-  }
-}
-
-/* Garante que o bloco de cards fique sempre abaixo do header e ocupe 100% */
-.cards-2,
-.projects {
-  margin-top: 8px;
-  width: 100%;
-  clear: both;
-}
-
-/* Ajusta o lead para não ficar muito largo e centraliza visualmente */
-.section-head .lead {
-  max-width: 72ch;
-  margin: 0 auto;
-  color: var(--muted);
-  line-height: 1.6;
-}
-
-/* Se quiser que o título fique sempre em uma linha própria (sem dividir com o lead) */
-.section-head > .h2,
-.section-head > .h2.big {
-  width: 100%;
-  margin-bottom: 6px;
-}
-
-/* Pequeno refinamento visual para separar header dos cards */
-.section .cards-2,
-.section .projects {
-  padding-top: 6px;
-  gap: 16px;
-}
-
-/* Força snap firme e previne "bounce" */
-.wrap.spa {
-  scroll-snap-type: y mandatory;
-  scroll-behavior: smooth;
-  overflow-y: auto;
-  overscroll-behavior-y: contain; /* evita scroll da página pai em navegadores compatíveis */
-}
-
-/* Cada página é um ponto de snap e não permite pular o snap */
-.page {
-  scroll-snap-align: start;
-  scroll-snap-stop: always; /* garante que o navegador pare no snap */
-}
-
-/* Respeita preferência do usuário por reduzir animações */
-@media (prefers-reduced-motion: reduce) {
-  .wrap.spa { scroll-behavior: auto; }
-}
-
-/* === Layout: título em cima, cards abaixo (global) === */
-
-/* 1. Força header das sections em coluna */
-.section-head {
-  display: flex !important;
-  flex-direction: column !important;
-  align-items: flex-start !important;
-  text-align: left !important;
-  gap: 12px !important;
-  margin-bottom: 18px !important;
-}
-
-/* centraliza quando a classe center estiver presente */
-.section-head.center {
-  align-items: center !important;
-  text-align: center !important;
-}
-
-/* 2. Garante que os grids de cards fiquem sempre abaixo do header e sejam responsivos */
+/* Cards grid */
 .cards-2, .projects {
-  display: grid !important;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)) !important;
-  gap: 16px !important;
-  width: 100% !important;
-  margin-top: 8px !important;
-  clear: both !important;
+  display:grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap:16px;
+  margin-top:8px;
+  align-items:start;
 }
 
-/* 3. Força empilhamento dentro de cada card/project (thumb acima, body abaixo) */
-.project, .card {
-  display: block !important;
-  width: 100% !important;
-  box-sizing: border-box !important;
+/* Card / project base */
+.card, .project {
+  background: rgba(255,255,255,.04);
+  border:1px solid rgba(255,255,255,.10);
+  border-radius: var(--radius);
+  box-shadow: 0 18px 50px rgba(0,0,0,.35);
+  padding: 18px;
+  overflow:hidden;
+  width:100%;
+  box-sizing:border-box;
 }
-.project .thumb, .card .thumb {
-  width: 100% !important;
-  display: block !important;
-  min-height: 140px;
-}
-.project .project-body, .card > *:not(.thumb) {
-  width: 100% !important;
-  display: block !important;
+.card h3{ margin:0 0 10px; font-size:16px; }
+.list{ margin:0; padding-left:18px; color:var(--muted); line-height:1.75; }
+
+/* Chips */
+.chips{ display:flex; flex-wrap:wrap; gap:8px; }
+.chips.small .chip{ font-size:11px; padding:5px 10px; }
+.chip{
+  font-size:12px; font-weight:900; padding:6px 12px; border-radius:999px;
+  border:1px solid rgba(255,255,255,.12); background: rgba(0,0,0,.22); color: rgba(255,255,255,.82);
 }
 
-/* 4. Hero: tornar a coluna esquerda fluida e evitar overflow */
-.hero {
-  grid-template-columns: minmax(260px, 420px) 1fr !important;
-  gap: 28px;
-  align-items: center;
-  padding-right: calc(var(--dock) + 28px);
+/* Project specific */
+.project{ padding:0; background: rgba(255,255,255,.03); }
+.thumb{
+  height:190px;
+  background:
+    radial-gradient(700px 260px at 20% 10%, rgba(124,58,237,.22), transparent 60%),
+    radial-gradient(700px 260px at 80% 30%, rgba(6,182,212,.18), transparent 60%),
+    linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.01));
+  position:relative;
 }
-@media (max-width: 980px) {
-  .hero {
-    grid-template-columns: 1fr !important;
-    padding-right: calc(var(--dock) + 18px);
-  }
-  .profile-media { min-height: 320px; }
+.thumb-inner{ position:absolute; left:16px; bottom:16px; display:flex; flex-direction:column; gap:6px; }
+.thumb-tag{ font-size:11px; letter-spacing:2px; font-weight:900; color: rgba(255,255,255,.65); }
+.thumb-title{ font-size:18px; font-weight:900; letter-spacing:-.3px; }
+.project-body{ padding:16px; }
+.project-desc{ margin:0 0 10px; color:var(--muted); line-height:1.6; }
+.actions{ display:flex; gap:10px; flex-wrap:wrap; margin-top:12px; }
+
+/* Appframe */
+.appframe-bar{
+  display:flex; justify-content:space-between; gap:12px;
+  padding:12px 14px; border-radius:16px; border:1px solid rgba(255,255,255,.10);
+  background: rgba(255,255,255,.04);
+}
+.appframe-left{ display:flex; gap:10px; align-items:baseline; flex-wrap:wrap; }
+.appframe-label{ letter-spacing:3px; font-size:11px; font-weight:900; color:var(--muted2); }
+.appframe-title{ font-size:14px; }
+.appframe-status{ font-size:12px; color:var(--muted); }
+.appframe-body{ margin-top:12px; border-radius:16px; overflow:hidden; border:1px solid rgba(255,255,255,.10); background: rgba(0,0,0,.35); }
+
+/* iframe sizing */
+#appFrame{ width:100%; border:0; display:block; height: min(70vh, 820px); max-height: calc(100vh - 180px); }
+
+/* Footer */
+.footer{ padding:30px 0 40px; color:var(--muted2); font-size:13px; padding-right: calc(var(--dock) + 28px); }
+
+/* SPA behavior */
+.wrap.spa{
+  height:100vh; overflow-y:auto; scroll-snap-type:y mandatory; scroll-behavior:smooth; scroll-padding-top:24px;
+  scrollbar-width:none; -ms-overflow-style:none;
+}
+.wrap.spa::-webkit-scrollbar{ display:none; }
+.page{ min-height:100vh; scroll-snap-align:start; scroll-snap-stop:always; padding:80px 0 50px; display:flex; align-items:center; box-sizing:border-box; }
+#portfolio.page, #contato.page, #sobre.page { align-items:flex-start; }
+.hero.page{ padding-top:40px; }
+.appframe.page{ padding-top:28px; }
+
+/* Scroll lock */
+body.scroll-locked, .wrap.spa.scroll-locked { overflow:hidden; }
+
+/* Responsive tweaks */
+@media (max-width: 980px){
+  .dock{ right:10px; }
+  .hero{ grid-template-columns: 1fr; min-height:auto; padding-right: calc(var(--dock) + 18px); }
+  .profile-media, .profile-placeholder { min-height: 340px; }
+  .section{ padding-right: calc(var(--dock) + 18px); }
+  .cards-2, .projects { grid-template-columns: 1fr; gap:12px; }
+  #appFrame{ min-height:520px; }
+}
+@media (max-width: 520px){
+  .section{ padding:36px 16px; }
+  .section-head{ gap:10px; margin-bottom:14px; max-width:100%; }
+  .subtitle, .lead{ font-size:14px; line-height:1.6; }
+  .btn{ padding:10px 12px; }
 }
 
-/* 5. Tipografia e espaçamento para melhor leitura */
-.title { font-size: clamp(28px, 4vw, 48px); line-height: 1.05; }
-.h2.big { font-size: clamp(28px, 3.6vw, 44px); }
-.section .lead { max-width: 72ch; color: var(--muted); margin: 0 auto; }
-
-/* 6. Evita que pseudo-elementos causem overflow */
-.profile-card::before {
-  left: -60px; top: -60px; width: 180px; height: 180px;
-}
-
-/* 7. Pequenos refinamentos mobile */
-@media (max-width: 520px) {
-  .section-head { gap: 10px; margin-bottom: 14px; }
-  .subtitle, .lead { font-size: 14px; line-height: 1.6; }
-  .mini { gap: 10px; }
-  .btn { padding: 10px 12px; }
+/* Accessibility: respect reduced motion */
+@media (prefers-reduced-motion: reduce){
+  .wrap.spa { scroll-behavior: auto; }
 }
