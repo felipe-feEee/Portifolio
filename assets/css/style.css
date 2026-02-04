@@ -533,3 +533,30 @@ body.scroll-locked, .wrap.spa.scroll-locked { overflow:hidden; }
 @media (max-width: 980px) {
   .page { padding: 60px 0 40px; }
 }
+
+/* Desativa hover em dispositivos touch: hover só aplica quando body NÃO tem .is-touch */
+:not(.is-touch) .dock-btn:hover,
+:not(.is-touch) .dock-btn:focus-visible {
+  width: var(--dock-expanded-width);
+  background: rgba(255,255,255,.09);
+  transform: translateY(-2px);
+}
+
+:not(.is-touch) .dock-btn:hover .dock-label,
+:not(.is-touch) .dock-btn:focus-visible .dock-label {
+  opacity: 1;
+  transform: translateX(0);
+  pointer-events: auto;
+}
+
+/* Em dispositivos touch, podemos usar uma classe .touched para mostrar o label temporariamente */
+.is-touch .dock-btn.touched .dock-label {
+  opacity: 1;
+  transform: translateX(0);
+  pointer-events: auto;
+}
+.is-touch .dock-btn.touched {
+  width: var(--dock-expanded-width);
+  background: rgba(255,255,255,.09);
+  transform: translateY(-2px);
+}
