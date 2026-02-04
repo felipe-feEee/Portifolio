@@ -3,7 +3,10 @@ document.addEventListener("DOMContentLoaded", () => {
   const yearEl = document.getElementById("year");
   if (yearEl) yearEl.textContent = String(new Date().getFullYear());
 
-  // Frame demo
+  // SPA scroller
+  const scroller = document.getElementById("app");
+
+  // Demo elements
   const heroSection = document.getElementById("heroSection");
   const frameSection = document.getElementById("appFrameSection");
   const frame = document.getElementById("appFrame");
@@ -13,6 +16,18 @@ document.addEventListener("DOMContentLoaded", () => {
   const btnNewTab = document.getElementById("appOpenNewTab");
   const portfolio = document.getElementById("portfolio");
   const openButtons = document.querySelectorAll(".js-open-system");
+
+  // Dock spy
+  const spyButtons = document.querySelectorAll(".dock-btn[data-spy]");
+  const spySections = [
+    document.getElementById("heroSection"),
+    document.getElementById("sobre"),
+    document.getElementById("portfolio"),
+    document.getElementById("contato"),
+  ].filter(Boolean);
+
+  // Estado para restaurar scroll
+  let savedScrollTop = 0;
 
   function setNewTab(enabled, url = "#") {
     if (!btnNewTab) return;
@@ -25,9 +40,34 @@ document.addEventListener("DOMContentLoaded", () => {
   function showLoading() { if (frameStatus) frameStatus.textContent = "Carregando…"; }
   function showReady() { if (frameStatus) frameStatus.textContent = "Pronto ✅"; }
 
+  function lockScroll() {
+    // salva posição do scroller e trava
+    if (scroller) savedScrollTop = scroller.scrollTop;
+
+    document.body.classList.add("scroll-locked");
+    if (scroller) scroller.classList.add("scroll-locked");
+  }
+
+  function unlockScroll() {
+    document.body.classList.remove("scroll-locked");
+    if (scroller) scroller.classList.remove("scroll-locked");
+  }
+
+  function scrollToTop() {
+    if (scroller) scroller.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  function scrollToEl(el) {
+    if (!el || !scroller) return;
+    // rola dentro do scroller, respeitando o layout
+    const top = el.offsetTop;
+    scroller.scrollTo({ top, behavior: "smooth" });
+  }
+
   function openSystem(url, title) {
     if (!heroSection || !frameSection || !frame) return;
 
+    // troca telas
     heroSection.classList.add("is-hidden");
     frameSection.classList.remove("is-hidden");
 
@@ -35,15 +75,20 @@ document.addEventListener("DOMContentLoaded", () => {
     setNewTab(true, url);
     showLoading();
 
+    // trava scroll do SPA
+    lockScroll();
+
+    // carrega
     frame.src = url;
 
-    // rola para o topo
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    // vai pro topo (inicio)
+    scrollToTop();
   }
 
   function closeSystem() {
     if (!heroSection || !frameSection || !frame) return;
 
+    // para o iframe
     frame.src = "about:blank";
     frameSection.classList.add("is-hidden");
     heroSection.classList.remove("is-hidden");
@@ -52,10 +97,14 @@ document.addEventListener("DOMContentLoaded", () => {
     if (frameStatus) frameStatus.textContent = "";
     setNewTab(false);
 
-    if (portfolio) portfolio.scrollIntoView({ behavior: "smooth", block: "start" });
+    // libera scroll
+    unlockScroll();
+
+    // volta para portfólio
+    scrollToEl(portfolio);
   }
 
-  // iframe load -> status "Pronto"
+  // iframe load => pronto
   if (frame) {
     frame.addEventListener("load", () => {
       try {
@@ -64,7 +113,8 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  openButtons.forEach(btn => {
+  // Abrir demo
+  openButtons.forEach((btn) => {
     btn.addEventListener("click", () => {
       const url = btn.getAttribute("data-url");
       const title = btn.getAttribute("data-title");
@@ -72,30 +122,42 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   });
 
+  // Fechar demo
   if (btnClose) btnClose.addEventListener("click", closeSystem);
 
-  // ESC fecha demo
+  // ESC fecha
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape" && frameSection && !frameSection.classList.contains("is-hidden")) {
       closeSystem();
     }
   });
 
-  // Dock active spy (marca seção atual como ativa)
-  const spyButtons = document.querySelectorAll(".dock-btn[data-spy]");
-  const sections = ["top","sobre","portfolio","contato"]
-    .map(id => document.getElementById(id))
-    .filter(Boolean);
-
+  // ===== Dock Spy com IntersectionObserver (mais estável com seções 100vh) =====
   const io = new IntersectionObserver((entries) => {
-    const visible = entries.filter(en => en.isIntersecting).sort((a,b)=> b.intersectionRatio-a.intersectionRatio)[0];
+    const visible = entries
+      .filter(en => en.isIntersecting)
+      .sort((a,b) => b.intersectionRatio - a.intersectionRatio)[0];
+
     if (!visible) return;
     const id = visible.target.id;
 
-    spyButtons.forEach(b => b.classList.toggle("is-active", b.getAttribute("data-spy") === id));
-  }, { rootMargin: "-40% 0px -55% 0px", threshold: [0.05, 0.15, 0.25] });
+    spyButtons.forEach(b => {
+      b.classList.toggle("is-active", b.getAttribute("data-spy") === id);
+    });
+  }, { root: scroller, rootMargin: "-35% 0px -55% 0px", threshold: [0.10, 0.20, 0.35] });
 
-  sections.forEach(s => io.observe(s));
+  spySections.forEach(s => io.observe(s));
 
   setNewTab(false);
+
+  // ===== Navegação do dock usando scroll interno do scroller =====
+  spyButtons.forEach(btn => {
+    btn.addEventListener("click", (ev) => {
+      // evita comportamento padrão (window)
+      ev.preventDefault();
+      const targetId = btn.getAttribute("data-spy");
+      const targetEl = document.getElementById(targetId);
+      scrollToEl(targetEl);
+    });
+  });
 });
