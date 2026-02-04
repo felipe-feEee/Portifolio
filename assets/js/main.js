@@ -320,3 +320,62 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 });
 
+// Permite rolagem interna em .scrollable sem mudar a section
+(function () {
+  const container = document.querySelector('.wrap.spa') || document.getElementById('app');
+  if (!container) return;
+
+  function findScrollableAncestor(el) {
+    while (el && el !== document && el !== container) {
+      if (el.classList && el.classList.contains('scrollable')) {
+        if (el.scrollHeight > el.clientHeight + 1) return el;
+      }
+      el = el.parentElement;
+    }
+    return null;
+  }
+
+  // Wheel handler: permite scroll interno quando possível; caso contrário previne para não trocar section
+  container.addEventListener('wheel', (e) => {
+    const sc = findScrollableAncestor(e.target);
+    if (sc) {
+      const delta = e.deltaY;
+      if ((delta > 0 && sc.scrollTop + sc.clientHeight >= sc.scrollHeight - 1) ||
+          (delta < 0 && sc.scrollTop <= 1)) {
+        // se o scroll interno atingiu o fim, evita "vazar" para o container
+        e.preventDefault();
+      } else {
+        // permite rolar dentro do scrollable
+        return;
+      }
+    } else {
+      // não está dentro de scrollable: evita que o container role (se esse for o comportamento desejado)
+      // se você quiser permitir rolagem do container normalmente, comente a linha abaixo
+      e.preventDefault();
+    }
+  }, { passive: false });
+
+  // Touch handlers (mobile): similar ao wheel
+  let touchStartY = 0;
+  container.addEventListener('touchstart', (e) => {
+    if (e.touches && e.touches.length) touchStartY = e.touches[0].clientY;
+  }, { passive: true });
+
+  container.addEventListener('touchmove', (e) => {
+    const touchY = (e.touches && e.touches[0]) ? e.touches[0].clientY : 0;
+    const dy = touchStartY - touchY;
+    const sc = findScrollableAncestor(e.target);
+
+    if (sc) {
+      if ((dy > 0 && sc.scrollTop + sc.clientHeight < sc.scrollHeight - 1) ||
+          (dy < 0 && sc.scrollTop > 1)) {
+        return; // permite scroll interno
+      } else {
+        e.preventDefault(); // evita "vazar" para o container
+      }
+    } else {
+      e.preventDefault(); // evita mudar section por swipe fora de scrollable
+    }
+  }, { passive: false });
+
+})();
