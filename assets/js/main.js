@@ -1,19 +1,17 @@
-// main.js — navegação por menu apenas (scroll desativado entre sections)
-// Funcionalidades:
-// - atualiza ano no footer
-// - abre/fecha demo em iframe com lock de scroll
-// - dock navigation (clique apenas) para navegar entre sections
-// - previne scroll/touch/wheel que mudaria a seção
-// - IntersectionObserver para marcar botão ativo no dock
-// - enforceStackLayout como fallback para garantir header acima e cards abaixo
+// main.js — navegação por clique (dock) e rolagem dentro de cada .page sem trocar de seção
+// - permite rolar o conteúdo dentro de cada .page
+// - evita que eventos de wheel/touch vazem para outros handlers que poderiam trocar de seção
+// - mantém navegação por clique no dock e links com hash
+// - gerencia abertura/fechamento de demo em iframe com lock de scroll
+// - marca item ativo no dock via IntersectionObserver
+// - bloqueia teclas de navegação apenas quando não estiver em um campo de formulário
 
 document.addEventListener("DOMContentLoaded", () => {
-  // Config
   const SCROLL_LOCK_CLASS = "scroll-locked";
 
   // DOM
   const yearEl = document.getElementById("year");
-  const container = document.querySelector(".wrap.spa") || document.getElementById("app");
+  const container = document.querySelector(".wrap.spa") || document.getElementById("app") || document.documentElement;
   const heroSection = document.getElementById("heroSection");
   const frameSection = document.getElementById("appFrameSection");
   const frame = document.getElementById("appFrame");
@@ -31,11 +29,10 @@ document.addEventListener("DOMContentLoaded", () => {
     document.getElementById("contato"),
   ].filter(Boolean);
 
-  // Inicializações simples
+  // ano no footer
   if (yearEl) yearEl.textContent = String(new Date().getFullYear());
-  setNewTab(false);
 
-  // Utilitários
+  // utilitários de UI
   function setNewTab(enabled, url = "#") {
     if (!btnNewTab) return;
     btnNewTab.href = enabled ? url : "#";
@@ -46,29 +43,42 @@ document.addEventListener("DOMContentLoaded", () => {
   function showLoading() { if (frameStatus) frameStatus.textContent = "Carregando…"; }
   function showReady() { if (frameStatus) frameStatus.textContent = "Pronto ✅"; }
 
-  // Lock / unlock scroll (quando iframe abre)
+  // lock / unlock scroll (quando iframe abre)
   let savedScrollTop = 0;
   function lockScroll() {
-    if (container) savedScrollTop = container.scrollTop;
+    // salva posição e aplica classe para CSS controlar comportamento
+    if (container && container.scrollTop !== undefined) savedScrollTop = container.scrollTop;
     document.body.classList.add(SCROLL_LOCK_CLASS);
-    if (container) container.classList.add(SCROLL_LOCK_CLASS);
+    if (container && container.classList) container.classList.add(SCROLL_LOCK_CLASS);
+    // também impede rolagem do container por segurança (se desejar)
+    if (container && container.style) container.style.overflow = "hidden";
   }
   function unlockScroll() {
     document.body.classList.remove(SCROLL_LOCK_CLASS);
-    if (container) container.classList.remove(SCROLL_LOCK_CLASS);
+    if (container && container.classList) container.classList.remove(SCROLL_LOCK_CLASS);
+    if (container && container.style) container.style.overflow = "";
+    // restaura posição
     setTimeout(() => {
-      if (container) container.scrollTop = savedScrollTop || 0;
+      if (container && typeof savedScrollTop === "number") {
+        try { container.scrollTop = savedScrollTop || 0; } catch (_) {}
+      }
     }, 60);
   }
 
-  // Navegação por clique (dock)
+  // rolar para elemento (usado pelo dock e links)
   function scrollToEl(el) {
     if (!el || !container) return;
-    // usa scrollIntoView para garantir alinhamento; comportamento suave
-    el.scrollIntoView({ behavior: "smooth", block: "start" });
+    // se container for o documentElement, usa scrollIntoView
+    if (container === document.documentElement || container === document.body) {
+      el.scrollIntoView({ behavior: "smooth", block: "start" });
+      return;
+    }
+    // caso container seja um elemento com overflow, calcula offset relativo
+    const top = el.offsetTop;
+    container.scrollTo({ top, behavior: "smooth" });
   }
 
-  // Abrir / fechar demo (iframe)
+  // abrir / fechar demo (iframe)
   function openSystem(url, title) {
     if (!heroSection || !frameSection || !frame) return;
     heroSection.classList.add("is-hidden");
@@ -78,8 +88,8 @@ document.addEventListener("DOMContentLoaded", () => {
     showLoading();
     lockScroll();
     frame.src = url;
-    // garante que o frame fique visível
-    if (frameSection) frameSection.scrollIntoView({ behavior: "smooth", block: "start" });
+    // garante que o frameSection fique visível
+    scrollToEl(frameSection);
   }
 
   function closeSystem() {
@@ -102,6 +112,7 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
+  // botões de abrir demo
   openButtons.forEach(btn => {
     btn.addEventListener("click", (ev) => {
       ev.preventDefault();
@@ -113,42 +124,38 @@ document.addEventListener("DOMContentLoaded", () => {
 
   if (btnClose) btnClose.addEventListener("click", closeSystem);
   document.addEventListener("keydown", (e) => {
-    // ESC continua fechando o iframe
+    // ESC fecha iframe se aberto
     if (e.key === "Escape" && frameSection && !frameSection.classList.contains("is-hidden")) {
       closeSystem();
     }
   });
 
-  // === Desativa navegação por scroll/touch/teclado entre sections ===
-  // 1) Bloqueia rolagem do container (impede mudança de seção por scroll)
-  if (container) {
-    container.style.overflowY = "hidden";
-    // previne wheel/touchmove que poderiam afetar o scroll em alguns navegadores
-    container.addEventListener("wheel", (e) => { e.preventDefault(); }, { passive: false });
-    container.addEventListener("touchmove", (e) => { e.preventDefault(); }, { passive: false });
-  }
-  // 2) Remove/ignora teclas de navegação que mudariam a seção
-  window.addEventListener("keydown", (e) => {
-    const blocked = ["PageDown","PageUp","ArrowDown","ArrowUp","Home","End"];
-    if (blocked.includes(e.key)) {
-      // se o usuário estiver dentro de um campo de formulário, não bloquear
-      const active = document.activeElement;
-      const isInput = active && (active.tagName === "INPUT" || active.tagName === "TEXTAREA" || active.isContentEditable);
-      if (!isInput) e.preventDefault();
-    }
-  }, { passive: false });
-
-  // === Dock: clique para navegar (único meio de mudar section) ===
+  // === Navegação por clique no dock ===
   spyButtons.forEach(btn => {
     btn.addEventListener("click", (ev) => {
       ev.preventDefault();
       const targetId = btn.getAttribute("data-spy");
       const targetEl = document.getElementById(targetId);
       if (targetEl) scrollToEl(targetEl);
+      // atualiza hash sem pular
+      if (targetId) history.replaceState(null, "", `#${targetId}`);
     });
   });
 
-  // IntersectionObserver para marcar botão ativo no dock (continua útil)
+  // Links com hash (qualquer link interno) — rola o container
+  document.querySelectorAll('a[href^="#"]').forEach(a => {
+    a.addEventListener('click', (ev) => {
+      const href = a.getAttribute('href');
+      if (!href || !href.startsWith('#')) return;
+      const target = document.querySelector(href);
+      if (!target) return;
+      ev.preventDefault();
+      scrollToEl(target);
+      history.replaceState(null, '', href);
+    });
+  });
+
+  // IntersectionObserver para marcar botão ativo no dock
   if (spySections.length && container) {
     const io = new IntersectionObserver((entries) => {
       const visible = entries
@@ -159,12 +166,77 @@ document.addEventListener("DOMContentLoaded", () => {
       spyButtons.forEach(b => {
         b.classList.toggle("is-active", b.getAttribute("data-spy") === id);
       });
-    }, { root: container, rootMargin: "-35% 0px -55% 0px", threshold: [0.10, 0.20, 0.35] });
+    }, { root: container === document.documentElement ? null : container, rootMargin: "-35% 0px -55% 0px", threshold: [0.10, 0.20, 0.35] });
 
     spySections.forEach(s => io.observe(s));
   }
 
-  // === Forçar layout empilhado (header acima, cards abaixo) como fallback JS ===
+  // === Teclas de navegação: bloqueia apenas se não estiver em campo de formulário ===
+  window.addEventListener("keydown", (e) => {
+    const blocked = ["PageDown","PageUp","ArrowDown","ArrowUp","Home","End"];
+    if (!blocked.includes(e.key)) return;
+    const active = document.activeElement;
+    const isInput = active && (active.tagName === "INPUT" || active.tagName === "TEXTAREA" || active.isContentEditable);
+    if (!isInput) {
+      // evita que teclas naveguem a página inteira e mudem de section
+      e.preventDefault();
+    }
+  }, { passive: false });
+
+  // === Interceptadores de wheel / touch (capture) para evitar que eventos dentro de uma .page
+  // sejam entregues a outros handlers que poderiam trocar de seção.
+  // NÃO chamamos preventDefault aqui (permitimos o scroll nativo), apenas stopPropagation
+  // quando o evento ocorre dentro de uma .page que pode rolar.
+
+  function findPageAncestor(el) {
+    while (el && el !== document && el !== container) {
+      if (el.classList && el.classList.contains('page')) {
+        // considera rolável se houver overflow vertical real
+        if (el.scrollHeight > el.clientHeight + 1) return el;
+      }
+      el = el.parentElement;
+    }
+    return null;
+  }
+
+  // WHEEL (desktop) — capture para interceptar antes de outros listeners
+  (container || document).addEventListener('wheel', function (e) {
+    const page = findPageAncestor(e.target);
+    if (!page) return; // fora de uma .page rolável: deixa propagar
+    const delta = e.deltaY;
+    // se a page tem espaço para rolar na direção do delta, impedimos que outros handlers recebam o evento
+    if ((delta > 0 && page.scrollTop + page.clientHeight < page.scrollHeight - 1) ||
+        (delta < 0 && page.scrollTop > 1)) {
+      e.stopPropagation();
+      // não chamamos preventDefault: permitimos o scroll nativo
+    } else {
+      // se a page está no limite, deixamos o evento propagar (caso queira permitir outras ações)
+      // mas, por segurança, também stopPropagation para evitar trocas acidentais:
+      e.stopPropagation();
+    }
+  }, { passive: true, capture: true });
+
+  // TOUCH (mobile) — captura direção e aplica mesma lógica
+  let touchStartY = 0;
+  (container || document).addEventListener('touchstart', function (e) {
+    if (e.touches && e.touches.length) touchStartY = e.touches[0].clientY;
+  }, { passive: true, capture: true });
+
+  (container || document).addEventListener('touchmove', function (e) {
+    const touch = (e.touches && e.touches[0]) || null;
+    if (!touch) return;
+    const page = findPageAncestor(e.target);
+    if (!page) return;
+    const dy = touchStartY - touch.clientY; // positivo = swipe para cima (scroll down)
+    if ((dy > 0 && page.scrollTop + page.clientHeight < page.scrollHeight - 1) ||
+        (dy < 0 && page.scrollTop > 1)) {
+      e.stopPropagation();
+    } else {
+      e.stopPropagation();
+    }
+  }, { passive: true, capture: true });
+
+  // === Enforce layout fallback (mantém seu código original) ===
   function enforceStackLayout() {
     document.querySelectorAll(".section-head").forEach(head => {
       head.style.display = "flex";
@@ -205,177 +277,26 @@ document.addEventListener("DOMContentLoaded", () => {
     clearTimeout(window.__enforceStackLayoutTimer);
     window.__enforceStackLayoutTimer = setTimeout(enforceStackLayout, 120);
   });
-
-  // reaplica correções finais após carregamento
   setTimeout(enforceStackLayout, 120);
   setTimeout(enforceStackLayout, 600);
-});
 
-// garante que o item receba classe 'keyboard-focus' quando focado por teclado
-document.querySelectorAll('.dock-btn').forEach(btn => {
-  btn.addEventListener('focus', () => btn.classList.add('keyboard-focus'));
-  btn.addEventListener('blur', () => btn.classList.remove('keyboard-focus'));
-  // opcional: abrir label ao tocar (mobile)
-  btn.addEventListener('touchstart', () => btn.classList.add('touched'));
-  btn.addEventListener('touchend', () => setTimeout(() => btn.classList.remove('touched'), 800));
-});
+  // keyboard focus class for dock buttons (keeps your existing behavior)
+  document.querySelectorAll('.dock-btn').forEach(btn => {
+    btn.addEventListener('focus', () => btn.classList.add('keyboard-focus'));
+    btn.addEventListener('blur', () => btn.classList.remove('keyboard-focus'));
+    btn.addEventListener('touchstart', () => btn.classList.add('touched'));
+    btn.addEventListener('touchend', () => setTimeout(() => btn.classList.remove('touched'), 800));
+  });
 
-document.addEventListener('DOMContentLoaded', () => {
-  const container = document.querySelector('.wrap.spa') || document.getElementById('app');
-  if (!container) return;
-
-  /* --- 1) Abrir na section do hash (se houver) --- */
+  // scroll to hash target on load / hashchange
   function scrollToHashTarget() {
     const hash = window.location.hash;
     if (!hash) return;
     const target = document.querySelector(hash);
     if (!target) return;
-    // rola o container até o offset da section
-    container.scrollTo({ top: target.offsetTop, behavior: 'auto' });
+    scrollToEl(target);
   }
-  // chama no load e também quando hash muda (ex.: link externo)
   window.addEventListener('load', scrollToHashTarget);
   window.addEventListener('hashchange', scrollToHashTarget);
 
-  /* --- 2) Helper: verifica se o elemento (ou algum pai) é .scrollable e tem overflow disponível --- */
-  function findScrollableAncestor(el) {
-    while (el && el !== document && el !== container) {
-      if (el.classList && el.classList.contains('scrollable')) {
-        // só considera scrollable se houver conteúdo para rolar
-        if (el.scrollHeight > el.clientHeight + 1) return el;
-      }
-      el = el.parentElement;
-    }
-    return null;
-  }
-
-  /* --- 3) Wheel handler: permite rolagem apenas quando dentro de um .scrollable com espaço --- */
-  container.addEventListener('wheel', (e) => {
-    // se o evento veio de dentro de um scrollable que pode rolar, deixa passar
-    const sc = findScrollableAncestor(e.target);
-    if (sc) {
-      // se o scroll está no topo e o delta é negativo (scroll up) e não há mais conteúdo, previne "vazar" para container
-      const delta = e.deltaY;
-      if ((delta > 0 && sc.scrollTop + sc.clientHeight >= sc.scrollHeight - 1) ||
-          (delta < 0 && sc.scrollTop <= 1)) {
-        // evita que o container role quando o scrollable atingiu o fim
-        e.preventDefault();
-      } else {
-        // permite rolar dentro do scrollable
-        return;
-      }
-    } else {
-      // não está dentro de scrollable: previne rolagem do container (não muda section)
-      e.preventDefault();
-    }
-  }, { passive: false });
-
-  /* --- 4) Touch handlers (mobile): similar ao wheel, evita que swipe mude section --- */
-  let touchStartY = 0;
-  container.addEventListener('touchstart', (e) => {
-    if (e.touches && e.touches.length) touchStartY = e.touches[0].clientY;
-  }, { passive: true });
-
-  container.addEventListener('touchmove', (e) => {
-    const touchY = (e.touches && e.touches[0]) ? e.touches[0].clientY : 0;
-    const dy = touchStartY - touchY;
-    const sc = findScrollableAncestor(e.target);
-
-    if (sc) {
-      // se o scrollable pode rolar na direção do swipe, deixa passar
-      if ((dy > 0 && sc.scrollTop + sc.clientHeight < sc.scrollHeight - 1) ||
-          (dy < 0 && sc.scrollTop > 1)) {
-        return; // permite scroll interno
-      } else {
-        // bloqueia para evitar "vazar" para o container
-        e.preventDefault();
-      }
-    } else {
-      // não está em scrollable: bloqueia para evitar mudar section
-      e.preventDefault();
-    }
-  }, { passive: false });
-
-  /* --- 5) Links com hash (dock) — rola o container até a section alvo --- */
-  document.querySelectorAll('a[href^="#"]').forEach(a => {
-    a.addEventListener('click', (ev) => {
-      const href = a.getAttribute('href');
-      if (!href || !href.startsWith('#')) return;
-      const target = document.querySelector(href);
-      if (!target) return;
-      ev.preventDefault();
-      container.scrollTo({ top: target.offsetTop, behavior: 'smooth' });
-      // atualiza hash sem pular (history)
-      history.replaceState(null, '', href);
-    });
-  });
-
-  /* --- 6) Se quiser, ao redimensionar, reposiciona para o hash atual --- */
-  let resizeTimer;
-  window.addEventListener('resize', () => {
-    clearTimeout(resizeTimer);
-    resizeTimer = setTimeout(() => {
-      if (window.location.hash) scrollToHashTarget();
-    }, 160);
-  });
 });
-
-// Permite rolagem interna em .scrollable sem mudar a section
-(function () {
-  const container = document.querySelector('.wrap.spa') || document.getElementById('app');
-  if (!container) return;
-
-  function findScrollableAncestor(el) {
-    while (el && el !== document && el !== container) {
-      if (el.classList && el.classList.contains('scrollable')) {
-        if (el.scrollHeight > el.clientHeight + 1) return el;
-      }
-      el = el.parentElement;
-    }
-    return null;
-  }
-
-  // Wheel handler: permite scroll interno quando possível; caso contrário previne para não trocar section
-  container.addEventListener('wheel', (e) => {
-    const sc = findScrollableAncestor(e.target);
-    if (sc) {
-      const delta = e.deltaY;
-      if ((delta > 0 && sc.scrollTop + sc.clientHeight >= sc.scrollHeight - 1) ||
-          (delta < 0 && sc.scrollTop <= 1)) {
-        // se o scroll interno atingiu o fim, evita "vazar" para o container
-        e.preventDefault();
-      } else {
-        // permite rolar dentro do scrollable
-        return;
-      }
-    } else {
-      // não está dentro de scrollable: evita que o container role (se esse for o comportamento desejado)
-      // se você quiser permitir rolagem do container normalmente, comente a linha abaixo
-      e.preventDefault();
-    }
-  }, { passive: false });
-
-  // Touch handlers (mobile): similar ao wheel
-  let touchStartY = 0;
-  container.addEventListener('touchstart', (e) => {
-    if (e.touches && e.touches.length) touchStartY = e.touches[0].clientY;
-  }, { passive: true });
-
-  container.addEventListener('touchmove', (e) => {
-    const touchY = (e.touches && e.touches[0]) ? e.touches[0].clientY : 0;
-    const dy = touchStartY - touchY;
-    const sc = findScrollableAncestor(e.target);
-
-    if (sc) {
-      if ((dy > 0 && sc.scrollTop + sc.clientHeight < sc.scrollHeight - 1) ||
-          (dy < 0 && sc.scrollTop > 1)) {
-        return; // permite scroll interno
-      } else {
-        e.preventDefault(); // evita "vazar" para o container
-      }
-    } else {
-      e.preventDefault(); // evita mudar section por swipe fora de scrollable
-    }
-  }, { passive: false });
-
-})();
