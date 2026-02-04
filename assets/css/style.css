@@ -606,9 +606,4 @@ body.scroll-locked, .wrap.spa.scroll-locked { overflow:hidden; }
   filter: none; /* keep as-is or set e.g. brightness(.98) if you want subtle dim */
 }
 
-
-
-
-
-
-
+.dock-hidden { opacity: 0; pointer-events: none; transform: translateX(12px) scale(.98); transition: opacity .22s ease, transform .22s ease; }
