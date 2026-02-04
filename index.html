@@ -25,8 +25,8 @@
   </header>
 
   <main id="top" class="container">
-    <!-- HERO -->
-    <section class="hero">
+    <!-- HERO (normal) -->
+    <section class="hero" id="heroSection">
       <div class="hero-grid">
         <div class="card hero-card">
           <div class="kicker">
@@ -37,7 +37,7 @@
           <h1>Olá! Eu sou o Felipe.<br/>Construo sistemas web e automações.</h1>
 
           <p class="subtitle">
-            Clique em “Abrir no Hero” em um projeto para carregar o sistema dentro desta página.
+            Selecione um projeto no Portfólio para abrir o sistema aqui na página.
           </p>
 
           <div class="cta-row">
@@ -55,45 +55,71 @@
           </div>
 
           <div class="status" aria-live="polite">
-            <span class="chip ok">Modo: carregar sistemas no Hero</span>
-            <span class="chip">Dica: “Abrir em nova aba” mantém a landing visível</span>
+            <span class="chip ok">Clique em um projeto para visualizar aqui</span>
+            <span class="chip">O header permanece visível</span>
           </div>
         </div>
 
-        <!-- ✅ NOVO: VISUALIZADOR (HERO VIEWER) -->
-        <aside class="card viewer" aria-label="Visualizador do sistema">
-          <div class="viewer-head">
-            <div>
-              <p class="viewer-kicker">Visualização</p>
-              <h3 class="viewer-title" id="viewerTitle">Nenhum sistema carregado</h3>
-            </div>
+        <!-- Sobre (mantido) -->
+        <aside class="card side-card" id="sobre">
+          <div class="side-title">Resumo</div>
 
-            <div class="viewer-actions">
-              <a class="btn small" id="openNewTab" href="#" target="_blank" rel="noopener noreferrer" aria-disabled="true">
-                Nova aba
-              </a>
-              <button class="btn small" id="closeViewer" type="button" disabled>
-                Fechar
-              </button>
-            </div>
-          </div>
+          <ul class="list">
+            <li class="pill">
+              <div>
+                <strong>Foco atual</strong>
+                <span>Front-end com HTML/CSS/JS e melhoria contínua de UX e organização.</span>
+              </div>
+              <span class="badge">Em evolução</span>
+            </li>
 
-          <div class="viewer-body" id="viewerBody">
-            <div class="viewer-empty" id="viewerEmpty">
-              <p><strong>Escolha um projeto</strong> na seção “Portfólio” para carregar aqui.</p>
-              <p class="muted">Isso é útil para demonstração rápida durante apresentação.</p>
-            </div>
+            <li class="pill">
+              <div>
+                <strong>Objetivo</strong>
+                <span>Centralizar sistemas em um hub com apresentação profissional e navegação simples.</span>
+              </div>
+              <span class="badge">Portfólio</span>
+            </li>
 
-            <iframe
-              id="viewerFrame"
-              class="viewer-frame"
-              title="Sistema carregado no Hero"
-              loading="lazy"
-              referrerpolicy="no-referrer"
-              sandbox="allow-forms allow-scripts allow-same-origin allow-popups allow-downloads"
-            ></iframe>
-          </div>
+            <li class="pill">
+              <div>
+                <strong>Contato</strong>
+                <span>Conecte-se comigo pelo LinkedIn e acompanhe meus projetos no GitHub.</span>
+              </div>
+              <span class="badge">Networking</span>
+            </li>
+          </ul>
         </aside>
+      </div>
+    </section>
+
+    <!-- ✅ FRAME (invisível por padrão) - vem logo após o Hero -->
+    <section class="appframe is-hidden" id="appFrameSection" aria-label="Sistema carregado">
+      <div class="appframe-bar">
+        <div class="appframe-left">
+          <span class="appframe-label">Sistema:</span>
+          <strong class="appframe-title" id="appFrameTitle">—</strong>
+        </div>
+
+        <div class="appframe-actions">
+          <!-- opcional, mas útil -->
+          <a class="btn small" id="appOpenNewTab" href="#" target="_blank" rel="noopener noreferrer" aria-disabled="true">
+            Nova aba
+          </a>
+          <button class="btn small primary" id="appCloseBtn" type="button">
+            Fechar
+          </button>
+        </div>
+      </div>
+
+      <div class="appframe-body">
+        <iframe
+          id="appFrame"
+          title="Sistema selecionado"
+          loading="lazy"
+          referrerpolicy="no-referrer"
+          sandbox="allow-forms allow-scripts allow-same-origin allow-popups allow-downloads"
+        ></iframe>
       </div>
     </section>
 
@@ -102,7 +128,7 @@
       <div class="section-head">
         <div>
           <h2>Portfólio</h2>
-          <p>Use “Abrir no Hero” para carregar o sistema na seção acima.</p>
+          <p>Ao clicar em “Abrir”, o sistema substitui o Hero e abre no frame acima.</p>
         </div>
       </div>
 
@@ -112,15 +138,14 @@
           <h3 class="proj-title">SIdM <span class="tag">Sistema</span></h3>
           <p class="proj-desc">Sistema publicado na pasta <strong>SIdM</strong>.</p>
           <div class="proj-actions">
-            <!-- ✅ novo botão -->
-            <button class="btn small primary js-open-in-hero"
+            <button class="btn small primary js-open-system"
               type="button"
               data-url="./SIdM/"
               data-title="SIdM">
-              Abrir no Hero
+              Abrir
             </button>
 
-            <a class="btn small" href="./SIdM/" target="_blank" rel="noopener noreferrer">Abrir projeto</a>
+            <a class="btn small" href="./SIdM/" target="_blank" rel="noopener noreferrer">Abrir (nova aba)</a>
             <a class="btn small" href="https://github.com/felipe-feEee/Portifolio/tree/main/SIdM" target="_blank" rel="noopener noreferrer">Código</a>
           </div>
         </article>
@@ -130,15 +155,14 @@
           <h3 class="proj-title">Sistema_HTML <span class="tag">Projeto</span></h3>
           <p class="proj-desc">Projeto publicado na pasta <strong>Sistema_HTML</strong>.</p>
           <div class="proj-actions">
-            <!-- ✅ novo botão -->
-            <button class="btn small primary js-open-in-hero"
+            <button class="btn small primary js-open-system"
               type="button"
               data-url="./Sistema_HTML/"
               data-title="Sistema_HTML">
-              Abrir no Hero
+              Abrir
             </button>
 
-            <a class="btn small" href="./Sistema_HTML/" target="_blank" rel="noopener noreferrer">Abrir projeto</a>
+            <a class="btn small" href="./Sistema_HTML/" target="_blank" rel="noopener noreferrer">Abrir (nova aba)</a>
             <a class="btn small" href="https://github.com/felipe-feEee/Portifolio/tree/main/Sistema_HTML" target="_blank" rel="noopener noreferrer">Código</a>
           </div>
         </article>
