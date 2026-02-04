@@ -561,3 +561,15 @@ p, h1, h2, h3, a, span {
   }
 }
 
+.tag-link{
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.tag-link:hover{
+  border-color: rgba(255,255,255,.22);
+  background: rgba(255,255,255,.07);
+  transform: translateY(-1px);
+}
+
+
