@@ -3,51 +3,85 @@ document.addEventListener("DOMContentLoaded", () => {
   const yearEl = document.getElementById("year");
   if (yearEl) yearEl.textContent = String(new Date().getFullYear());
 
-  // Viewer elements
-  const viewer = document.querySelector(".viewer");
-  const viewerTitle = document.getElementById("viewerTitle");
-  const viewerFrame = document.getElementById("viewerFrame");
-  const openNewTab = document.getElementById("openNewTab");
-  const closeViewer = document.getElementById("closeViewer");
+  // Elementos principais
+  const heroSection = document.getElementById("heroSection");
+  const frameSection = document.getElementById("appFrameSection");
+  const frame = document.getElementById("appFrame");
+  const frameTitle = document.getElementById("appFrameTitle");
+  const btnClose = document.getElementById("appCloseBtn");
+  const btnNewTab = document.getElementById("appOpenNewTab");
+  const portfolio = document.getElementById("portfolio");
 
-  const topAnchor = document.getElementById("top");          // <main id="top" ...>
-  const portfolioSection = document.getElementById("portfolio");
+  // Botões do portfólio
+  const openButtons = document.querySelectorAll(".js-open-system");
 
-  const buttons = document.querySelectorAll(".js-open-in-hero");
-
-  function setViewerEnabled(enabled) {
-    if (!openNewTab || !closeViewer) return;
-    openNewTab.setAttribute("aria-disabled", String(!enabled));
-    openNewTab.style.pointerEvents = enabled ? "auto" : "none";
-    openNewTab.style.opacity = enabled ? "1" : ".6";
-    closeViewer.disabled = !enabled;
+  function setNewTabEnabled(enabled, url = "#") {
+    if (!btnNewTab) return;
+    btnNewTab.href = enabled ? url : "#";
+    btnNewTab.setAttribute("aria-disabled", String(!enabled));
+    btnNewTab.style.pointerEvents = enabled ? "auto" : "none";
+    btnNewTab.style.opacity = enabled ? "1" : ".6";
   }
 
-  function scrollToTop() {
-    // rolar para o topo da página (início)
-    // Preferimos scrollIntoView no #top para manter consistência
-    if (topAnchor) {
-      topAnchor.scrollIntoView({ behavior: "smooth", block: "start" });
-      history.pushState(null, "", "#top");
-    } else {
-      window.scrollTo({ top: 0, behavior: "smooth" });
-    }
+  function openSystem(url, title) {
+    if (!heroSection || !frameSection || !frame) return;
+
+    // 1) alterna visibilidade
+    heroSection.classList.add("is-hidden");
+    frameSection.classList.remove("is-hidden");
+
+    // 2) atualiza título + nova aba
+    if (frameTitle) frameTitle.textContent = title || "Sistema";
+    setNewTabEnabled(true, url);
+
+    // 3) carrega o sistema
+    frame.src = url;
+
+    // 4) rola para o topo
+    window.scrollTo({ top: 0, behavior: "smooth" });
+    history.pushState(null, "", "#top");
   }
 
-  function scrollToPortfolio() {
-    if (portfolioSection) {
-      portfolioSection.scrollIntoView({ behavior: "smooth", block: "start" });
+  function closeSystem() {
+    if (!heroSection || !frameSection || !frame) return;
+
+    // 1) para o sistema e esconde o frame
+    frame.src = "about:blank";
+    frameSection.classList.add("is-hidden");
+
+    // 2) mostra o hero novamente
+    heroSection.classList.remove("is-hidden");
+
+    // 3) desabilita nova aba e reseta título
+    if (frameTitle) frameTitle.textContent = "—";
+    setNewTabEnabled(false);
+
+    // 4) rola para o portfólio
+    if (portfolio) {
+      portfolio.scrollIntoView({ behavior: "smooth", block: "start" });
       history.pushState(null, "", "#portfolio");
     }
   }
 
-  function openInViewer(url, title) {
-    if (!viewer || !viewerFrame || !viewerTitle || !openNewTab) return;
+  // Wire: abrir sistema
+  openButtons.forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const url = btn.getAttribute("data-url");
+      const title = btn.getAttribute("data-title");
+      if (url) openSystem(url, title);
+    });
+  });
 
-    // 1) rola para o topo
-    scrollToTop();
+  // Wire: fechar
+  if (btnClose) btnClose.addEventListener("click", closeSystem);
 
-    // 2) atualiza UI
-    viewerTitle.textContent = title || "Sistema";
-    viewer.classList.add("is-active");
+  // Estado inicial: frame escondido e Nova aba desabilitado
+  setNewTabEnabled(false);
 
+  // (Opcional) fechar com ESC
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && frameSection && !frameSection.classList.contains("is-hidden")) {
+      closeSystem();
+    }
+  });
+});
