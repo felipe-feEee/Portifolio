@@ -17,12 +17,9 @@
   --dock: 54px;
   --focus: 0 0 0 4px rgba(124,58,237,.22);
   --font: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji";
-  --footer-h: 64px;
 }
 
-/* =========================
-   Reset / base
-   ========================= */
+/* Reset / base */
 * { box-sizing: border-box; }
 html, body { width:100%; height:100%; margin:0; overflow-x:hidden; scroll-behavior:smooth; }
 body{
@@ -37,9 +34,7 @@ a{ color:inherit; text-decoration:none; }
 img{ max-width:100%; display:block; }
 :focus-visible { outline:none; box-shadow:var(--focus); border-radius:12px; }
 
-/* =========================
-   Layout wrapper
-   ========================= */
+/* Layout wrapper */
 .wrap{
   max-width: var(--wrap);
   margin: 0 auto;
@@ -47,127 +42,56 @@ img{ max-width:100%; display:block; }
   position: relative;
 }
 
-/* =========================
-   DOCK (menu vertical) — requested behavior
-   - labels hidden by default
-   - only hovered button shows its own label
-   - expansion animates from right to left (no layout push)
-   - active button is rounded rectangle and keeps shape when expanded
-   ========================= */
+/* Dock (menu vertical) */
 .dock{
   position: fixed;
   right: 18px;
   top: 50%;
   transform: translateY(-50%);
-  display: flex;
-  flex-direction: column;
+  display: grid;
   gap: 10px;
-  z-index: 120;
+  z-index: 90;
 }
-
-/* base button: compact, icon aligned to the right so expansion reveals label to the left */
 .dock-btn{
-  --expanded-width: calc(var(--dock) + 160px); /* adjust expansion width as needed */
-  position: relative;
   width: var(--dock);
   height: var(--dock);
-  display: inline-flex;
-  align-items: center;
-  justify-content: flex-end; /* icon sits at the right edge */
-  gap: 10px;
-  padding: 0 10px;
-  border-radius: 999px; /* circle by default */
+  display:grid;
+  place-items:center;
+  border-radius: 999px;
   background: rgba(255,255,255,.06);
   border: 1px solid rgba(255,255,255,.10);
-  color: rgba(255,255,255,.92);
   box-shadow: 0 12px 30px rgba(0,0,0,.35);
-  overflow: visible; /* allow label to appear outside */
-  white-space: nowrap;
-  transition:
-    width .28s cubic-bezier(.2,.9,.2,1),
-    background .18s ease,
-    transform .12s ease,
-    box-shadow .18s ease,
-    border-radius .18s ease;
-  transform-origin: right center; /* expand leftwards */
-  box-sizing: border-box;
+  transition: .18s ease;
+  color: rgba(255,255,255,.85);
 }
-
-/* icon */
-.dock-btn .ico { font-size: 18px; line-height:1; display:inline-block; }
-
-/* label: hidden by default, positioned inside the button to the left of the icon */
-.dock-btn .dock-label{
-  display:inline-block;
-  margin-right: 8px; /* space between label and icon */
-  font-weight:700;
-  font-size:13px;
-  color: rgba(255,255,255,.94);
-  background: rgba(0,0,0,.72);
-  border: 1px solid rgba(255,255,255,.06);
-  padding: 8px 12px;
-  border-radius: 10px;
-  box-shadow: 0 8px 24px rgba(0,0,0,.45);
-  opacity: 0;
-  transform: translateX(6px);
-  transition: opacity .18s ease, transform .22s cubic-bezier(.2,.9,.2,1);
-  pointer-events: none;
-  user-select: none;
-}
-
-/* Hover/focus: expand the button (leftwards) and reveal only that label */
-.dock-btn:hover,
-.dock-btn:focus-visible {
-  width: var(--expanded-width);
-  background: rgba(255,255,255,.09);
-  transform: translateY(-2px);
-}
-
-/* reveal label only for hovered/focused button */
-.dock-btn:hover .dock-label,
-.dock-btn:focus-visible .dock-label {
-  opacity: 1;
-  transform: translateX(0);
-  pointer-events: auto;
-}
-
-/* Active button: rounded rectangle, keeps rectangular shape when hovered */
+.dock-btn:hover{ transform: translateY(-1px); background: rgba(255,255,255,.09); }
 .dock-btn.is-active{
-  border-radius: 14px;
   background: linear-gradient(135deg, rgba(124,58,237,.95), rgba(6,182,212,.75));
   border-color: rgba(255,255,255,.16);
-  color: #fff;
-  box-shadow: 0 16px 40px rgba(124,58,237,.18);
-  width: var(--dock); /* compact by default */
+}
+.dock-btn::after{
+  content: attr(data-tip);
+  position: absolute;
+  right: calc(var(--dock) + 10px);
+  top: 50%;
+  transform: translateY(-50%);
+  background: rgba(0,0,0,.65);
+  border: 1px solid rgba(255,255,255,.12);
+  color: rgba(255,255,255,.88);
+  padding: 6px 10px;
+  border-radius: 10px;
+  font-size: 12px;
+  letter-spacing: .2px;
+  opacity: 0;
+  pointer-events: none;
+  transition: .15s ease;
+  white-space: nowrap;
 }
 
-/* Active + hover: expand but keep rounded-rectangle shape */
-.dock-btn.is-active:hover,
-.dock-btn.is-active:focus-visible {
-  width: var(--expanded-width);
-  border-radius: 14px; /* maintain rectangular rounded shape */
-  transform: translateY(-2px);
-}
+.dock-btn:hover::after{ opacity: 1; }
+.ico{ font-size: 18px; }
 
-/* Optionally keep active label visible even without hover (comment/uncomment as desired) */
-/* .dock-btn.is-active .dock-label { opacity: 1; transform: translateX(0); pointer-events: auto; } */
-
-/* keyboard focus */
-.dock-btn:focus-visible { outline: none; box-shadow: var(--focus); }
-
-/* small screens: reduce expansion width */
-@media (max-width:520px) {
-  .dock { right: 10px; }
-  .dock-btn { --expanded-width: calc(var(--dock) + 110px); }
-  .dock-btn .dock-label { padding: 7px 10px; font-size:12px; }
-}
-
-/* remove old tooltip pseudo-element if present (avoid duplicate labels) */
-.dock-btn::after { display: none !important; }
-
-/* =========================
-   HERO (split)
-   ========================= */
+/* HERO (split) */
 .hero{
   min-height: 74vh;
   display:grid;
@@ -206,13 +130,13 @@ img{ max-width:100%; display:block; }
 .profile-media img{ width:100%; object-fit:cover; }
 .profile-placeholder{ display:grid; place-items:center; height:320px; }
 
-/* favicon mark (restored) */
+/* favicon mark (restaurado) */
 .profile-placeholder .mark{
   width: 100%;
   height: 100%;
   border-radius: 24px;
   position: absolute;
-  background-image: url("./favicon.ico"); /* adjust path if needed */
+  background-image: url("./favicon.ico"); /* ajuste caminho conforme necessário */
   background-repeat: no-repeat;
   background-position: center;
   background-size: contain;
@@ -340,7 +264,7 @@ img{ max-width:100%; display:block; }
 /* iframe sizing */
 #appFrame{ width:100%; border:0; display:block; height: min(70vh, 820px); max-height: calc(100vh - 180px); }
 
-/* Footer (kept as before) */
+/* Footer */
 .footer{ padding:30px 0 40px; color:var(--muted2); font-size:13px; padding-right: calc(var(--dock) + 28px); }
 
 /* SPA behavior */
@@ -376,4 +300,261 @@ body.scroll-locked, .wrap.spa.scroll-locked { overflow:hidden; }
 /* Accessibility: respect reduced motion */
 @media (prefers-reduced-motion: reduce){
   .wrap.spa { scroll-behavior: auto; }
+}
+
+/* 1) Restaurar favicon no mark (ajuste o caminho se necessário) */
+.profile-placeholder .mark{
+  width: 100%;
+  height: 100%;
+  border-radius: 24px;
+  position: absolute;
+  
+  /* Usa o favicon como logo */
+  background-image: url("../../favicon.ico");
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: cover;
+
+  /* Mantém seu estilo “premium” */
+  filter: saturate(1.05) contrast(1.05);
+  pointer-events: none;
+}
+
+/* 2) Forçar que cada .page empilhe seus blocos top e bottom verticalmente */
+.page {
+  /* mantém snap e altura, mas garante coluna */
+  display: flex;
+  flex-direction: column;
+  align-items: stretch; /* garante que filhos ocupem 100% da largura */
+  box-sizing: border-box;
+}
+
+/* 3) Mantém o layout original do hero (grid) — sobrescreve a regra acima apenas para hero */
+.hero.page {
+  display: grid;
+  grid-template-columns: minmax(260px, 420px) 1fr;
+  gap: 28px;
+  align-items: center;
+}
+
+/* 4) Garante que section-top e section-bottom ocupem largura total e fiquem empilhados */
+.section-top,
+.section-bottom {
+  width: 100%;
+  display: block;
+}
+
+/* 5) Se alguma regra anterior estiver forçando .page > div { display:inline-flex } */
+.page > * {
+  /* força cada filho direto a ser bloco (vertical) */
+  display: block !important;
+  width: 100% !important;
+}
+
+/* 6) Pequeno ajuste responsivo (opcional) */
+@media (max-width: 980px) {
+  .hero.page { grid-template-columns: 1fr; }
+}
+
+/* Footer fixo global */
+:root {
+  --footer-h: 64px; /* altura do footer; ajuste conforme necessário */
+}
+
+/* Footer visual */
+.site-footer {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: var(--footer-h);
+  display: flex;
+  align-items: center;
+  background: linear-gradient(180deg, rgba(255,255,255,.02), rgba(255,255,255,.01));
+  border-top: 1px solid rgba(255,255,255,.06);
+  color: var(--muted2);
+  z-index: 95; /* acima do conteúdo, abaixo do dock (dock z-index:90 no seu CSS) */
+  box-shadow: 0 -6px 20px rgba(0,0,0,.45);
+}
+
+/* Centraliza o conteúdo do footer com a mesma largura do .wrap */
+.site-footer .wrap {
+  padding: 0 18px;
+  display: flex;
+  align-items: center;
+  height: 100%;
+}
+
+/* Evita que o conteúdo da SPA fique escondido atrás do footer */
+.wrap.spa {
+  /* adiciona espaço inferior igual à altura do footer + margem */
+  padding-bottom: calc(var(--footer-h) + 28px);
+}
+
+/* Considera safe-area em iPhones com notch */
+.site-footer {
+  padding-bottom: env(safe-area-inset-bottom);
+  height: calc(var(--footer-h) + env(safe-area-inset-bottom));
+}
+
+/* Se quiser footer mais discreto em telas pequenas */
+@media (max-width:520px) {
+  :root { --footer-h: 56px; }
+  .site-footer .wrap { padding-left: 12px; padding-right: 12px; }
+}
+
+/* --- Variável de altura do footer (ajuste se necessário) --- */
+:root { --footer-h: 64px; }
+
+/* --- Mantém wrapper com altura disponível e scrollbar invisível --- */
+.wrap.spa {
+  height: calc(100vh - var(--footer-h));
+  overflow-y: auto;                 /* permite rolagem do container quando necessário */
+  scrollbar-width: none;            /* Firefox */
+  -ms-overflow-style: none;         /* IE/Edge */
+  scroll-snap-type: y mandatory;
+  scroll-behavior: smooth;
+  scroll-padding-top: 24px;
+}
+.wrap.spa::-webkit-scrollbar { display: none; } /* Chrome/Safari/Edge */
+
+/* --- Cada page ocupa a área visível (ajustado para footer) --- */
+.page {
+  min-height: calc(100vh - var(--footer-h));
+  box-sizing: border-box;
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
+  padding: 80px 0 50px;
+  display: flex;
+  flex-direction: column; /* garante empilhamento top/bottom */
+  align-items: stretch;
+}
+
+/* --- Sections que precisam rolar internamente (marque com .scrollable) --- */
+.section.scrollable {
+  /* limita a altura disponível dentro da section e permite rolagem interna */
+  max-height: calc(100vh - var(--footer-h) - 160px); /* 160px = padding + header estimado; ajuste se necessário */
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding-right: 18px; /* evita corte por causa do footer/dock */
+}
+
+/* scrollbar invisível para scrollables também */
+.section.scrollable::-webkit-scrollbar { display: none; }
+.section.scrollable { scrollbar-width: none; -ms-overflow-style: none; }
+
+/* --- Garante que section-top e section-bottom fiquem empilhados --- */
+.section-top, .section-bottom { width:100%; display:block; }
+
+/* --- Quando o usuário estiver rolando dentro de um .scrollable, não queremos que o container capture o wheel --- */
+/* (nenhuma regra CSS necessária aqui; o JS tratará) */
+
+/* =========================
+   Dock: expansão à esquerda, rótulo só no hover do botão
+   (colar este bloco no FINAL do style.css)
+   ========================= */
+
+/* evita duplicar tooltips antigos */
+.dock-btn::after { display: none !important; }
+
+/* garante que o dock esteja posicionado como antes */
+.dock {
+  position: fixed;
+  right: 18px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  z-index: 120;
+}
+
+/* botão base: compacto, ícone alinhado à direita para expandir à esquerda */
+.dock-btn {
+  --dock-size: var(--dock, 54px);
+  --expand-by: 160px; /* ajuste se quiser rótulo maior/menor */
+  --expanded-width: calc(var(--dock-size) + var(--expand-by));
+  position: relative;
+  width: var(--dock-size);
+  height: var(--dock-size);
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end; /* ícone fica no lado direito do botão */
+  gap: 8px;
+  padding: 0 10px;
+  border-radius: 999px; /* círculo por padrão */
+  overflow: visible; /* permite rótulo fora do botão */
+  transition: width .28s cubic-bezier(.2,.9,.2,1), background .18s ease, transform .12s ease, border-radius .18s ease;
+  transform-origin: right center; /* expande para a esquerda */
+  box-sizing: border-box;
+}
+
+/* ícone */
+.dock-btn .ico { font-size: 18px; line-height:1; display:inline-block; }
+
+/* rótulo: escondido por padrão, posicionado à esquerda do ícone dentro do botão */
+.dock-btn .dock-label {
+  display: inline-block;
+  margin-right: 8px;
+  font-weight: 700;
+  font-size: 13px;
+  color: rgba(255,255,255,.94);
+  background: rgba(0,0,0,.72);
+  border: 1px solid rgba(255,255,255,.06);
+  padding: 8px 12px;
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0,0,0,.45);
+  opacity: 0;
+  transform: translateX(6px);
+  transition: opacity .18s ease, transform .22s cubic-bezier(.2,.9,.2,1);
+  pointer-events: none;
+  user-select: none;
+  white-space: nowrap;
+}
+
+/* hover/focus: expande o botão para a esquerda e revela apenas o rótulo do botão ativo no hover */
+.dock-btn:hover,
+.dock-btn:focus-visible {
+  width: var(--expanded-width);
+  background: rgba(255,255,255,.09);
+  transform: translateY(-2px);
+}
+
+/* mostra o rótulo apenas do botão em hover/focus */
+.dock-btn:hover .dock-label,
+.dock-btn:focus-visible .dock-label {
+  opacity: 1;
+  transform: translateX(0);
+  pointer-events: auto;
+}
+
+/* estado ativo: retângulo arredondado; mantém forma ao expandir */
+.dock-btn.is-active {
+  border-radius: 14px;
+  background: linear-gradient(135deg, rgba(124,58,237,.95), rgba(6,182,212,.75));
+  border-color: rgba(255,255,255,.16);
+  color: #fff;
+  box-shadow: 0 16px 40px rgba(124,58,237,.18);
+  width: var(--dock-size); /* compacto por padrão */
+}
+
+/* ativo + hover: expande mas mantém borda arredondada (não vira círculo) */
+.dock-btn.is-active:hover,
+.dock-btn.is-active:focus-visible {
+  width: var(--expanded-width);
+  border-radius: 14px;
+  transform: translateY(-2px);
+}
+
+/* opcional: se quiser que o rótulo do ativo fique sempre visível, descomente a linha abaixo */
+/* .dock-btn.is-active .dock-label { opacity: 1; transform: translateX(0); pointer-events: auto; } */
+
+/* foco por teclado */
+.dock-btn:focus-visible { outline: none; box-shadow: var(--focus); }
+
+/* telas pequenas: reduzir expansão para caber melhor */
+@media (max-width: 520px) {
+  .dock { right: 10px; }
+  .dock-btn { --expand-by: 110px; }
+  .dock-btn .dock-label { padding: 7px 10px; font-size: 12px; }
 }
