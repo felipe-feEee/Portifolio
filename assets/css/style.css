@@ -395,6 +395,23 @@ body.scroll-locked, .wrap.spa.scroll-locked { overflow:hidden; }
 /* --- Garante que section-top e section-bottom fiquem empilhados --- */
 .section-top, .section-bottom { width:100%; display:block; }
 
+/* --- Scrollable sections: altura flexível e rolagem interna --- */
+.section.scrollable {
+  /* permite que a section cresça/encolha dentro da .page e tenha rolagem própria */
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto; /* ocupa o espaço disponível dentro da .page */
+  min-height: 0;  /* essencial para que overflow funcione dentro de flex containers */
+  max-height: calc(100vh - var(--footer-h) - 160px); /* ajuste 160px conforme paddings/header */
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch; /* rolagem suave em iOS */
+  padding-right: 18px; /* evita corte por causa do dock/footer */
+}
+
+/* scrollbar invisível (mantém rolagem funcional) */
+.section.scrollable::-webkit-scrollbar { display: none; }
+.section.scrollable { scrollbar-width: none; -ms-overflow-style: none; }
+
 /* --- Quando o usuário estiver rolando dentro de um .scrollable, não queremos que o container capture o wheel --- */
 /* (nenhuma regra CSS necessária aqui; o JS tratará) */
 
@@ -521,3 +538,4 @@ body.scroll-locked, .wrap.spa.scroll-locked { overflow:hidden; }
   .dock { right: 10px; }
   .dock-btn .dock-label { padding: 7px 10px; font-size:12px; }
 }
+
