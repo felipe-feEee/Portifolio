@@ -522,3 +522,42 @@ body.scroll-locked, .wrap.spa.scroll-locked { overflow:hidden; }
   .dock-btn .dock-label { padding: 7px 10px; font-size:12px; }
 }
 
+/* --- Ajuste: ícone centrado quando fechado, desloca para a direita ao expandir --- */
+/* Cole este bloco no final do seu style.css, depois das regras do dock existentes */
+
+.dock-btn {
+  position: relative; /* já deve estar, mas garantimos */
+  overflow: visible;
+}
+
+/* Tornamos o ícone absoluto para controlar sua posição sem afetar layout */
+.dock-btn .ico {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%); /* centraliza perfeitamente */
+  transition: left .28s cubic-bezier(.2,.9,.2,1), transform .18s ease;
+  pointer-events: none; /* evita que o ícone capture hover acidental */
+  z-index: 2;
+}
+
+/* Quando o botão expande, movemos o ícone para a borda direita interna */
+/* Ajuste o valor 14px se quiser mais/menos folga entre ícone e borda */
+.dock-btn:hover .ico,
+.dock-btn:focus-visible .ico,
+.dock-btn.is-active .ico {
+  left: calc(100% - 14px);
+  transform: translate(-50%, -50%) scale(1); /* mantém centralização vertical */
+}
+
+/* Se quiser que o ícone volte ao centro também quando o botão ativo estiver expandido,
+   remova a linha ".dock-btn.is-active .ico" do seletor acima. */
+
+/* Pequeno refinamento para telas pequenas (opcional) */
+@media (max-width:520px) {
+  .dock-btn .ico { left: 50%; }
+  .dock-btn:hover .ico,
+  .dock-btn:focus-visible .ico {
+    left: calc(100% - 12px);
+  }
+}
