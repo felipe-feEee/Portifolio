@@ -5,21 +5,15 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Felipe Costa — Portfólio</title>
   <meta name="description" content="Portfólio de projetos de Felipe Costa. Sistemas e aplicações web publicados no GitHub Pages." />
-
-  <!-- Open Graph -->
-  <meta property="og:title" content="Felipe Costa — Portfólio" />
-  <meta property="og:description" content="Projetos publicados no GitHub Pages com links diretos e código no GitHub." />
-  <meta property="og:type" content="website" />
-
-  <link rel="stylesheet" href="./assets/css/style.css" />
+  <link rel="stylesheet" href="./assets/css/style.css">
 </head>
 
 <body>
   <header class="header">
     <div class="container header-inner">
-      <a class="brand" href="#top" aria-label="Voltar ao topo">
+      <a class="brand" href="#top">
         <span class="logo" aria-hidden="true"></span>
-        <span class="brand-name">Felipe Martins Costa</span>
+        <span class="brand-name">Felipe Costa</span>
       </a>
 
       <nav class="nav" aria-label="Navegação principal">
@@ -43,8 +37,7 @@
           <h1>Olá! Eu sou o Felipe.<br/>Construo sistemas web e automações.</h1>
 
           <p class="subtitle">
-            Esta página é uma landing para organizar meus projetos e facilitar o acesso aos sistemas publicados.
-            Abaixo você encontra links diretos para abrir cada sistema e ver o código no GitHub.
+            Clique em “Abrir no Hero” em um projeto para carregar o sistema dentro desta página.
           </p>
 
           <div class="cta-row">
@@ -62,39 +55,44 @@
           </div>
 
           <div class="status" aria-live="polite">
-            <span class="chip ok">Portfólio manual (você adiciona novos cards quando quiser)</span>
-            <span class="chip">Acesse também via URLs: <code>/SIdM/</code> e <code>/Sistema_HTML/</code></span>
+            <span class="chip ok">Modo: carregar sistemas no Hero</span>
+            <span class="chip">Dica: “Abrir em nova aba” mantém a landing visível</span>
           </div>
         </div>
 
-        <aside class="card side-card" id="sobre">
-          <div class="side-title">Resumo</div>
+        <!-- ✅ NOVO: VISUALIZADOR (HERO VIEWER) -->
+        <aside class="card viewer" aria-label="Visualizador do sistema">
+          <div class="viewer-head">
+            <div>
+              <p class="viewer-kicker">Visualização</p>
+              <h3 class="viewer-title" id="viewerTitle">Nenhum sistema carregado</h3>
+            </div>
 
-          <ul class="list">
-            <li class="pill">
-              <div>
-                <strong>Foco atual</strong>
-                <span>Front-end com HTML/CSS/JS e melhoria contínua de UX, performance e organização.</span>
-              </div>
-              <span class="badge">Em evolução</span>
-            </li>
+            <div class="viewer-actions">
+              <a class="btn small" id="openNewTab" href="#" target="_blank" rel="noopener noreferrer" aria-disabled="true">
+                Nova aba
+              </a>
+              <button class="btn small" id="closeViewer" type="button" disabled>
+                Fechar
+              </button>
+            </div>
+          </div>
 
-            <li class="pill">
-              <div>
-                <strong>Objetivo</strong>
-                <span>Centralizar sistemas e projetos em um hub com apresentação profissional e navegação simples.</span>
-              </div>
-              <span class="badge">Portfólio</span>
-            </li>
+          <div class="viewer-body" id="viewerBody">
+            <div class="viewer-empty" id="viewerEmpty">
+              <p><strong>Escolha um projeto</strong> na seção “Portfólio” para carregar aqui.</p>
+              <p class="muted">Isso é útil para demonstração rápida durante apresentação.</p>
+            </div>
 
-            <li class="pill">
-              <div>
-                <strong>Contato</strong>
-                <span>Conecte-se comigo pelo LinkedIn e acompanhe meus projetos no GitHub.</span>
-              </div>
-              <span class="badge">Networking</span>
-            </li>
-          </ul>
+            <iframe
+              id="viewerFrame"
+              class="viewer-frame"
+              title="Sistema carregado no Hero"
+              loading="lazy"
+              referrerpolicy="no-referrer"
+              sandbox="allow-forms allow-scripts allow-same-origin allow-popups allow-downloads"
+            ></iframe>
+          </div>
         </aside>
       </div>
     </section>
@@ -104,7 +102,7 @@
       <div class="section-head">
         <div>
           <h2>Portfólio</h2>
-          <p>Projetos publicados (Abrir sistema) e repositório (Código).</p>
+          <p>Use “Abrir no Hero” para carregar o sistema na seção acima.</p>
         </div>
       </div>
 
@@ -112,11 +110,17 @@
         <!-- Projeto 1 -->
         <article class="proj">
           <h3 class="proj-title">SIdM <span class="tag">Sistema</span></h3>
-          <p class="proj-desc">
-            Sistema publicado na pasta <strong>SIdM</strong>.
-          </p>
+          <p class="proj-desc">Sistema publicado na pasta <strong>SIdM</strong>.</p>
           <div class="proj-actions">
-            <a class="btn small primary" href="./SIdM/" target="_blank" rel="noopener noreferrer">Abrir sistema</a>
+            <!-- ✅ novo botão -->
+            <button class="btn small primary js-open-in-hero"
+              type="button"
+              data-url="./SIdM/"
+              data-title="SIdM">
+              Abrir no Hero
+            </button>
+
+            <a class="btn small" href="./SIdM/" target="_blank" rel="noopener noreferrer">Abrir projeto</a>
             <a class="btn small" href="https://github.com/felipe-feEee/Portifolio/tree/main/SIdM" target="_blank" rel="noopener noreferrer">Código</a>
           </div>
         </article>
@@ -124,16 +128,20 @@
         <!-- Projeto 2 -->
         <article class="proj">
           <h3 class="proj-title">Sistema_HTML <span class="tag">Projeto</span></h3>
-          <p class="proj-desc">
-            Projeto publicado na pasta <strong>Sistema_HTML</strong>.
-          </p>
+          <p class="proj-desc">Projeto publicado na pasta <strong>Sistema_HTML</strong>.</p>
           <div class="proj-actions">
-            <a class="btn small primary" href="./Sistema_HTML/" target="_blank" rel="noopener noreferrer">Abrir sistema</a>
+            <!-- ✅ novo botão -->
+            <button class="btn small primary js-open-in-hero"
+              type="button"
+              data-url="./Sistema_HTML/"
+              data-title="Sistema_HTML">
+              Abrir no Hero
+            </button>
+
+            <a class="btn small" href="./Sistema_HTML/" target="_blank" rel="noopener noreferrer">Abrir projeto</a>
             <a class="btn small" href="https://github.com/felipe-feEee/Portifolio/tree/main/Sistema_HTML" target="_blank" rel="noopener noreferrer">Código</a>
           </div>
         </article>
-
-        <!-- ✅ Quando quiser adicionar novos, é só copiar um <article class="proj">... -->
       </div>
     </section>
 
@@ -149,9 +157,7 @@
       <div class="grid">
         <div class="proj span-12">
           <h3 class="proj-title">Vamos conversar <span class="tag">Contato</span></h3>
-          <p class="proj-desc">
-            O caminho mais rápido é pelo LinkedIn.
-          </p>
+          <p class="proj-desc">O caminho mais rápido é pelo LinkedIn.</p>
           <div class="proj-actions">
             <a class="btn small primary" href="https://www.linkedin.com/in/felipefedev" target="_blank" rel="noopener noreferrer">LinkedIn</a>
             <a class="btn small" href="https://github.com/felipe-feEee" target="_blank" rel="noopener noreferrer">GitHub</a>
@@ -168,6 +174,6 @@
     </footer>
   </main>
 
-  <script src="./assets/js/main.js" defer></script>
+  <script src="./assets/js/main.js"></script>
 </body>
 </html>
