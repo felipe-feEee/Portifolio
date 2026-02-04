@@ -134,8 +134,8 @@ img{ max-width:100%; display:block; }
   background-position: center;
   background-size: cover;
 
-  /* mantém o efeito “suave” */
-  opacity: 0.30;
+  /* mantém o efeito “suave” 
+  opacity: 0.30; */
   filter: saturate(1.05) contrast(1.05);
 }
 .profile-placeholder .initials{
@@ -394,4 +394,5 @@ img{ max-width:100%; display:block; }
   .projects{ grid-template-columns: 1fr; }
   #appFrame{ min-height: 520px; }
 }
+
 
