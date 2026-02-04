@@ -560,3 +560,28 @@ body.scroll-locked, .wrap.spa.scroll-locked { overflow:hidden; }
   background: rgba(255,255,255,.09);
   transform: translateY(-2px);
 }
+
+/* 1) Cada .page ocupa a viewport e permite rolagem interna (sem barra visível) */
+.page {
+  display: flex;
+  flex-direction: column;
+  min-height: calc(100vh - var(--footer-h, 64px));
+  height: calc(100vh - var(--footer-h, 64px));
+  box-sizing: border-box;
+  overflow: auto; /* rolagem interna permitida */
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
+  padding: 80px 0 50px;
+}
+
+/* 2) Esconde a barra de rolagem visual (continua rolando normalmente) */
+.page::-webkit-scrollbar { display: none; }
+.page { scrollbar-width: none; -ms-overflow-style: none; }
+
+/* 3) Garante que o container principal não role entre sections */
+.wrap.spa, #app {
+  overflow: hidden !important; /* impede rolagem do container que mudaria section */
+}
+
+/* 4) Pequeno ajuste para inputs dentro da page (acessibilidade) */
+.page :focus { outline: none; box-shadow: var(--focus); }
