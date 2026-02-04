@@ -78,6 +78,7 @@
 
     <!-- FRAME (invisível por padrão; aparece quando clica em “Ver demo”) -->
     <section class="appframe page is-hidden" id="appFrameSection" aria-label="Demonstração do sistema">
+	<div class="section-top">
       <div class="appframe-bar">
         <div class="appframe-left">
           <span class="appframe-label">DEMO</span>
@@ -94,7 +95,9 @@
           </button>
         </div>
       </div>
+	  </div>
 
+		<div class="section-bottom">
       <div class="appframe-body">
         <iframe
           id="appFrame"
@@ -104,10 +107,12 @@
           sandbox="allow-forms allow-scripts allow-popups allow-downloads"
         ></iframe>
       </div>
+	  </div>
     </section>
 
     <!-- SOBRE -->
     <section id="sobre" class="section page">
+	<div class="section-top">
       <div class="section-head">
         <h2 class="h2">
           ABOUT <span class="accent">ME</span>
@@ -117,7 +122,9 @@
           Tenho interesse em criar produtos digitais claros e eficientes, com atenção à experiência do usuário e estrutura do código.
         </p>
       </div>
+	  </div>
 
+		<div class="section-bottom">
       <div class="cards-2">
         <article class="card">
           <h3>Resumo</h3>
@@ -140,45 +147,40 @@
           </div>
         </article>
       </div>
+	  </div>
     </section>
 
     <!-- PORTFÓLIO -->
     <section id="portfolio" class="section page">
-      <div class="section-head center">
-        <h2 class="h2 big">
-          MY <span class="accent">PORTFOLIO</span>
-        </h2>
-        <p class="lead">Projetos com descrição, stack e demo embutida no portfólio.</p>
+      <div class="section-top">
+        <div class="section-head center">
+          <h2 class="h2 big">MY <span class="accent">PORTFOLIO</span></h2>
+          <p class="lead">Projetos com descrição, stack e demo embutida no portfólio.</p>
+        </div>
       </div>
-
-      <div class="projects">
-        <!-- Projeto 1 -->
-        <article class="project">
-          <div class="thumb">
-            <div class="thumb-inner">
-              <span class="thumb-tag">SISTEMA</span>
-              <span class="thumb-title">SIdM</span>
+    
+      <div class="section-bottom">
+        <div class="projects">
+          <!-- Projeto 1 -->
+          <article class="project">
+            <div class="thumb">
+              <div class="thumb-inner">
+                <span class="thumb-tag">SISTEMA</span>
+                <span class="thumb-title">SIdM</span>
+              </div>
             </div>
-          </div>
-
-          <div class="project-body">
-            <p class="project-desc">
-              <!-- TODO: personalize -->
-              Sistema publicado no GitHub Pages. Clique em “Ver demo” para abrir aqui no frame.
-            </p>
-
-            <div class="chips small">
-              <span class="chip">HTML</span><span class="chip">CSS</span><span class="chip">JS</span>
+    
+            <div class="project-body">
+              <p class="project-desc">Sistema publicado no GitHub Pages. Clique em “Ver demo” para abrir aqui no frame.</p>
+              <div class="chips small"><span class="chip">HTML</span><span class="chip">CSS</span><span class="chip">JS</span></div>
+              <div class="actions">
+                <button class="btn small primary js-open-system" data-url="./SIdM/" data-title="SIdM">Ver demo</button>
+                <a class="btn small ghost" href="./SIdM/" target="_blank" rel="noopener noreferrer">Abrir</a>
+                <a class="btn small ghost" href="https://github.com/..." target="_blank" rel="noopener noreferrer">Código</a>
+              </div>
             </div>
-
-            <div class="actions">
-              <button class="btn small primary js-open-system" data-url="./SIdM/" data-title="SIdM">Ver demo</button>
-              <a class="btn small ghost" href="./SIdM/" target="_blank" rel="noopener noreferrer">Abrir</a>
-              <a class="btn small ghost" href="https://github.com/felipe-feEee/Portifolio/tree/main/SIdM" target="_blank" rel="noopener noreferrer">Código</a>
-            </div>
-          </div>
-        </article>
-
+          </article>
+          
         <!-- Projeto 2 -->
         <article class="project">
           <div class="thumb">
@@ -205,20 +207,23 @@
             </div>
           </div>
         </article>
+      </div> 
+    </div>
 
-        <!-- TODO: duplique <article class="project"> para novos projetos -->
-      </div>
     </section>
 
     <!-- CONTATO -->
     <section id="contato" class="section page">
+	<div class="section-top">
       <div class="section-head">
         <h2 class="h2">
           GET IN <span class="accent">TOUCH</span>
         </h2>
         <p class="lead">Vamos conversar? Me chama no WhatsApp ou LinkedIn.</p>
       </div>
+	</div>
 
+	<div class="section-bottom">
       <div class="cards-2">
         <article class="card">
           <h3>WhatsApp</h3>
@@ -239,8 +244,9 @@
           </div>
         </article>
       </div>
+	</div>
       <footer class="footer">
-        <span>© <span id="year"></span> Felipe Costa</span>
+        <span>© <span id="year"></span> Felipe Martins Costa</span>
       </footer>
     </section>
   </main>
