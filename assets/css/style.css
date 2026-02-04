@@ -463,7 +463,8 @@ body.scroll-locked, .wrap.spa.scroll-locked { overflow:hidden; }
 .dock-btn:hover,
 .dock-btn:focus-visible {
   width: var(--dock-expanded-width);
-  background: rgba(255,255,255,.09);
+  background: rgba(124,58,237,0.12);
+  border-color: rgba(124,58,237,0.18);
   transform: translateY(-2px);
 }
 
@@ -585,6 +586,7 @@ body.scroll-locked, .wrap.spa.scroll-locked { overflow:hidden; }
 
 /* 4) Pequeno ajuste para inputs dentro da page (acessibilidade) */
 .page :focus { outline: none; box-shadow: var(--focus); }
+
 
 
 
