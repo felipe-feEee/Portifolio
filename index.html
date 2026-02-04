@@ -1,12 +1,12 @@
 <!doctype html>
-<html lang="pt-BR">
+<html lang="en">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Felipe Martins Costa — Portfólio</title>
-  <meta name="description" content="Portfólio de Felipe Costa — projetos, habilidades e demos." />
+  <title>Felipe Martins Costa — Portfolio</title>
+  <meta name="description" content="Felipe Costa — portfolio with projects, skills and live demos." />
 
-  <!-- Favicon (importante em /Portifolio/) -->
+  <!-- Favicon -->
   <link rel="icon" href="./favicon.ico?v=5" type="image/x-icon">
   <link rel="shortcut icon" href="./favicon.ico?v=5" type="image/x-icon">
 
@@ -14,29 +14,28 @@
 </head>
 
 <body>
-  <!-- Menu vertical flutuante (estilo do modelo) -->
-  
-<aside class="dock" aria-label="Navegação rápida">
-  <a class="dock-btn" href="#heroSection" data-spy="heroSection" aria-label="Home">
-	  <span class="dock-label">Home</span>
-	  <span class="ico">🏠</span>
-  </a>
-  <a class="dock-btn" href="#sobre" data-spy="sobre" aria-label="Sobre">
-	  <span class="dock-label">Sobre</span>
-	  <span class="ico">👤</span>
-  </a>
-  <a class="dock-btn" href="#portfolio" data-spy="portfolio" aria-label="Portfólio">
-	  <span class="dock-label">Portfólio</span>
-	  <span class="ico">💼</span>
-  </a>
-  <a class="dock-btn" href="#contato" data-spy="contato" aria-label="Contato">
-	  <span class="dock-label">Contato</span>
-	  <span class="ico">💬</span>
-  </a>
-</aside>
+  <!-- Floating vertical menu -->
+  <aside class="dock" aria-label="Quick navigation">
+    <a class="dock-btn" href="#heroSection" data-spy="heroSection" aria-label="Home">
+      <span class="dock-label">Home</span>
+      <span class="ico">🏠</span>
+    </a>
+    <a class="dock-btn" href="#about" data-spy="about" aria-label="About">
+      <span class="dock-label">About</span>
+      <span class="ico">👤</span>
+    </a>
+    <a class="dock-btn" href="#portfolio" data-spy="portfolio" aria-label="Portfolio">
+      <span class="dock-label">Portfolio</span>
+      <span class="ico">💼</span>
+    </a>
+    <a class="dock-btn" href="#contact" data-spy="contact" aria-label="Contact">
+      <span class="dock-label">Contact</span>
+      <span class="ico">💬</span>
+    </a>
+  </aside>
 
   <main id="app" class="wrap spa" tabindex="-1">
-    <!-- HERO (layout parecido com o modelo: split image + content + CTA) -->
+    <!-- HERO (split image + content + CTA) -->
     <section class="hero page" id="heroSection">
       <div class="hero-left">
         <div class="profile-card">
@@ -49,7 +48,7 @@
 
           <div class="profile-badge">
             <span class="dot"></span>
-            <span>Disponível para projetos</span>
+            <span>Available for projects</span>
           </div>
         </div>
       </div>
@@ -62,13 +61,11 @@
         </h1>
 
         <p class="subtitle">
-          <!-- TODO: personalize -->
-          Sou um desenvolvedor focado em criar experiências limpas e funcionais.
-          Gosto de construir soluções web com boa usabilidade, performance e organização.
+          I build clean, functional web experiences focused on usability, performance, and maintainable code.
         </p>
 
         <div class="hero-actions">
-          <a class="btn primary" href="#sobre">MORE ABOUT ME</a>
+          <a class="btn primary" href="#about">MORE ABOUT ME</a>
           <a class="btn ghost" href="https://www.linkedin.com/in/felipefedev" target="_blank" rel="noopener noreferrer">LinkedIn</a>
           <a class="btn ghost" href="https://github.com/felipe-feEee/Portifolio" target="_blank" rel="noopener noreferrer">GitHub</a>
         </div>
@@ -76,192 +73,195 @@
         <div class="mini">
           <div class="mini-item">
             <span class="mini-k">Stack</span>
-            <span class="mini-v">HTML • CSS • JS</span>
+            <span class="mini-v">HTML • CSS • JavaScript • Git</span>
           </div>
           <div class="mini-item">
-            <span class="mini-k">Base</span>
+            <span class="mini-k">Location</span>
             <span class="mini-v">São Paulo • BR</span>
           </div>
         </div>
       </div>
     </section>
 
-    <!-- FRAME (invisível por padrão; aparece quando clica em “Ver demo”) -->
-    <section class="appframe page is-hidden" id="appFrameSection" aria-label="Demonstração do sistema">
-	<div class="section-top">
-      <div class="appframe-bar">
-        <div class="appframe-left">
-          <span class="appframe-label">DEMO</span>
-          <strong class="appframe-title" id="appFrameTitle">—</strong>
-          <span class="appframe-status" id="appFrameStatus">Carregando…</span>
-        </div>
-
-        <div class="appframe-actions">
-          <a class="btn small ghost" id="appOpenNewTab" href="#" target="_blank" rel="noopener noreferrer" aria-disabled="true">
-            Nova aba
-          </a>
-          <button class="btn small primary" id="appCloseBtn" type="button">
-            Fechar
-          </button>
-        </div>
-      </div>
-	  </div>
-
-		<div class="section-bottom">
-      <div class="appframe-body">
-        <iframe
-          id="appFrame"
-          title="Sistema selecionado"
-          loading="lazy"
-          referrerpolicy="no-referrer"
-          sandbox="allow-forms allow-scripts allow-popups allow-downloads"
-        ></iframe>
-      </div>
-	  </div>
-    </section>
-
-    <!-- SOBRE -->
-    <section id="sobre" class="section page">
-	<div class="section-top">
-      <div class="section-head">
-        <h2 class="h2">
-          ABOUT <span class="accent">ME</span>
-        </h2>
-        <p class="lead">
-          <!-- TODO: personalize -->
-          Tenho interesse em criar produtos digitais claros e eficientes, com atenção à experiência do usuário e estrutura do código.
-        </p>
-      </div>
-	  </div>
-
-		<div class="section-bottom">
-      <div class="cards-2">
-        <article class="card">
-          <h3>Resumo</h3>
-          <ul class="list">
-            <li>Desenvolvimento web focado em UX e responsividade</li>
-            <li>Organização de projetos e portfólio no GitHub Pages</li>
-            <li>Interesse em automações e soluções práticas</li>
-          </ul>
-        </article>
-
-        <article class="card">
-          <h3>Habilidades</h3>
-          <div class="chips">
-            <span class="chip">HTML5</span>
-            <span class="chip">CSS3</span>
-            <span class="chip">JavaScript</span>
-            <span class="chip">Git/GitHub</span>
-            <span class="chip">UI/UX</span>
-            <span class="chip">Responsivo</span>
+    <!-- FRAME (hidden by default; shown when "View demo" is clicked) -->
+    <section class="appframe page is-hidden" id="appFrameSection" aria-label="Demo frame">
+      <div class="section-top">
+        <div class="appframe-bar">
+          <div class="appframe-left">
+            <span class="appframe-label">DEMO</span>
+            <strong class="appframe-title" id="appFrameTitle">—</strong>
+            <span class="appframe-status" id="appFrameStatus">Loading…</span>
           </div>
-        </article>
+
+          <div class="appframe-actions">
+            <a class="btn small ghost" id="appOpenNewTab" href="#" target="_blank" rel="noopener noreferrer" aria-disabled="true">
+              Open in new tab
+            </a>
+            <button class="btn small primary" id="appCloseBtn" type="button">
+              Close
+            </button>
+          </div>
+        </div>
       </div>
-	  </div>
+
+      <div class="section-bottom">
+        <div class="appframe-body">
+          <iframe
+            id="appFrame"
+            title="Selected demo"
+            loading="lazy"
+            referrerpolicy="no-referrer"
+            sandbox="allow-forms allow-scripts allow-popups allow-downloads"
+          ></iframe>
+        </div>
+      </div>
     </section>
 
-    <!-- PORTFÓLIO -->
+    <!-- ABOUT -->
+    <section id="about" class="section page">
+      <div class="section-top">
+        <div class="section-head">
+          <h2 class="h2">
+            ABOUT <span class="accent">ME</span>
+          </h2>
+          <p class="lead">
+            I am a versatile developer with experience in web development, technical support, and digital marketing. I focus on clear, user-centered interfaces and reliable front-end implementations, balancing usability and performance.
+          </p>
+        </div>
+      </div>
+
+      <div class="section-bottom">
+        <div class="cards-2">
+          <article class="card">
+            <h3>Summary</h3>
+            <ul class="list">
+              <li>Junior Software Engineer with hands-on experience in front-end web technologies and production support.</li>
+              <li>Progressed from technical support to software engineering; worked on multilingual digital marketing platforms.</li>
+              <li>Skilled at translating product requirements into maintainable code and collaborating with cross-functional teams.</li>
+            </ul>
+          </article>
+
+          <article class="card">
+            <h3>Skills</h3>
+            <div class="chips">
+              <span class="chip">HTML5</span>
+              <span class="chip">CSS3</span>
+              <span class="chip">JavaScript (ES6+)</span>
+              <span class="chip">Git / GitHub</span>
+              <span class="chip">Responsive Design</span>
+              <span class="chip">Basic SQL</span>
+            </div>
+
+            <div style="margin-top:12px; font-size:13px; color:var(--muted);">
+              <strong>Other tools:</strong> Browser DevTools, npm, basic Python, PowerShell, Facebook Business tools.
+            </div>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- PORTFOLIO -->
     <section id="portfolio" class="section page">
       <div class="section-top">
         <div class="section-head center">
           <h2 class="h2 big">MY <span class="accent">PORTFOLIO</span></h2>
-          <p class="lead">Projetos com descrição, stack e demo embutida no portfólio.</p>
+          <p class="lead">Projects with short descriptions, stack and live demos.</p>
         </div>
       </div>
-    
+
       <div class="section-bottom">
         <div class="projects">
-          <!-- Projeto 1 -->
+          <!-- Project 1 -->
           <article class="project">
             <div class="thumb">
               <div class="thumb-inner">
-                <span class="thumb-tag">SISTEMA</span>
+                <span class="thumb-tag">SYSTEM</span>
                 <span class="thumb-title">SIdM</span>
               </div>
             </div>
-    
+
             <div class="project-body">
               <p class="project-desc">
-				  About The Project: This project solves the crucial need for local data persistence and management where database or server installations are impossible. It functions as a complete, self-contained data-entry and reporting tool. The solution leverages JavaScript's local capabilities to handle all CRUD operations, exporting the data state as a JSON file, and then reloading it upon execution.
-			  </p>
+                About the project: This project addresses the need for local data persistence and management where database or server installations are not available. It works as a self-contained data-entry and reporting tool using browser storage and JSON export/import for persistence.
+              </p>
               <div class="chips small"><span class="chip">HTML</span><span class="chip">CSS</span><span class="chip">JS</span></div>
               <div class="actions">
-                <button class="btn small primary js-open-system" data-url="./SIdM/" data-title="SIdM">Ver demo</button>
-                <a class="btn small ghost" href="./SIdM/" target="_blank" rel="noopener noreferrer">Abrir</a>
-                <a class="btn small ghost" href="https://github.com/..." target="_blank" rel="noopener noreferrer">Código</a>
+                <button class="btn small primary js-open-system" data-url="./SIdM/" data-title="SIdM">View demo</button>
+                <a class="btn small ghost" href="./SIdM/" target="_blank" rel="noopener noreferrer">Open</a>
+                <a class="btn small ghost" href="https://github.com/..." target="_blank" rel="noopener noreferrer">Code</a>
               </div>
             </div>
           </article>
-          
-        <!-- Projeto 2 -->
-        <article class="project">
-          <div class="thumb">
-            <div class="thumb-inner">
-              <span class="thumb-tag">PROJETO</span>
-              <span class="thumb-title">Sistema_HTML</span>
-            </div>
-          </div>
 
-          <div class="project-body">
-            <p class="project-desc">
-              This project strongly showcases proficiency in Pure JavaScript Client-Side Development and Operating System Automation via PowerShell.
-            </p>
-
-            <div class="chips small">
-              <span class="chip">HTML</span><span class="chip">CSS</span><span class="chip">JS</span>
+          <!-- Project 2 -->
+          <article class="project">
+            <div class="thumb">
+              <div class="thumb-inner">
+                <span class="thumb-tag">PROJECT</span>
+                <span class="thumb-title">Sistema_HTML</span>
+              </div>
             </div>
 
-            <div class="actions">
-              <button class="btn small primary js-open-system" data-url="./Sistema_HTML/" data-title="Sistema_HTML">Ver demo</button>
-              <a class="btn small ghost" href="./Sistema_HTML/" target="_blank" rel="noopener noreferrer">Abrir</a>
-              <a class="btn small ghost" href="https://github.com/felipe-feEee/Portifolio/tree/main/Sistema_HTML" target="_blank" rel="noopener noreferrer">Código</a>
-            </div>
-          </div>
-        </article>
-      </div> 
-    </div>
+            <div class="project-body">
+              <p class="project-desc">
+                This project demonstrates proficiency in pure client-side JavaScript development and includes examples of automation using PowerShell.
+              </p>
 
+              <div class="chips small">
+                <span class="chip">HTML</span><span class="chip">CSS</span><span class="chip">JS</span>
+              </div>
+
+              <div class="actions">
+                <button class="btn small primary js-open-system" data-url="./Sistema_HTML/" data-title="Sistema_HTML">View demo</button>
+                <a class="btn small ghost" href="./Sistema_HTML/" target="_blank" rel="noopener noreferrer">Open</a>
+                <a class="btn small ghost" href="https://github.com/felipe-feEee/Portifolio/tree/main/Sistema_HTML" target="_blank" rel="noopener noreferrer">Code</a>
+              </div>
+            </div>
+          </article>
+        </div>
+      </div>
     </section>
 
-    <!-- CONTATO -->
-    <section id="contato" class="section page">
-	<div class="section-top">
-      <div class="section-head">
-        <h2 class="h2">
-          GET IN <span class="accent">TOUCH</span>
-        </h2>
-        <p class="lead">Vamos conversar? Me chama no WhatsApp ou LinkedIn.</p>
+    <!-- CONTACT -->
+    <section id="contact" class="section page">
+      <div class="section-top">
+        <div class="section-head">
+          <h2 class="h2">
+            GET IN <span class="accent">TOUCH</span>
+          </h2>
+          <p class="lead">Let's talk — reach out on WhatsApp or LinkedIn.</p>
+        </div>
       </div>
-	</div>
 
-	<div class="section-bottom">
-      <div class="cards-2">
-        <article class="card">
-          <h3>WhatsApp</h3>
-          <p class="muted">Resposta rápida pelo WhatsApp.</p>
-          <div class="actions">
-            <a class="btn primary" href="https://wa.me/5511967705618" target="_blank" rel="noopener noreferrer">
-              Abrir conversa
-            </a>
-          </div>
-        </article>
+      <div class="section-bottom">
+        <div class="cards-2">
+          <article class="card">
+            <h3>WhatsApp</h3>
+            <p class="muted">Quick response via WhatsApp.</p>
+            <div class="actions">
+              <a class="btn primary" href="https://wa.me/5511967705618" target="_blank" rel="noopener noreferrer">
+                Open chat
+              </a>
+            </div>
+          </article>
 
-        <article class="card">
-          <h3>Redes</h3>
-          <p class="muted">Conecte-se comigo:</p>
-          <div class="actions">
-            <a class="btn ghost" href="https://www.linkedin.com/in/felipefedev" target="_blank" rel="noopener noreferrer">LinkedIn</a>
-            <a class="btn ghost" href="https://github.com/felipe-feEee" target="_blank" rel="noopener noreferrer">GitHub</a>
-          </div>
-        </article>
+          <article class="card">
+            <h3>Social</h3>
+            <p class="muted">Connect with me:</p>
+            <div class="actions">
+              <a class="btn ghost" href="https://www.linkedin.com/in/felipefedev" target="_blank" rel="noopener noreferrer">LinkedIn</a>
+              <a class="btn ghost" href="https://github.com/felipe-feEee" target="_blank" rel="noopener noreferrer">GitHub</a>
+            </div>
+          </article>
+        </div>
       </div>
-	</div>
     </section>
   </main>
-  <footer class="site-footer" role="contentinfo"> 
-	  <div class="wrap"> 
-		  <span>© <span id="year"></span> Felipe Martins Costa</span> 
-	  </div> 
+
+  <footer class="site-footer" role="contentinfo">
+    <div class="wrap">
+      <span>© <span id="year"></span> Felipe Martins Costa</span>
+    </div>
   </footer>
 
   <script src="./assets/js/main.js"></script>
