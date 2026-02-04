@@ -398,28 +398,42 @@ body.scroll-locked, .wrap.spa.scroll-locked { overflow:hidden; }
 /* --- Quando o usuário estiver rolando dentro de um .scrollable, não queremos que o container capture o wheel --- */
 /* (nenhuma regra CSS necessária aqui; o JS tratará) */
 
-/* Dock: expansão dinâmica baseada na largura do label */
+/* =========================
+   Dock fix: expandir para a esquerda sem deslocar os outros botões
+   Cole este bloco no FINAL do seu style.css
+   ========================= */
+
+/* Variáveis locais (ajuste se quiser) */
 :root {
-  --dock-size: 54px;
-  --dock-expand-fallback: 160px; /* fallback caso JS não rode */
+  --dock-size: var(--dock, 54px);
+  --dock-expand: 160px; /* quanto o botão cresce */
+  --dock-expanded-width: calc(var(--dock-size) + var(--dock-expand));
 }
 
-/* container alinhado pela borda direita (mantém irmãos no lugar) */
+/* Container: garante alinhamento pela borda direita para que
+   a expansão ocorra para a esquerda sem empurrar os irmãos */
 .dock {
-  align-items: flex-end;
+  position: fixed;
+  right: 18px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: flex-end; /* <-- essencial: fixa a borda direita dos itens */
+  width: auto;           /* evita que o container se ajuste à largura do item expandido */
+  z-index: 120;
 }
 
-/* botão base */
+/* Botão base: compacto, ícone no lado direito; expande para a esquerda */
 .dock-btn {
-  --label-w: 0px; /* será atualizado via JS */
-  --expanded-width: calc(var(--dock-size) + var(--label-w));
   position: relative;
   width: var(--dock-size);
-  min-width: var(--dock-size);
   height: var(--dock-size);
+  min-width: var(--dock-size);
   display: inline-flex;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: flex-end;   /* ícone fica à direita do botão */
   gap: 8px;
   padding: 0 10px;
   border-radius: 999px;
@@ -435,10 +449,13 @@ body.scroll-locked, .wrap.spa.scroll-locked { overflow:hidden; }
     background .18s ease,
     transform .12s ease,
     border-radius .18s ease;
-  transform-origin: right center;
+  transform-origin: right center; /* cresce para a esquerda */
 }
 
-/* label (invisível por padrão) */
+/* Ícone sempre visível */
+.dock-btn .ico { font-size: 18px; line-height:1; display:inline-block; }
+
+/* Label: escondido por padrão, posicionado à esquerda do ícone */
 .dock-btn .dock-label {
   display:inline-block;
   margin-right: 8px;
@@ -458,15 +475,15 @@ body.scroll-locked, .wrap.spa.scroll-locked { overflow:hidden; }
   white-space: nowrap;
 }
 
-/* hover/focus: usa a largura calculada via --label-w */
+/* Hover / focus: expande apenas o botão em foco (para a esquerda) */
 .dock-btn:hover,
 .dock-btn:focus-visible {
-  width: max(var(--expanded-width), calc(var(--dock-size) + var(--dock-expand-fallback)));
+  width: var(--dock-expanded-width);
   background: rgba(255,255,255,.09);
   transform: translateY(-2px);
 }
 
-/* mostra só o label do botão em hover/focus */
+/* Revela somente o label do botão em hover/focus */
 .dock-btn:hover .dock-label,
 .dock-btn:focus-visible .dock-label {
   opacity: 1;
@@ -474,7 +491,7 @@ body.scroll-locked, .wrap.spa.scroll-locked { overflow:hidden; }
   pointer-events: auto;
 }
 
-/* estado ativo: retângulo arredondado; mantém forma ao expandir */
+/* Estado ativo: retângulo arredondado; mantém forma ao expandir */
 .dock-btn.is-active {
   border-radius: 14px;
   background: linear-gradient(135deg, rgba(124,58,237,.95), rgba(6,182,212,.75));
@@ -484,20 +501,23 @@ body.scroll-locked, .wrap.spa.scroll-locked { overflow:hidden; }
   width: var(--dock-size);
 }
 
-/* ativo + hover: expande mantendo forma retangular */
+/* Ativo + hover: expande para a esquerda mantendo a forma retangular */
 .dock-btn.is-active:hover,
 .dock-btn.is-active:focus-visible {
-  width: max(var(--expanded-width), calc(var(--dock-size) + var(--dock-expand-fallback)));
+  width: var(--dock-expanded-width);
   border-radius: 14px;
   transform: translateY(-2px);
 }
 
-/* remove tooltip antigo se existir */
+/* Remove tooltips antigos que possam conflitar */
 .dock-btn::after { display: none !important; }
 
-/* mobile: reduzir expansão */
+/* Acessibilidade: foco por teclado */
+.dock-btn:focus-visible { outline: none; box-shadow: var(--focus); }
+
+/* Mobile: reduzir expansão para caber melhor */
 @media (max-width:520px) {
-  :root { --dock-expand-fallback: 110px; }
+  :root { --dock-expand: 110px; }
   .dock { right: 10px; }
-  .dock-btn .dock-label { padding: 7px 10px; font-size: 12px; }
+  .dock-btn .dock-label { padding: 7px 10px; font-size:12px; }
 }
