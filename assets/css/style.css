@@ -466,3 +466,48 @@ body.scroll-locked, .wrap.spa.scroll-locked { overflow:hidden; }
   .site-footer .wrap { padding-left: 12px; padding-right: 12px; }
 }
 
+/* --- Variável de altura do footer (ajuste se necessário) --- */
+:root { --footer-h: 64px; }
+
+/* --- Mantém wrapper com altura disponível e scrollbar invisível --- */
+.wrap.spa {
+  height: calc(100vh - var(--footer-h));
+  overflow-y: auto;                 /* permite rolagem do container quando necessário */
+  scrollbar-width: none;            /* Firefox */
+  -ms-overflow-style: none;         /* IE/Edge */
+  scroll-snap-type: y mandatory;
+  scroll-behavior: smooth;
+  scroll-padding-top: 24px;
+}
+.wrap.spa::-webkit-scrollbar { display: none; } /* Chrome/Safari/Edge */
+
+/* --- Cada page ocupa a área visível (ajustado para footer) --- */
+.page {
+  min-height: calc(100vh - var(--footer-h));
+  box-sizing: border-box;
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
+  padding: 80px 0 50px;
+  display: flex;
+  flex-direction: column; /* garante empilhamento top/bottom */
+  align-items: stretch;
+}
+
+/* --- Sections que precisam rolar internamente (marque com .scrollable) --- */
+.section.scrollable {
+  /* limita a altura disponível dentro da section e permite rolagem interna */
+  max-height: calc(100vh - var(--footer-h) - 160px); /* 160px = padding + header estimado; ajuste se necessário */
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding-right: 18px; /* evita corte por causa do footer/dock */
+}
+
+/* scrollbar invisível para scrollables também */
+.section.scrollable::-webkit-scrollbar { display: none; }
+.section.scrollable { scrollbar-width: none; -ms-overflow-style: none; }
+
+/* --- Garante que section-top e section-bottom fiquem empilhados --- */
+.section-top, .section-bottom { width:100%; display:block; }
+
+/* --- Quando o usuário estiver rolando dentro de um .scrollable, não queremos que o container capture o wheel --- */
+/* (nenhuma regra CSS necessária aqui; o JS tratará) */
