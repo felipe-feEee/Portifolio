@@ -474,3 +474,72 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Optional: if you programmatically change sections elsewhere, call setActive(id)
 })();
+
+// Sincroniza âncoras com o dock (marca .is-active no botão correto)
+// Requer: botões do dock com data-spy="sectionId" e sections com id="sectionId"
+(function () {
+  const container = document.querySelector('.wrap.spa') || document.getElementById('app') || document.documentElement;
+  const dockButtons = Array.from(document.querySelectorAll('.dock-btn[data-spy]'));
+  const anchorLinks = Array.from(document.querySelectorAll('a[href^="#"]'));
+
+  if (!dockButtons.length) return;
+
+  function setActiveDock(id) {
+    dockButtons.forEach(btn => {
+      btn.classList.toggle('is-active', btn.dataset.spy === id);
+    });
+  }
+
+  // Scroll para target considerando container rolável
+  function scrollToSection(target) {
+    if (!target) return;
+    if (container === document.documentElement || container === document.body) {
+      target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    } else {
+      const containerRect = container.getBoundingClientRect();
+      const targetRect = target.getBoundingClientRect();
+      const offset = targetRect.top - containerRect.top + container.scrollTop;
+      container.scrollTo({ top: offset, behavior: 'smooth' });
+    }
+  }
+
+  // Intercepta cliques em links de âncora para sincronizar o dock
+  anchorLinks.forEach(a => {
+    a.addEventListener('click', (ev) => {
+      const href = a.getAttribute('href');
+      if (!href || !href.startsWith('#')) return;
+      const id = href.slice(1);
+      const target = document.getElementById(id);
+      if (!target) return;
+
+      // evita comportamento padrão que pode rolar o documento em vez do container
+      ev.preventDefault();
+
+      // rola e atualiza hash sem pular
+      scrollToSection(target);
+      history.replaceState(null, '', `#${id}`);
+
+      // atualiza o dock imediatamente para feedback visual
+      setActiveDock(id);
+    });
+  });
+
+  // Quando a hash mudar (ex.: back/forward ou link externo), atualiza o dock
+  function activateFromHash() {
+    const id = window.location.hash.replace('#', '');
+    if (!id) {
+      // fallback: marca o primeiro botão (opcional)
+      const first = dockButtons[0];
+      if (first && first.dataset.spy) setActiveDock(first.dataset.spy);
+      return;
+    }
+    // se existir botão correspondente, marca; se não, não faz nada
+    const btn = dockButtons.find(b => b.dataset.spy === id);
+    if (btn) setActiveDock(id);
+  }
+
+  window.addEventListener('hashchange', activateFromHash, { passive: true });
+  window.addEventListener('load', activateFromHash, { passive: true });
+
+  // opcional: se você tiver lógica que muda seção por JS, chame setActiveDock(id) quando mudar
+})();
