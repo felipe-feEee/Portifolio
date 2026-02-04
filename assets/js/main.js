@@ -210,3 +210,13 @@ document.addEventListener("DOMContentLoaded", () => {
   setTimeout(enforceStackLayout, 120);
   setTimeout(enforceStackLayout, 600);
 });
+
+// garante que o item receba classe 'keyboard-focus' quando focado por teclado
+document.querySelectorAll('.dock-btn').forEach(btn => {
+  btn.addEventListener('focus', () => btn.classList.add('keyboard-focus'));
+  btn.addEventListener('blur', () => btn.classList.remove('keyboard-focus'));
+  // opcional: abrir label ao tocar (mobile)
+  btn.addEventListener('touchstart', () => btn.classList.add('touched'));
+  btn.addEventListener('touchend', () => setTimeout(() => btn.classList.remove('touched'), 800));
+});
+
