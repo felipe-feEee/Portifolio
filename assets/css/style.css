@@ -406,7 +406,7 @@ body.scroll-locked, .wrap.spa.scroll-locked { overflow:hidden; }
 /* Variáveis locais (ajuste se quiser) */
 :root {
   --dock-size: var(--dock, 54px);
-  --dock-expand: 160px; /* quanto o botão cresce */
+  --dock-expand: 100px; /* quanto o botão cresce */
   --dock-expanded-width: calc(var(--dock-size) + var(--dock-expand));
 }
 
@@ -521,3 +521,4 @@ body.scroll-locked, .wrap.spa.scroll-locked { overflow:hidden; }
   .dock { right: 10px; }
   .dock-btn .dock-label { padding: 7px 10px; font-size:12px; }
 }
+
