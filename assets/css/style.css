@@ -603,3 +603,22 @@ html, body {
   padding-top: 6px;
   gap: 16px;
 }
+
+/* Força snap firme e previne "bounce" */
+.wrap.spa {
+  scroll-snap-type: y mandatory;
+  scroll-behavior: smooth;
+  overflow-y: auto;
+  overscroll-behavior-y: contain; /* evita scroll da página pai em navegadores compatíveis */
+}
+
+/* Cada página é um ponto de snap e não permite pular o snap */
+.page {
+  scroll-snap-align: start;
+  scroll-snap-stop: always; /* garante que o navegador pare no snap */
+}
+
+/* Respeita preferência do usuário por reduzir animações */
+@media (prefers-reduced-motion: reduce) {
+  .wrap.spa { scroll-behavior: auto; }
+}
