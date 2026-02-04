@@ -379,39 +379,6 @@ body.scroll-locked, .wrap.spa.scroll-locked { overflow:hidden; }
   align-items: stretch;
 }
 
-/* --- Sections que precisam rolar internamente (marque com .scrollable) --- */
-.section.scrollable {
-  /* limita a altura disponível dentro da section e permite rolagem interna */
-  max-height: calc(100vh - var(--footer-h) - 160px); /* 160px = padding + header estimado; ajuste se necessário */
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
-  padding-right: 18px; /* evita corte por causa do footer/dock */
-}
-
-/* scrollbar invisível para scrollables também */
-.section.scrollable::-webkit-scrollbar { display: none; }
-.section.scrollable { scrollbar-width: none; -ms-overflow-style: none; }
-
-/* --- Garante que section-top e section-bottom fiquem empilhados --- */
-.section-top, .section-bottom { width:100%; display:block; }
-
-/* --- Scrollable sections: altura flexível e rolagem interna --- */
-.section.scrollable {
-  /* permite que a section cresça/encolha dentro da .page e tenha rolagem própria */
-  display: flex;
-  flex-direction: column;
-  flex: 1 1 auto; /* ocupa o espaço disponível dentro da .page */
-  min-height: 0;  /* essencial para que overflow funcione dentro de flex containers */
-  max-height: calc(100vh - var(--footer-h) - 160px); /* ajuste 160px conforme paddings/header */
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch; /* rolagem suave em iOS */
-  padding-right: 18px; /* evita corte por causa do dock/footer */
-}
-
-/* scrollbar invisível (mantém rolagem funcional) */
-.section.scrollable::-webkit-scrollbar { display: none; }
-.section.scrollable { scrollbar-width: none; -ms-overflow-style: none; }
-
 /* --- Quando o usuário estiver rolando dentro de um .scrollable, não queremos que o container capture o wheel --- */
 /* (nenhuma regra CSS necessária aqui; o JS tratará) */
 
@@ -539,3 +506,30 @@ body.scroll-locked, .wrap.spa.scroll-locked { overflow:hidden; }
   .dock-btn .dock-label { padding: 7px 10px; font-size:12px; }
 }
 
+
+/* --- Sections roláveis sem trocar de section e sem mostrar scrollbar --- */
+
+/* Garante que cada .page ocupe a viewport, mas permita rolagem interna */
+.page {
+  display: flex;
+  flex-direction: column;
+  min-height: calc(100vh - var(--footer-h, 64px));
+  height: calc(100vh - var(--footer-h, 64px));
+  box-sizing: border-box;
+  overflow: auto;        /* permite rolar o conteúdo interno da section */
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
+  padding: 80px 0 50px;  /* mantém seu padding atual (ajuste se necessário) */
+}
+
+/* Se você tiver .page > * com display:block !important, mantenha; o overflow funciona com min-height:0 */
+.page > * { min-height: 0; }
+
+/* Remove barra de rolagem visual (continua rolando normalmente) */
+.page::-webkit-scrollbar { display: none; }
+.page { scrollbar-width: none; -ms-overflow-style: none; }
+
+/* Pequeno ajuste: se houver header fixo ou footer, ajuste a altura das pages */
+@media (max-width: 980px) {
+  .page { padding: 60px 0 40px; }
+}
