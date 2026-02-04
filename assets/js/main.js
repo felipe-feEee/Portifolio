@@ -352,3 +352,65 @@ document.addEventListener("DOMContentLoaded", () => {
   // Detecta primeiro touch globalmente para ativar is-touch (fallback)
   window.addEventListener('touchstart', enableTouchMode, { passive: true, once: true });
 })();
+
+// Bloqueia troca de section por scroll/swipe.
+// Regras:
+// - container (.wrap.spa ou #app) fica com overflow:hidden (CSS acima).
+// - cada .page rola internamente.
+// - interceptamos wheel/touch no container e prevenimos qualquer tentativa de rolar o container.
+// - permitimos scroll nativo dentro da .page (não chamamos preventDefault quando o evento é para a própria .page).
+(function () {
+  const container = document.querySelector('.wrap.spa') || document.getElementById('app') || document.documentElement;
+  if (!container) return;
+
+  // Helper: encontra a .page ancestral (se houver)
+  function findPageAncestor(el) {
+    while (el && el !== document && el !== container) {
+      if (el.classList && el.classList.contains('page')) return el;
+      el = el.parentElement;
+    }
+    return null;
+  }
+
+  // WHEEL: se o evento não for destinado a uma .page rolável, previne para evitar troca de section
+  container.addEventListener('wheel', function (e) {
+    const page = findPageAncestor(e.target);
+    if (!page) {
+      // evento fora de uma .page: impede rolagem do container
+      e.preventDefault();
+      return;
+    }
+    // se veio de dentro de uma .page, deixamos o navegador tratar o scroll interno normalmente
+    // mas evitamos que o evento "vaze" para outros handlers que poderiam trocar section
+    e.stopPropagation();
+  }, { passive: false, capture: true });
+
+  // TOUCH: impede swipe no container; permite scroll dentro da .page
+  let touchStartY = 0;
+  container.addEventListener('touchstart', function (e) {
+    if (e.touches && e.touches.length) touchStartY = e.touches[0].clientY;
+  }, { passive: true, capture: true });
+
+  container.addEventListener('touchmove', function (e) {
+    const page = findPageAncestor(e.target);
+    if (!page) {
+      // swipe fora de uma .page: evita que o container mude section
+      e.preventDefault();
+      return;
+    }
+    // dentro de .page: permite scroll nativo, mas impede propagação para evitar troca de section
+    e.stopPropagation();
+  }, { passive: false, capture: true });
+
+  // Bloqueio de teclas de navegação que poderiam mudar a página inteira
+  window.addEventListener('keydown', function (e) {
+    const blocked = ["PageDown","PageUp","ArrowDown","ArrowUp","Home","End"];
+    if (!blocked.includes(e.key)) return;
+    const active = document.activeElement;
+    const isInput = active && (active.tagName === "INPUT" || active.tagName === "TEXTAREA" || active.isContentEditable);
+    if (!isInput) {
+      e.preventDefault(); // evita navegação por teclado que mudaria section
+    }
+  }, { passive: false });
+
+})();
