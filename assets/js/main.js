@@ -1,27 +1,17 @@
-// main.js — versão reescrita e consolidada
+// main.js — navegação por menu apenas (scroll desativado entre sections)
 // Funcionalidades:
 // - atualiza ano no footer
 // - abre/fecha demo em iframe com lock de scroll
-// - dock spy com IntersectionObserver
-// - força layout empilhado (header acima, cards abaixo) como fallback
-// - scroll-snap por seção com detecção de "força" (acumulação) e sensibilidade ajustável
-// - suporte a touch (swipe), teclado e prefers-reduced-motion
+// - dock navigation (clique apenas) para navegar entre sections
+// - previne scroll/touch/wheel que mudaria a seção
+// - IntersectionObserver para marcar botão ativo no dock
+// - enforceStackLayout como fallback para garantir header acima e cards abaixo
 
 document.addEventListener("DOMContentLoaded", () => {
-  /* =========================
-     Configurações ajustáveis
-     ========================= */
+  // Config
   const SCROLL_LOCK_CLASS = "scroll-locked";
-  const SNAP_LOCK_DURATION = 800; // ms que bloqueia novos saltos após snap
-  const WHEEL_ACCUM_WINDOW = 220; // ms para acumular deltaY
-  const WHEEL_REQUIRED_ACC = 420; // px acumulados necessários para disparar
-  const WHEEL_SINGLE_THRESHOLD = 320; // px: pico único que dispara imediatamente
-  const TOUCH_MIN_DISTANCE = 120; // px: swipe mínimo para mobile
-  const TOUCH_MAX_TIME = 450; // ms: swipe deve ser relativamente rápido
 
-  /* =========================
-     Elementos DOM
-     ========================= */
+  // DOM
   const yearEl = document.getElementById("year");
   const container = document.querySelector(".wrap.spa") || document.getElementById("app");
   const heroSection = document.getElementById("heroSection");
@@ -41,15 +31,11 @@ document.addEventListener("DOMContentLoaded", () => {
     document.getElementById("contato"),
   ].filter(Boolean);
 
-  /* =========================
-     Inicializações simples
-     ========================= */
+  // Inicializações simples
   if (yearEl) yearEl.textContent = String(new Date().getFullYear());
   setNewTab(false);
 
-  /* =========================
-     Utilitários UI
-     ========================= */
+  // Utilitários
   function setNewTab(enabled, url = "#") {
     if (!btnNewTab) return;
     btnNewTab.href = enabled ? url : "#";
@@ -57,13 +43,10 @@ document.addEventListener("DOMContentLoaded", () => {
     btnNewTab.style.pointerEvents = enabled ? "auto" : "none";
     btnNewTab.style.opacity = enabled ? "1" : ".6";
   }
-
   function showLoading() { if (frameStatus) frameStatus.textContent = "Carregando…"; }
   function showReady() { if (frameStatus) frameStatus.textContent = "Pronto ✅"; }
 
-  /* =========================
-     Scroll lock (quando iframe abre)
-     ========================= */
+  // Lock / unlock scroll (quando iframe abre)
   let savedScrollTop = 0;
   function lockScroll() {
     if (container) savedScrollTop = container.scrollTop;
@@ -73,28 +56,19 @@ document.addEventListener("DOMContentLoaded", () => {
   function unlockScroll() {
     document.body.classList.remove(SCROLL_LOCK_CLASS);
     if (container) container.classList.remove(SCROLL_LOCK_CLASS);
-    // restaura posição com pequeno delay para evitar "jump"
     setTimeout(() => {
       if (container) container.scrollTop = savedScrollTop || 0;
     }, 60);
   }
 
-  /* =========================
-     Rolagem dentro do container SPA
-     ========================= */
-  function scrollToTop() {
-    if (!container) return;
-    container.scrollTo({ top: 0, behavior: "smooth" });
-  }
+  // Navegação por clique (dock)
   function scrollToEl(el) {
     if (!el || !container) return;
-    const top = el.offsetTop;
-    container.scrollTo({ top, behavior: "smooth" });
+    // usa scrollIntoView para garantir alinhamento; comportamento suave
+    el.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
-  /* =========================
-     Abrir / fechar demo (iframe)
-     ========================= */
+  // Abrir / fechar demo (iframe)
   function openSystem(url, title) {
     if (!heroSection || !frameSection || !frame) return;
     heroSection.classList.add("is-hidden");
@@ -104,7 +78,8 @@ document.addEventListener("DOMContentLoaded", () => {
     showLoading();
     lockScroll();
     frame.src = url;
-    scrollToTop();
+    // garante que o frame fique visível
+    if (frameSection) frameSection.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
   function closeSystem() {
@@ -138,16 +113,58 @@ document.addEventListener("DOMContentLoaded", () => {
 
   if (btnClose) btnClose.addEventListener("click", closeSystem);
   document.addEventListener("keydown", (e) => {
+    // ESC continua fechando o iframe
     if (e.key === "Escape" && frameSection && !frameSection.classList.contains("is-hidden")) {
       closeSystem();
     }
   });
 
-  /* =========================
-     Forçar layout empilhado (fallback JS)
-     - aplica estilos inline seguros para garantir header em coluna
-     - usado como correção rápida quando CSS externo conflita
-     ========================= */
+  // === Desativa navegação por scroll/touch/teclado entre sections ===
+  // 1) Bloqueia rolagem do container (impede mudança de seção por scroll)
+  if (container) {
+    container.style.overflowY = "hidden";
+    // previne wheel/touchmove que poderiam afetar o scroll em alguns navegadores
+    container.addEventListener("wheel", (e) => { e.preventDefault(); }, { passive: false });
+    container.addEventListener("touchmove", (e) => { e.preventDefault(); }, { passive: false });
+  }
+  // 2) Remove/ignora teclas de navegação que mudariam a seção
+  window.addEventListener("keydown", (e) => {
+    const blocked = ["PageDown","PageUp","ArrowDown","ArrowUp","Home","End"];
+    if (blocked.includes(e.key)) {
+      // se o usuário estiver dentro de um campo de formulário, não bloquear
+      const active = document.activeElement;
+      const isInput = active && (active.tagName === "INPUT" || active.tagName === "TEXTAREA" || active.isContentEditable);
+      if (!isInput) e.preventDefault();
+    }
+  }, { passive: false });
+
+  // === Dock: clique para navegar (único meio de mudar section) ===
+  spyButtons.forEach(btn => {
+    btn.addEventListener("click", (ev) => {
+      ev.preventDefault();
+      const targetId = btn.getAttribute("data-spy");
+      const targetEl = document.getElementById(targetId);
+      if (targetEl) scrollToEl(targetEl);
+    });
+  });
+
+  // IntersectionObserver para marcar botão ativo no dock (continua útil)
+  if (spySections.length && container) {
+    const io = new IntersectionObserver((entries) => {
+      const visible = entries
+        .filter(en => en.isIntersecting)
+        .sort((a,b) => b.intersectionRatio - a.intersectionRatio)[0];
+      if (!visible) return;
+      const id = visible.target.id;
+      spyButtons.forEach(b => {
+        b.classList.toggle("is-active", b.getAttribute("data-spy") === id);
+      });
+    }, { root: container, rootMargin: "-35% 0px -55% 0px", threshold: [0.10, 0.20, 0.35] });
+
+    spySections.forEach(s => io.observe(s));
+  }
+
+  // === Forçar layout empilhado (header acima, cards abaixo) como fallback JS ===
   function enforceStackLayout() {
     document.querySelectorAll(".section-head").forEach(head => {
       head.style.display = "flex";
@@ -189,158 +206,7 @@ document.addEventListener("DOMContentLoaded", () => {
     window.__enforceStackLayoutTimer = setTimeout(enforceStackLayout, 120);
   });
 
-  /* =========================
-     Dock spy (IntersectionObserver)
-     ========================= */
-  if (spySections.length && container) {
-    const io = new IntersectionObserver((entries) => {
-      const visible = entries
-        .filter(en => en.isIntersecting)
-        .sort((a,b) => b.intersectionRatio - a.intersectionRatio)[0];
-      if (!visible) return;
-      const id = visible.target.id;
-      spyButtons.forEach(b => {
-        b.classList.toggle("is-active", b.getAttribute("data-spy") === id);
-      });
-    }, { root: container, rootMargin: "-35% 0px -55% 0px", threshold: [0.10, 0.20, 0.35] });
-
-    spySections.forEach(s => io.observe(s));
-  }
-
-  spyButtons.forEach(btn => {
-    btn.addEventListener("click", (ev) => {
-      ev.preventDefault();
-      const targetId = btn.getAttribute("data-spy");
-      const targetEl = document.getElementById(targetId);
-      scrollToEl(targetEl);
-    });
-  });
-
-  /* =========================
-     Scroll snap + "força" detection (acumulação)
-     - menos sensível: exige acumulação de deltaY
-     - evita pular múltiplas seções por evento
-     ========================= */
-  (function enableSectionScroller() {
-    if (!container) return;
-    const pages = Array.from(document.querySelectorAll(".page"));
-    if (!pages.length) return;
-
-    let locked = false;
-    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-
-    // acumulação
-    let acc = 0;
-    let accTimer = null;
-    let lastTrigger = 0;
-
-    function resetAcc() {
-      acc = 0;
-      if (accTimer) { clearTimeout(accTimer); accTimer = null; }
-    }
-
-    function scheduleAccReset() {
-      if (accTimer) clearTimeout(accTimer);
-      accTimer = setTimeout(() => { acc = 0; accTimer = null; }, WHEEL_ACCUM_WINDOW);
-    }
-
-    function currentIndex() {
-      const top = container.scrollTop;
-      let best = 0, bestDiff = Infinity;
-      pages.forEach((p, i) => {
-        const diff = Math.abs(p.offsetTop - top);
-        if (diff < bestDiff) { bestDiff = diff; best = i; }
-      });
-      return best;
-    }
-
-    function goTo(index) {
-      index = Math.max(0, Math.min(pages.length - 1, index));
-      locked = true;
-      pages[index].scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'start' });
-      setTimeout(() => { locked = false; }, SNAP_LOCK_DURATION);
-    }
-
-    function onWheel(e) {
-      if (reduceMotion) return;
-      if (locked) return;
-
-      const delta = e.deltaY || 0;
-      if (!delta) return;
-
-      const now = Date.now();
-
-      // pico único muito grande dispara imediatamente
-      if (Math.abs(delta) >= WHEEL_SINGLE_THRESHOLD) {
-        e.preventDefault();
-        const idx = currentIndex();
-        if (delta > 0) goTo(idx + 1);
-        else goTo(idx - 1);
-        resetAcc();
-        lastTrigger = now;
-        return;
-      }
-
-      // acumula
-      acc += delta;
-      scheduleAccReset();
-
-      // só dispara se acumulado ultrapassar limiar e não disparou recentemente
-      if (Math.abs(acc) >= WHEEL_REQUIRED_ACC && (now - lastTrigger) > 120) {
-        e.preventDefault();
-        const idx = currentIndex();
-        if (acc > 0) goTo(idx + 1);
-        else goTo(idx - 1);
-        resetAcc();
-        lastTrigger = now;
-      }
-    }
-
-    // touch swipe (mobile)
-    let touchStartY = 0, touchStartTime = 0;
-    function onTouchStart(e) {
-      if (!e.touches || !e.touches.length) return;
-      touchStartY = e.touches[0].clientY;
-      touchStartTime = Date.now();
-    }
-    function onTouchEnd(e) {
-      if (reduceMotion) return;
-      if (locked) return;
-      const touchEndY = (e.changedTouches && e.changedTouches[0]) ? e.changedTouches[0].clientY : 0;
-      const dy = touchStartY - touchEndY;
-      const dt = Date.now() - touchStartTime;
-      if (Math.abs(dy) < TOUCH_MIN_DISTANCE) return;
-      if (dt > TOUCH_MAX_TIME && Math.abs(dy) < TOUCH_MIN_DISTANCE * 1.5) return;
-      const idx = currentIndex();
-      if (dy > 0) goTo(idx + 1);
-      else goTo(idx - 1);
-    }
-
-    // keyboard
-    function onKey(e) {
-      if (locked) return;
-      const idx = currentIndex();
-      if (e.key === 'PageDown' || e.key === 'ArrowDown') { e.preventDefault(); goTo(idx + 1); }
-      else if (e.key === 'PageUp' || e.key === 'ArrowUp') { e.preventDefault(); goTo(idx - 1); }
-      else if (e.key === 'Home') { e.preventDefault(); goTo(0); }
-      else if (e.key === 'End') { e.preventDefault(); goTo(pages.length - 1); }
-    }
-
-    container.addEventListener('wheel', onWheel, { passive: false });
-    container.addEventListener('touchstart', onTouchStart, { passive: true });
-    container.addEventListener('touchend', onTouchEnd, { passive: true });
-    window.addEventListener('keydown', onKey, { passive: false });
-
-    // snap inicial
-    window.addEventListener('load', () => {
-      const idx = currentIndex();
-      pages[idx].scrollIntoView({ behavior: 'auto', block: 'start' });
-    });
-  })();
-
-  /* =========================
-     Reaplica correções finais
-     ========================= */
+  // reaplica correções finais após carregamento
   setTimeout(enforceStackLayout, 120);
   setTimeout(enforceStackLayout, 600);
 });
