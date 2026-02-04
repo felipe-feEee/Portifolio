@@ -44,65 +44,78 @@ document.addEventListener("DOMContentLoaded", () => {
   function showReady() { if (frameStatus) frameStatus.textContent = "Pronto ✅"; }
 
   // lock / unlock scroll (quando iframe abre)
-  let savedScrollTop = 0;
-  function lockScroll() {
-    // salva posição e aplica classe para CSS controlar comportamento
-    if (container && container.scrollTop !== undefined) savedScrollTop = container.scrollTop;
-    document.body.classList.add(SCROLL_LOCK_CLASS);
-    if (container && container.classList) container.classList.add(SCROLL_LOCK_CLASS);
-    // também impede rolagem do container por segurança (se desejar)
-    if (container && container.style) container.style.overflow = "hidden";
+let savedOverflow = null;
+function lockScroll() {
+  if (container && container.scrollTop !== undefined) savedScrollTop = container.scrollTop;
+  document.body.classList.add(SCROLL_LOCK_CLASS);
+  if (container && container.classList) container.classList.add(SCROLL_LOCK_CLASS);
+  if (container && container.style) {
+    savedOverflow = container.style.overflow || '';
+    container.style.overflow = "hidden";
   }
-  function unlockScroll() {
-    document.body.classList.remove(SCROLL_LOCK_CLASS);
-    if (container && container.classList) container.classList.remove(SCROLL_LOCK_CLASS);
-    if (container && container.style) container.style.overflow = "";
-    // restaura posição
-    setTimeout(() => {
-      if (container && typeof savedScrollTop === "number") {
-        try { container.scrollTop = savedScrollTop || 0; } catch (_) {}
-      }
-    }, 60);
+}
+function unlockScroll() {
+  document.body.classList.remove(SCROLL_LOCK_CLASS);
+  if (container && container.classList) container.classList.remove(SCROLL_LOCK_CLASS);
+  if (container && container.style) {
+    container.style.overflow = savedOverflow || "";
+    savedOverflow = null;
   }
-
-  // rolar para elemento (usado pelo dock e links)
-  function scrollToEl(el) {
-    if (!el || !container) return;
-    // se container for o documentElement, usa scrollIntoView
-    if (container === document.documentElement || container === document.body) {
-      el.scrollIntoView({ behavior: "smooth", block: "start" });
-      return;
+  setTimeout(() => {
+    if (container && typeof savedScrollTop === "number") {
+      try { container.scrollTop = savedScrollTop || 0; } catch (_) {}
     }
-    // caso container seja um elemento com overflow, calcula offset relativo
-    const top = el.offsetTop;
-    container.scrollTo({ top, behavior: "smooth" });
+  }, 60);
+}
+
+// rolar para elemento (usado pelo dock e links) - versão robusta
+function scrollToEl(el) {
+  if (!el || !container) return;
+  // se container for o documentElement, usa scrollIntoView
+  if (container === document.documentElement || container === document.body) {
+    el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    return;
   }
+  // caso container seja um elemento com overflow, calcula offset relativo via getBoundingClientRect
+  const containerRect = container.getBoundingClientRect();
+  const targetRect = el.getBoundingClientRect();
+  const top = targetRect.top - containerRect.top + container.scrollTop;
+  container.scrollTo({ top, behavior: 'smooth' });
+}
 
   // abrir / fechar demo (iframe)
-  function openSystem(url, title) {
-    if (!heroSection || !frameSection || !frame) return;
-    heroSection.classList.add("is-hidden");
-    frameSection.classList.remove("is-hidden");
-    if (frameTitle) frameTitle.textContent = title || "Sistema";
-    setNewTab(true, url);
-    showLoading();
-    lockScroll();
-    frame.src = url;
-    // garante que o frameSection fique visível
-    scrollToEl(frameSection);
-  }
+function openSystem(url, title) {
+  if (!heroSection || !frameSection || !frame) return;
+  heroSection.classList.add("is-hidden");
+  frameSection.classList.remove("is-hidden");
+  if (frameTitle) frameTitle.textContent = title || "Sistema";
+  setNewTab(true, url);
+  showLoading();
+  lockScroll();
+  frame.src = url;
+  // esconde dock
+  setDockHidden(true);
+  // garante que o frameSection fique visível
+  scrollToEl(frameSection);
+  // opcional: atualiza active do dock para nenhum (ou para 'demo' se quiser)
+  spyButtons.forEach(b => b.classList.remove('is-active'));
+}
 
-  function closeSystem() {
-    if (!heroSection || !frameSection || !frame) return;
-    frame.src = "about:blank";
-    frameSection.classList.add("is-hidden");
-    heroSection.classList.remove("is-hidden");
-    if (frameTitle) frameTitle.textContent = "—";
-    if (frameStatus) frameStatus.textContent = "";
-    setNewTab(false);
-    unlockScroll();
-    if (portfolio) scrollToEl(portfolio);
-  }
+function closeSystem() {
+  if (!heroSection || !frameSection || !frame) return;
+  frame.src = "about:blank";
+  frameSection.classList.add("is-hidden");
+  heroSection.classList.remove("is-hidden");
+  if (frameTitle) frameTitle.textContent = "—";
+  if (frameStatus) frameStatus.textContent = "";
+  setNewTab(false);
+  unlockScroll();
+  // mostra dock novamente
+  setDockHidden(false);
+  // restaura active para a seção portfolio (ou para a que preferir)
+  setActiveDock('portfolio'); // ajuste o id conforme preferir
+  if (portfolio) scrollToEl(portfolio);
+}
 
   if (frame) {
     frame.addEventListener("load", () => {
@@ -143,7 +156,7 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   // Links com hash (qualquer link interno) — rola o container
-  document.querySelectorAll('a[href^="#"]').forEach(a => {
+  /* document.querySelectorAll('a[href^="#"]').forEach(a => {
     a.addEventListener('click', (ev) => {
       const href = a.getAttribute('href');
       if (!href || !href.startsWith('#')) return;
@@ -153,9 +166,9 @@ document.addEventListener("DOMContentLoaded", () => {
       scrollToEl(target);
       history.replaceState(null, '', href);
     });
-  });
+  }); */
 
-  // IntersectionObserver para marcar botão ativo no dock
+  /*/ IntersectionObserver para marcar botão ativo no dock
   if (spySections.length && container) {
     const io = new IntersectionObserver((entries) => {
       const visible = entries
@@ -169,7 +182,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }, { root: container === document.documentElement ? null : container, rootMargin: "-35% 0px -55% 0px", threshold: [0.10, 0.20, 0.35] });
 
     spySections.forEach(s => io.observe(s));
-  }
+  } */
 
   // === Teclas de navegação: bloqueia apenas se não estiver em campo de formulário ===
   window.addEventListener("keydown", (e) => {
@@ -300,6 +313,36 @@ document.addEventListener("DOMContentLoaded", () => {
   window.addEventListener('hashchange', scrollToHashTarget);
 
 });
+
+// --- Dock helpers: esconder/mostrar e setActive ---
+const dock = document.querySelector('.dock');
+
+function setActiveDock(id) {
+  // atualiza classe is-active nos botões do dock
+  spyButtons.forEach(btn => btn.classList.toggle('is-active', btn.getAttribute('data-spy') === id));
+}
+
+function setDockHidden(hidden) {
+  if (!dock) return;
+  if (hidden) {
+    dock.classList.add('dock-hidden'); // adicione a classe no CSS para animar/ocultar
+    dock.setAttribute('aria-hidden', 'true');
+    // fallback para remover foco/tabindex em navegadores sem inert
+    dock.querySelectorAll('a, button').forEach(el => {
+      el.dataset._savedTabindex = el.getAttribute('tabindex') ?? '';
+      el.setAttribute('tabindex', '-1');
+    });
+  } else {
+    dock.classList.remove('dock-hidden');
+    dock.removeAttribute('aria-hidden');
+    dock.querySelectorAll('a, button').forEach(el => {
+      const saved = el.dataset._savedTabindex;
+      if (saved === '') el.removeAttribute('tabindex');
+      else el.setAttribute('tabindex', saved);
+      delete el.dataset._savedTabindex;
+    });
+  }
+}
 
 // Detecta touch e evita hover "preso" em mobile para os botões do dock
 (function () {
@@ -477,7 +520,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
 // Sincroniza âncoras com o dock (marca .is-active no botão correto)
 // Requer: botões do dock com data-spy="sectionId" e sections com id="sectionId"
-(function () {
+/* (function () {
   const container = document.querySelector('.wrap.spa') || document.getElementById('app') || document.documentElement;
   const dockButtons = Array.from(document.querySelectorAll('.dock-btn[data-spy]'));
   const anchorLinks = Array.from(document.querySelectorAll('a[href^="#"]'));
@@ -488,7 +531,24 @@ document.addEventListener("DOMContentLoaded", () => {
     dockButtons.forEach(btn => {
       btn.classList.toggle('is-active', btn.dataset.spy === id);
     });
-  }
+  } */
+
+  // Unified anchor handler: scroll + update hash + update dock
+document.querySelectorAll('a[href^="#"]').forEach(a => {
+  a.addEventListener('click', (ev) => {
+    const href = a.getAttribute('href');
+    if (!href || !href.startsWith('#')) return;
+    const id = href.slice(1);
+    const target = document.getElementById(id);
+    if (!target) return;
+    ev.preventDefault();
+    scrollToEl(target);
+    history.replaceState(null, '', `#${id}`);
+    // update dock if matching button exists
+    setActiveDock(id);
+  });
+});
+
 
   // Scroll para target considerando container rolável
   function scrollToSection(target) {
@@ -543,3 +603,4 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // opcional: se você tiver lógica que muda seção por JS, chame setActiveDock(id) quando mudar
 })();
+
