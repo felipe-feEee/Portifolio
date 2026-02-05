@@ -607,3 +607,23 @@ body.scroll-locked, .wrap.spa.scroll-locked { overflow:hidden; }
 }
 
 .dock-hidden { opacity: 0; pointer-events: none; transform: translateX(12px) scale(.98); transition: opacity .22s ease, transform .22s ease; }
+
+/* Esconde a section de demo quando estiver com .is-hidden */
+.appframe.page.is-hidden,
+#appFrameSection.is-hidden {
+  display: none !important;
+  visibility: hidden;
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Se preferir animação ao abrir/fechar, use transições e outra classe (opcional) */
+#appFrameSection {
+  transition: opacity .18s ease, transform .18s ease;
+}
+#appFrameSection.showing {
+  display: block;
+  visibility: visible;
+  opacity: 1;
+  pointer-events: auto;
+}
