@@ -131,6 +131,9 @@ document.addEventListener("DOMContentLoaded", () => {
     showLoading();
     lockScroll();
     frame.src = url;
+    frameSection.classList.remove('is-hidden'); 
+    frameSection.classList.add('showing'); 
+    frameSection.setAttribute('aria-hidden', 'false');
     // esconde dock e limpa active
     setDockHidden(true);
     spyButtons.forEach(b => b.classList.remove('is-active'));
@@ -149,6 +152,9 @@ document.addEventListener("DOMContentLoaded", () => {
     if (frameStatus) frameStatus.textContent = "";
     setNewTab(false);
     unlockScroll();
+    frameSection.classList.add('is-hidden'); 
+    frameSection.classList.remove('showing'); 
+    frameSection.setAttribute('aria-hidden', 'true');
     // mostra dock novamente
     setDockHidden(false);
     // restaura active para a seção correspondente ao hash atual ou para o primeiro botão
@@ -382,3 +388,4 @@ document.addEventListener("DOMContentLoaded", () => {
   window.addEventListener('hashchange', scrollToHashTarget);
 
 }); // end DOMContentLoaded
+
