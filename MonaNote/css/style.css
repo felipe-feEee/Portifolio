@@ -341,8 +341,8 @@ body[data-theme="light"] #menu li.active > a {
 
 /* images */
 #article-content img, #content-body img {
-  max-width: clamp(6rem, 22vw, 12rem);
-  max-height: clamp(6rem, 22vw, 12rem);
+  max-width: clamp(8rem, 22vw, 14rem);
+  max-height: clamp(8rem, 22vw, 14rem);
   cursor: zoom-in;
   width: auto;
   height: auto;
